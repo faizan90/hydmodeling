@@ -1,0 +1,2 @@
+mpiexec -n 7 "P:\Synchronize\Python3Codes\dem_hyd_ansys\TauDEM535exeWin64\PitRemove" -z "P:\Synchronize\IWS\QGIS_Neckar\raster\lower_de_gauss_z3_100m_neckar_clip.tif" -fel "P:\Synchronize\IWS\QGIS_Neckar\raster\taudem_out_horb_test_module\fil.tif"
+PAUSE
