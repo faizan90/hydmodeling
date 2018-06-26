@@ -237,8 +237,6 @@ cpdef dict hbv_mult_cat_loop_py(args):
     misc_doubles[0] = rnof_q_conv
     misc_doubles[5] = err_val
 
-    print('Simulating Catchment:', cat_no)
-
     signal = hbv_mult_cat_loop(
         stm_idxs,
         misc_longs,
@@ -263,24 +261,13 @@ cpdef dict hbv_mult_cat_loop_py(args):
         stm_to_idx_map)
 
     if signal:
-        print('signal was nan!')
-        
-        outs_arr = np.full((n_cells, 
-                            cats_outflow_arr.shape[0] + 1, 
-                            n_hbv_cols), 
-                           np.nan, 
-                           dtype=DT_D_NP)
+        print('\nWARNING: signal was nan for cat: %d!\n' % cat_no)
+
         qsim_arr = np.full(cats_outflow_arr.shape[0], 
-                           np.nan, 
-                           dtype=DT_D_NP)
-        lrst_arr = np.full(cats_outflow_arr.shape[0] + 1, 
                            np.nan, 
                            dtype=DT_D_NP)
 
     return {'out_arr': np.array(outs_arr),
-            'params': np.array(hbv_prms),
-            'cats_outflow_arr': np.array(cats_outflow_arr),
-            'stms_inflow_arr': np.array(stms_inflow_arr),
-            'stms_outflow_arr': np.array(stms_outflow_arr),
             'lrst_arr': np.array(lrst_arr),
-            'qsim_arr': np.asarray(qsim_arr)}
+            'qsim_arr': np.asarray(qsim_arr),
+            'inflow_arr': np.asarray(inflow_arr)}

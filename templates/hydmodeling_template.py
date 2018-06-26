@@ -20,7 +20,7 @@ from hydmodeling import (
     solve_cats_sys,
     plot_vars,
     plot_pops,
-    plot_k_fold_effs)
+    plot_kfold_effs)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -215,7 +215,6 @@ def main():
             sep,
             opt_res_pkl_path,
             kfolds,
-            compare_ann_cyc_flag,
             use_obs_flow_flag,
             run_as_lump_flag,
             opt_schm_vars_dict)
@@ -242,18 +241,17 @@ def main():
     #=========================================================================
 
     if plot_kfold_results:
-        _ext = opt_res_pkl_path.rsplit('.', 1)[-1]
+        _ext = opt_res_pkl_path.rsplit('.', 1)[1]
         _dir = os.path.dirname(opt_res_pkl_path)
 
-        _1 = '*__valid_kfold_*.%s' % _ext
-        _2 = '*_k_fold_params.%s' % _ext
-        path_to_opt_res_pkl = glob(os.path.join(_dir, _1))[0]
-        path_to_params_pkl = glob(os.path.join(_dir, _2))[0]
+        _1 = 'opt_results__valid_kfold*.%s' % _ext
+        kfold_opt_res_paths = glob(os.path.join(_dir, _1))
 
-        assert path_to_opt_res_pkl, 'path_to_opt_res_pkl not found!'
-        assert path_to_params_pkl, 'path_to_params_pkl not found!'
+        assert kfold_opt_res_paths, 'kfold_opt_res_paths is empty!'
 
-        plot_k_fold_effs(path_to_opt_res_pkl, path_to_params_pkl, n_cpus)
+        plot_kfold_effs(kfold_opt_res_paths,
+                        compare_ann_cyc_flag,
+                        n_cpus)
 
     #==========================================================================
     # Plot parameter final population

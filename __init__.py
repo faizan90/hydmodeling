@@ -27,6 +27,9 @@ from .models import (
     hbv_c_loop_py,
     hbv_mult_cat_loop_py,
 
-    solve_cats_sys)
+    solve_cats_sys,
 
-from .plotting import plot_vars, plot_pops, plot_k_fold_effs
+    get_ns_var_res_cy,
+    get_ln_ns_var_res_cy)
+
+from .plotting import plot_vars, plot_pops, plot_kfold_effs

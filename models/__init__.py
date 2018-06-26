@@ -9,7 +9,10 @@ from .misc_ftns import (
 
     get_aspect_scale_arr_cy,
     get_slope_scale_arr_cy,
-    get_aspect_and_slope_scale_arr_cy)
+    get_aspect_and_slope_scale_arr_cy,
+
+    get_ns_var_res_cy,
+    get_ln_ns_var_res_cy)
 
 from .hbv_opt import hbv_opt_de
 

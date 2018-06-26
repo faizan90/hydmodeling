@@ -276,7 +276,7 @@ cdef DT_D get_ln_sum_sq_diff(
         DT_D sum_sq_diff = 0.0
 
     for i in range(off_idx[0], x_arr.shape[0]):
-        sum_sq_diff += (log(x_arr[i]) - log(y_arr[i]))**2
+        sum_sq_diff += (log(x_arr[i] / y_arr[i]))**2
     return sum_sq_diff
 
 
@@ -465,3 +465,39 @@ def get_aspect_and_slope_scale_arr_cy(
         &out_scale_arr[0],
         &n_cells)
     return np.asarray(out_scale_arr)
+
+
+def get_ns_var_res_cy(
+        DT_D[::1] ref_arr, 
+        DT_D[::1] sim_arr,
+        DT_D[::1] cycle_arr,
+        DT_UL off_idx):
+
+    assert ref_arr.shape[0] == sim_arr.shape[0] == cycle_arr.shape[0], (
+        'Inputs have unequal shapes!')
+    assert off_idx < ref_arr.shape[0], 'off_idx is too big!'
+    
+    cdef:
+        DT_D numr, demr
+        
+    numr = get_sum_sq_diff(ref_arr, sim_arr, &off_idx)
+    demr = get_sum_sq_diff(ref_arr, cycle_arr, &off_idx)
+    return 1 - (numr / demr)
+
+
+def get_ln_ns_var_res_cy(
+        DT_D[::1] ref_arr,
+        DT_D[::1] sim_arr,
+        DT_D[::1] cycle_arr,
+        DT_UL off_idx):
+
+    assert ref_arr.shape[0] == sim_arr.shape[0] == cycle_arr.shape[0], (
+        'Inputs have unequal shapes!')
+    assert off_idx < ref_arr.shape[0], 'off_idx is too big!'
+    
+    cdef:
+        DT_D numr, demr
+        
+    numr = get_ln_sum_sq_diff(ref_arr, sim_arr, &off_idx)
+    demr = get_ln_sum_sq_diff(ref_arr, cycle_arr, &off_idx)
+    return 1 - (numr / demr)

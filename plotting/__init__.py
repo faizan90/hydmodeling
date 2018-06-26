@@ -1,9 +1,10 @@
 import pickle
 
+import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
 from .sims import plot_hbv, plot_pop
-from .k_folds import plot_cat_k_fold_effs
+from .k_folds import plot_cat_kfold_effs
 
 
 def plot_vars(
@@ -17,7 +18,9 @@ def plot_vars(
     opt_results_dict = pickle.load(pkl_cur)
     pkl_cur.close()
 
-    cats_list = list(opt_results_dict.keys())
+    cats_list = [_ for _ in opt_results_dict.keys() if isinstance(_, int)]
+    assert cats_list
+
     n_cats = len(cats_list)
     n_cpus = min(n_cats, n_cpus)
 
@@ -53,7 +56,8 @@ def plot_pops(path_to_opt_res_pkl, n_cpus):
     opt_results_dict = pickle.load(pkl_cur)
     pkl_cur.close()
 
-    cats_list = list(opt_results_dict.keys())
+    cats_list = [_ for _ in opt_results_dict.keys() if isinstance(_, int)]
+    assert cats_list
 
     n_cpus = min(len(cats_list), n_cpus)
 
@@ -77,26 +81,20 @@ def plot_pops(path_to_opt_res_pkl, n_cpus):
     return
 
 
-def plot_k_fold_effs(
-        path_to_opt_res_pkl,
-        path_to_params_pkl,
-        n_cpus):
+def plot_kfold_effs(kfold_opt_res_paths, compare_ann_cyc_flag, n_cpus):
     '''Plot the k-fold efficiency results
     '''
-    pkl_cur = open(path_to_opt_res_pkl, 'rb')
-    opt_results_dict = pickle.load(pkl_cur)
-    pkl_cur.close()
 
-    prms_cur = open(path_to_params_pkl, 'rb')
-    prms_dict = pickle.load(prms_cur)
-    prms_cur.close()
+    with open(kfold_opt_res_paths[0], 'rb') as _hdl:
+        _cats_dict = pickle.load(_hdl)
 
-    cats_list = list(opt_results_dict.keys())
-    n_cpus = min(len(cats_list), n_cpus)
+    cats_list = [_ for _ in _cats_dict.keys() if isinstance(_, int)]
     assert cats_list
 
-    opt_res_gen = (opt_results_dict[cat] for cat in cats_list)
-    kfold_res_gen = (prms_dict[cat] for cat in cats_list)
+    n_cpus = min(len(cats_list), n_cpus)
+
+    const_args = (kfold_opt_res_paths, compare_ann_cyc_flag)
+    cats_paths_gen = ((cat, const_args) for cat in cats_list)
 
     print('\n\nPlotting kfold results...')
 
@@ -104,15 +102,13 @@ def plot_k_fold_effs(
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
         try:
-            print(list(mp_pool.uimap(plot_cat_k_fold_effs,
-                                     opt_res_gen,
-                                     kfold_res_gen)))
+            print(list(mp_pool.uimap(plot_cat_kfold_effs, cats_paths_gen)))
             mp_pool.clear()
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
             print('Error in plot_k_fold_effs:', msg)
     else:
-        for opt_res in zip(opt_res_gen, kfold_res_gen):
-            plot_cat_k_fold_effs(*opt_res)
+        for cat_paths in cats_paths_gen:
+            plot_cat_kfold_effs(cat_paths)
     return

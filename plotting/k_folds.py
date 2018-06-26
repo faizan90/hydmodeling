@@ -8,50 +8,119 @@ Created on Oct 12, 2017
 import os
 import timeit
 import time
+import pickle
 from pathlib import Path
 
+import parse as pe
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-from adjustText import adjust_text
+# from adjustText import adjust_text
+from pathos.multiprocessing import ProcessPool
 
 from ..models import (
-    hbv_c_loop_py,
     get_ns_cy,
     get_ln_ns_cy,
     get_kge_cy,
-    get_pcorr_cy)  # ,
-#                                       get_ns_var_res_py,
-#                                       get_ln_ns_var_res_py)
+    get_pcorr_cy,
+    get_ns_var_res_cy,
+    get_ln_ns_var_res_cy)
 
 
-def plot_cat_k_fold_effs(
-        cat_data_dict,
-        cat_k_fold_params_dict):
+def _get_daily_annual_cycle(col_ser):
+    assert isinstance(col_ser, pd.Series), 'Expected a pd.Series object!'
+    col_ser.dropna(inplace=True)
 
-    kfolds = cat_data_dict['kfolds']
+    # For each day of a year, get the days for all year and average them
+    # the annual cycle is the average value and is used for every doy of
+    # all years
+    for month in range(1, 13):
+        for dom in range(1, 32):
+            month_idxs = col_ser.index.month == month
+            dom_idxs = col_ser.index.day == dom
+            idxs_intersect = np.logical_and(month_idxs, dom_idxs)
+            curr_day_vals = col_ser.values[idxs_intersect]
+
+            if not curr_day_vals.shape[0]:
+                continue
+
+            assert not np.any(np.isnan(curr_day_vals)), (
+                'NaNs in curr_day_vals!')
+
+            curr_day_avg_val = curr_day_vals.mean()
+            col_ser.loc[idxs_intersect] = curr_day_avg_val
+    return col_ser
+
+
+def get_daily_annual_cycle(in_data_df, n_cpus=1):
+    annual_cycle_df = pd.DataFrame(index=in_data_df.index,
+                                   columns=in_data_df.columns,
+                                   dtype=float)
+
+    cat_ser_gen = (in_data_df[col] for col in in_data_df.columns)
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            ann_cycs = list(mp_pool.uimap(_get_daily_annual_cycle,
+                                          cat_ser_gen))
+
+            for col_ser in ann_cycs:
+                annual_cycle_df.update(col_ser)
+
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in get_daily_annual_cycle:', msg)
+    else:
+        for col_ser in cat_ser_gen:
+            annual_cycle_df.update(_get_daily_annual_cycle(col_ser))
+
+    return annual_cycle_df
+
+
+def plot_cat_kfold_effs(cat_paths):
+
+    cat, (paths, ann_cyc_flag) = cat_paths
+
+    kfolds = len(paths)
     assert kfolds >= 1, 'kfolds can be 1 or greater only!'
 
-    conv_ratio = cat_data_dict['conv_ratio']
+    out_dir = os.path.dirname(paths[0])
+    out_suff = str(cat)
 
-    ini_arr = cat_data_dict['ini_arr']
-    temp_arr = cat_data_dict['temp_arr']
-    prec_arr = cat_data_dict['prec_arr']
-    pet_arr = cat_data_dict['pet_arr']
-    q_act_arr = cat_data_dict['q_arr']
+    kfold_q_sers_dict = {}
+    for i, path in enumerate(paths):
+        with open(path, 'rb') as _hdl:
+            in_dict = pickle.load(_hdl)
 
-    area_arr = cat_data_dict['area_arr']
+            if not i:
 
-    off_idx = cat_data_dict['off_idx']
-    out_dir = cat_data_dict['out_dir']
-    out_suff = cat_data_dict['out_suff']
+                qact_arr = in_dict[cat]['q_arr']
+                off_idx = in_dict[cat]['off_idx']
+                date_idx = in_dict['out_cats_flow_df'][cat].index
+            kf_i = pe.search('valid_kfold_{:d}.', os.path.basename(path))[0]
 
-    if 'q_cyc_arr' in cat_data_dict:
-        q_cyc_arr = cat_data_dict['q_cyc_arr']
+            assert kfolds == in_dict[cat]['kfolds']
+            kfold_q_sers_dict[kf_i] = in_dict['out_cats_flow_df'][cat].values
+            del in_dict
+
+    if ann_cyc_flag:
+        try:
+            assert np.all(np.abs((date_idx[1:] - date_idx[:-1]).days) == 1)
+            q_cyc_ser = pd.Series(index=date_idx, data=qact_arr)
+            q_cyc_arr = _get_daily_annual_cycle(q_cyc_ser).values
+
+        except AssertionError:
+            print('Annual cycle comparision available only for daily series!')
+            ann_cyc_flag = False
+            q_cyc_arr = None
     else:
         q_cyc_arr = None
 
     sel_idxs_arr = np.linspace(0,
-                               temp_arr.shape[1],
+                               qact_arr.shape[0],
                                kfolds + 1,
                                dtype=np.int64,
                                endpoint=True)
@@ -62,10 +131,7 @@ def plot_cat_k_fold_effs(
 
     uni_sel_idxs_list.extend([0, uni_sel_idxs_list[-1]])
 
-    perfo_ftns_list = [get_ns_cy,
-                       get_ln_ns_cy,
-                       get_kge_cy,
-                       get_pcorr_cy]
+    perfo_ftns_list = [get_ns_cy, get_ln_ns_cy, get_kge_cy, get_pcorr_cy]
 
     perfo_ftns_names = ['NS', 'Ln_NS', 'KGE', 'P_Corr']
 
@@ -75,9 +141,7 @@ def plot_cat_k_fold_effs(
                                fill_value=np.nan)
 
     if q_cyc_arr is not None:
-        raise NotImplementedError
-        res_perfo_ftns_list = []  # [get_ns_var_res_py,
-                                    # get_ln_ns_var_res_py]
+        res_perfo_ftns_list = [get_ns_var_res_cy, get_ln_ns_var_res_cy]
         n_cyc_perfs = len(res_perfo_ftns_list)
 
         over_all_res_perf_arr = np.full(shape=(n_cyc_perfs, kfolds),
@@ -89,50 +153,26 @@ def plot_cat_k_fold_effs(
         kfold_cyc_perfos_arr = kfold_res_perfos_arr.copy()
 
     for iter_no in range(kfolds):
-        params_arr = cat_k_fold_params_dict[iter_no]
-        for kfold_iter_no in range(n_sel_idxs + 1):
-            if kfold_iter_no == kfolds:
+        for kf_i in range(n_sel_idxs + 1):
+            if kf_i == kfolds:
                 continue
 
-            cst_idx = uni_sel_idxs_list[kfold_iter_no]
-            cen_idx = uni_sel_idxs_list[kfold_iter_no + 1]
+            cst_idx = uni_sel_idxs_list[kf_i]
+            cen_idx = uni_sel_idxs_list[kf_i + 1]
 
-            all_output = hbv_c_loop_py(
-                np.ascontiguousarray(temp_arr[:, cst_idx:cen_idx]),
-                np.ascontiguousarray(prec_arr[:, cst_idx:cen_idx]),
-                np.ascontiguousarray(pet_arr[:, cst_idx:cen_idx]),
-                params_arr[0],
-                ini_arr,
-                area_arr,
-                conv_ratio)
+            qsim_arr = kfold_q_sers_dict[iter_no + 1][cst_idx:cen_idx]
 
-            q_sim_arr = all_output['qsim_arr']
+            curr_qact_arr = qact_arr[cst_idx:cen_idx]
 
-            extra_us_inflow_flag = 'extra_us_inflow' in cat_data_dict
-
-            # TODO: extra_us_inflow is derived from the first kfold params
-            # and therefore affect the results, even if the catchment is
-            # simulated anew with parameters from another kfold.
-            # The whole k_fold plotting thing might need changing.
-            # we can use cats_outflow_arr directly.
-            # The calib ones can be for the bottom figure while the valid ones
-            # for the top.
-            if extra_us_inflow_flag:
-                _ = cat_data_dict['extra_us_inflow']
-                extra_us_inflow = _[cst_idx:cen_idx]
-                q_sim_arr = q_sim_arr + extra_us_inflow
-
-            curr_q_act_arr = q_act_arr[cst_idx:cen_idx]
-
-            assert q_sim_arr.shape[0] == curr_q_act_arr.shape[0], (
+            assert qsim_arr.shape[0] == curr_qact_arr.shape[0], (
                 'Unequal shapes!')
 
             for i, perfo_ftn in enumerate(perfo_ftns_list):
-                perf_val = perfo_ftn(curr_q_act_arr, q_sim_arr, off_idx)
+                perf_val = perfo_ftn(curr_qact_arr, qsim_arr, off_idx)
 
-                if kfold_iter_no < kfolds:
-                    kfold_perfos_arr[i, iter_no, kfold_iter_no] = perf_val
-                elif kfold_iter_no > kfolds:
+                if kf_i < kfolds:
+                    kfold_perfos_arr[i, iter_no, kf_i] = perf_val
+                elif kf_i > kfolds:
                     over_all_perf_arr[i, iter_no] = perf_val
                 else:
                     raise RuntimeError('Fucked up!')
@@ -142,30 +182,30 @@ def plot_cat_k_fold_effs(
 
             curr_q_cyc_arr = q_cyc_arr[cst_idx:cen_idx]
             for i, res_perfo_ftn in enumerate(res_perfo_ftns_list):
-                res_perf_val = res_perfo_ftn(curr_q_act_arr,
-                                             q_sim_arr,
+                res_perf_val = res_perfo_ftn(curr_qact_arr,
+                                             qsim_arr,
                                              curr_q_cyc_arr,
                                              off_idx)
 
-                cyc_perf_val = perfo_ftns_list[i](curr_q_act_arr,
+                cyc_perf_val = perfo_ftns_list[i](curr_qact_arr,
                                                   curr_q_cyc_arr,
                                                   off_idx)
 
-                if kfold_iter_no < kfolds:
+                if kf_i < kfolds:
                     kfold_res_perfos_arr[i,
                                          iter_no,
-                                         kfold_iter_no] = res_perf_val
+                                         kf_i] = res_perf_val
                     kfold_cyc_perfos_arr[i,
                                          iter_no,
-                                         kfold_iter_no] = cyc_perf_val
+                                         kf_i] = cyc_perf_val
 
                     if ((cyc_perf_val > kfold_perfos_arr[i,
                                                          iter_no,
-                                                         kfold_iter_no]) and
+                                                         kf_i]) and
                             (res_perf_val > 0)):
                         print('1 Impossible:', out_suff, i, iter_no)
 
-                elif kfold_iter_no > kfolds:
+                elif kf_i > kfolds:
                     over_all_res_perf_arr[i, iter_no] = res_perf_val
                     over_all_cyc_perf_arr[i, iter_no] = cyc_perf_val
 
@@ -284,13 +324,13 @@ def plot_cat_k_fold_effs(
     title_str = ''
     title_str += '%d-folds overall/split calibration and validation results\n'
     title_str += 'with residual efficiencies w.r.t the annual cycle and\n'
-    title_str += 'efficiencies w.r.t. the annual cycle for the catchment: %d'
+    title_str += 'efficiencies of the annual cycle for the catchment: %d'
     title_str += '\nwith %d steps per fold\n'
     plt.suptitle(title_str % (kfolds, int(out_suff), uni_sel_idxs_list[1]))
     plt.subplots_adjust(top=0.8)
 
-    out_kfold_fig_loc = os.path.join(out_dir,
-                                     'kfolds_compare_%s.png' % (out_suff))
+    out_kfold_fig_loc = os.path.join(
+        out_dir, 'kfolds_compare_%s.png' % (out_suff))
     plt.savefig(out_kfold_fig_loc, bbox_inches='tight', dpi=200)
     plt.close()
 
