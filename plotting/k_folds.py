@@ -110,6 +110,13 @@ def plot_cat_k_fold_effs(
 
             extra_us_inflow_flag = 'extra_us_inflow' in cat_data_dict
 
+            # TODO: extra_us_inflow is derived from the first kfold params
+            # and therefore affect the results, even if the catchment is
+            # simulated anew with parameters from another kfold.
+            # The whole k_fold plotting thing might need changing.
+            # we can use cats_outflow_arr directly.
+            # The calib ones can be for the bottom figure while the valid ones
+            # for the top.
             if extra_us_inflow_flag:
                 _ = cat_data_dict['extra_us_inflow']
                 extra_us_inflow = _[cst_idx:cen_idx]

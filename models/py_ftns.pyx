@@ -262,7 +262,9 @@ cpdef dict hbv_mult_cat_loop_py(args):
         cat_to_idx_map,
         stm_to_idx_map)
 
-    if not signal:
+    if signal:
+        print('signal was nan!')
+        
         outs_arr = np.full((n_cells, 
                             cats_outflow_arr.shape[0] + 1, 
                             n_hbv_cols), 

@@ -206,6 +206,13 @@ def solve_cats_sys(
 
     assert all([fin_ppt_dfs_dict, fin_temp_dfs_dict, fin_pet_dfs_dict])
 
+    if not in_stms_prcssed_df.shape[0]:
+        print('\n')
+        print('INFO: A dummy stream inserted in in_stms_prcssed_df!')
+        print('\n')
+
+        in_stms_prcssed_df.loc[999] = False, np.nan, False
+
     cat_to_idx_dict = dict(list(zip(in_cats_prcssed_df.index,
                                     list(range(in_cats_prcssed_df.shape[0])))))
     stm_to_idx_dict = dict(list(zip(in_stms_prcssed_df.index,
@@ -397,7 +404,7 @@ def _solve_k_cats_sys(
                                  in_cats_prcssed_df.shape[0]),
                                 order='C',
                                 dtype=np.float64)
-    stms_inflow_arr = np.zeros((in_q_df.shape[0], in_dem_net_df.shape[0]),
+    stms_inflow_arr = np.zeros((in_q_df.shape[0], in_stms_prcssed_df.shape[0]),
                                order='C',
                                dtype=np.float64)
     stms_outflow_arr = stms_inflow_arr.copy(order='C')
@@ -570,6 +577,7 @@ def _solve_k_cats_sys(
                 n_lulc = lulc_arr.shape[1]
                 assert lulc_arr.shape[0] == n_cells
                 print('n_lulc: %d' % n_lulc)
+                print('lulc class ratios:\n', lulc_arr.sum(axis=0) / n_cells)
 
                 aux_var_infos.append([0, lulc_arr.shape[1]])
                 aux_vars.append(lulc_arr.ravel())
@@ -701,7 +709,7 @@ def _solve_k_cats_sys(
                         for j in range(n_lulc)])
                     use_prms_idxs[i, 1, :] = _bef_len, len(use_prms_labs)
                     bounds_list.extend(
-                        [bounds_dict[all_prms_labs[i] + '_lc_bds']] * n_lulc)
+                        [bounds_dict[all_prms_labs[i] + '_bds']] * n_lulc)
 
                 if all_prms_flags[i, 2]:
                     _bef_len = len(use_prms_labs)
@@ -710,7 +718,7 @@ def _solve_k_cats_sys(
                         for j in range(n_soil)])
                     use_prms_idxs[i, 2, :] = _bef_len, len(use_prms_labs)
                     bounds_list.extend(
-                        [bounds_dict[all_prms_labs[i] + '_sl_bds']] * n_soil)
+                        [bounds_dict[all_prms_labs[i] + '_bds']] * n_soil)
 
                 if all_prms_flags[i, 3]:
                     _bef_len = len(use_prms_labs)
@@ -868,9 +876,7 @@ def _solve_k_cats_sys(
             params_dict[cat] = (out_params_dict['params'],
                                 out_params_dict['route_params'])
         else:
-            print('valid run...')
             out_params_dict = hbv_mult_cat_loop_py(curr_cat_params)
-            print('valid end...')
 
         opt_end_time = timeit.default_timer()
         print('Opt time was: %0.3f seconds' % (opt_end_time - opt_strt_time))
@@ -1022,13 +1028,27 @@ def _solve_k_cats_sys(
     out_cats_outflow_path = os.path.join(out_dir,
                                          '%s_cats_outflow.csv' % _iter_str)
 
+    out_stms_inflow_df = pd.DataFrame(data=stms_inflow_arr,
+                                      columns=in_stms_prcssed_df.index,
+                                      index=in_q_df.index,
+                                      dtype=float)
+
+    out_stms_outflow_df = pd.DataFrame(data=stms_outflow_arr,
+                                       columns=in_stms_prcssed_df.index,
+                                       index=in_q_df.index,
+                                       dtype=float)
+
     out_cats_flow_df = pd.DataFrame(data=cats_outflow_arr,
                                     columns=in_cats_prcssed_df.index,
                                     index=in_q_df.index,
                                     dtype=float)
 
-    np.savetxt(out_stm_inflow_path, stms_inflow_arr, delimiter=str(sep))
-    np.savetxt(out_stm_outflow_path, stms_outflow_arr, delimiter=str(sep))
+    out_stms_inflow_df.to_csv(out_stm_inflow_path,
+                              sep=str(sep),
+                              float_format='%0.5f')
+    out_stms_outflow_df.to_csv(out_stm_outflow_path,
+                               sep=str(sep),
+                               float_format='%0.5f')
     out_cats_flow_df.to_csv(out_cats_outflow_path,
                             sep=str(sep),
                             float_format='%0.5f')

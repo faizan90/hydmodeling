@@ -150,6 +150,26 @@ def plot_pop(opt_params_dict):
 
     plt.savefig(str(Path(out_dir, f'k_{out_pref}_hbv_pop_{out_suff}.png')), bbox_inches='tight')
     plt.close()
+
+    * _, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+    obj_vals = opt_params_dict['pop_curr_obj_vals']
+    n_vals = float(obj_vals.shape[0])
+
+    probs = 1 - (np.arange(1.0, n_vals + 1) / (n_vals + 1))
+
+    ax1.set_title(('Final population objective function distribution\n'
+                   'Min. obj.: %0.4f, max. obj.: %0.4f') %
+                   (obj_vals.min(), obj_vals.max()))
+    ax1.plot(np.sort(obj_vals), probs, marker='o', alpha=0.8)
+    ax1.set_ylabel('Non-exceedence Probability (-)')
+    ax1.set_xlim(ax1.set_xlim()[1], ax1.set_xlim()[0])
+    ax1.grid()
+
+    ax2.hist(obj_vals, bins=20)
+    ax2.set_xlabel('Obj. ftn. values (-)')
+    ax2.set_ylabel('Frequency (-)')
+    plt.savefig(str(Path(out_dir, f'k_{out_pref}_hbv_obj_cdf_{out_suff}.png')), bbox_inches='tight')
+
     return
 
 

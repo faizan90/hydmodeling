@@ -589,56 +589,56 @@ cpdef dict hbv_opt_de(args):
 
 #             print(iter_curr, 'global min: %0.8f' % fval_pre_global)
 
-#         if iter_curr > 20:
-#             ddmv = 0.0
-#             for k in range(n_prms):
-#                 if prm_opt_stop_arr[k]:
-#                     ddmv += 1
-#   
-#             if ddmv == n_prms:
-#                 print('\n***All parameters optimized!***\n', sep='')
-#                 break
-#   
-# #             for k in range(n_prms):
+        if iter_curr > 20:
+            ddmv = 0.0
+            for k in range(n_prms):
+                if prm_opt_stop_arr[k]:
+                    ddmv += 1
+   
+            if ddmv == n_prms:
+                print('\n***All parameters optimized!***\n', sep='')
+                break
+   
+            for k in range(n_prms):
 #             for k in prange(n_prms, 
 #                             schedule='static',
 #                             nogil=True, 
 #                             num_threads=n_cpus):
-#                 if prm_opt_stop_arr[k]:
-#                     continue
-# 
-#                 prms_mean_thrs_arr[k, 0] = 0.0
-#                 for j in range(n_pop):
-#                     prms_mean_thrs_arr[k, 0] += pop[j, k]
-#  
-#                 prms_mean_thrs_arr[k, 0] /= n_pop
-#                 prms_mean_thrs_arr[k, 1] = (
-#                     (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
-#                 prms_mean_thrs_arr[k, 2] = (
-#                     (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
-#   
-#                 prm_opt_stop_arr[k] = 1
-#                 for j in range(n_pop):
-#                     if ((pop[j, k] < prms_mean_thrs_arr[k, 1]) or
-#                         (pop[j, k] > prms_mean_thrs_arr[k, 2])):
-#                         prm_opt_stop_arr[k] = 0
-#                         break
-# 
-#                 if not prm_opt_stop_arr[k]:
-#                     continue
-#   
+                if prm_opt_stop_arr[k]:
+                    continue
+ 
+                prms_mean_thrs_arr[k, 0] = 0.0
+                for j in range(n_pop):
+                    prms_mean_thrs_arr[k, 0] += pop[j, k]
+  
+                prms_mean_thrs_arr[k, 0] /= n_pop
+                prms_mean_thrs_arr[k, 1] = (
+                    (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+                prms_mean_thrs_arr[k, 2] = (
+                    (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+   
+                prm_opt_stop_arr[k] = 1
+                for j in range(n_pop):
+                    if ((pop[j, k] < prms_mean_thrs_arr[k, 1]) or
+                        (pop[j, k] > prms_mean_thrs_arr[k, 2])):
+                        prm_opt_stop_arr[k] = 0
+                        break
+ 
+                if not prm_opt_stop_arr[k]:
+                    continue
+   
 #                 # TODO: This is creating problems apparently
 #                 # after some parameters had converged, the rest took a long
 #                 # while to converge.
 #                 for j in range(n_pop):
 #                     pop[j, k] = prms_mean_thrs_arr[k, 0]
 #                 best_params[k] = prms_mean_thrs_arr[k, 0]
-# 
+#  
 #                 with gil:
-#                     print('\nParameter no. %d optimized at iteration: %d!' %
-#                           (k, iter_curr))
-#                     print('%d out of %d to go!\n' %
-#                           (n_prms - int(ddmv), n_prms))
+                print('\nParameter no. %d optimized at iteration: %d!' %
+                      (k, iter_curr))
+                print('%d out of %d to go!\n' %
+                      (n_prms - int(ddmv), n_prms))
 
         iter_curr += 1
 
@@ -717,6 +717,7 @@ cpdef dict hbv_opt_de(args):
             'total_vars': total_vars,
             'n_calls': np.asarray(n_calls),
             'pop_pre_obj_vals': np.asarray(pre_obj_vals),
+            'pop_curr_obj_vals': np.asarray(curr_obj_vals),
             'cats_outflow_arr': np.asarray(cats_outflow_arr),
             'stms_inflow_arr': np.asarray(stms_inflow_arr),
             'stms_outflow_arr': np.asarray(stms_outflow_arr),

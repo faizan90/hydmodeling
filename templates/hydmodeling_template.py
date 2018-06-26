@@ -44,7 +44,7 @@ def main():
     test_model_flag = False
     plot_pop = False
 
-#     optimize = True
+    optimize = True
 #     plot_opt_results = True
     plot_kfold_results = True
 #     test_model_flag = True
@@ -136,32 +136,6 @@ def main():
         bounds_dict['musk_lag_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_lag'].split(',')]
         bounds_dict['musk_wt_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(',')]
 
-    # more emphasis can be given to a class by having its bounds wider than
-    # the other
-    bounds_dict['tt_lc_bds'] = [-2.0, +2.0]
-    bounds_dict['cm_lc_bds'] = [0.0, 6.0]
-    bounds_dict['pcm_lc_bds'] = [0.0, 3.0]
-    bounds_dict['fc_lc_bds'] = [10.0, 2000.0]
-    bounds_dict['beta_lc_bds'] = [0.0, 15.0]
-    bounds_dict['pwp_lc_bds'] = [10.0, 2000.0]
-    bounds_dict['ur_thr_lc_bds'] = [0.0, 30.0]
-    bounds_dict['k_uu_lc_bds'] = [1e-5, 1.0]
-    bounds_dict['k_ul_lc_bds'] = [1e-5, 1.0]
-    bounds_dict['k_d_lc_bds'] = [1e-5, 1.0]
-    bounds_dict['k_ll_lc_bds'] = [1e-5, 1.0]
-
-    bounds_dict['tt_sl_bds'] = bounds_dict['tt_lc_bds']
-    bounds_dict['cm_sl_bds'] = bounds_dict['cm_lc_bds']
-    bounds_dict['pcm_sl_bds'] = bounds_dict['pcm_lc_bds']
-    bounds_dict['fc_sl_bds'] = bounds_dict['fc_lc_bds']
-    bounds_dict['beta_sl_bds'] = bounds_dict['beta_lc_bds']
-    bounds_dict['pwp_sl_bds'] = bounds_dict['pwp_lc_bds']
-    bounds_dict['ur_thr_sl_bds'] = bounds_dict['ur_thr_lc_bds']
-    bounds_dict['k_uu_sl_bds'] = bounds_dict['k_uu_lc_bds']
-    bounds_dict['k_ul_sl_bds'] = bounds_dict['k_ul_lc_bds']
-    bounds_dict['k_d_sl_bds'] = bounds_dict['k_d_lc_bds']
-    bounds_dict['k_ll_sl_bds'] = bounds_dict['k_ll_lc_bds']
-
     tt_flags = [int(_) for _ in cfp['PRM_FLAGS']['tt'].split(',')]
     cm_flags = [int(_) for _ in cfp['PRM_FLAGS']['cm'].split(',')]
     pcm_flags = [int(_) for _ in cfp['PRM_FLAGS']['pcm'].split(',')]
@@ -249,19 +223,18 @@ def main():
     #=========================================================================
     # plot the optimization results
     #=========================================================================
-    plot_simple_dist_opt_flag = False
-    plot_dist_wat_bal_flag = True
-
     if plot_opt_results:
+        plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean('plot_simple_opt_flag')
+        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean('plot_dist_wat_bal_flag')
         _ext = opt_res_pkl_path.rsplit('.', 1)[-1]
         _dir = os.path.dirname(opt_res_pkl_path)
 
         for _pkl_path in iglob(os.path.join(_dir,
-                                            '*_dist__calib_kfold_*.%s' % _ext)):
+                                            '*__calib_kfold_*.%s' % _ext)):
             plot_vars(
                 _pkl_path,
                 n_cpus,
-                plot_simple_dist_opt_flag,
+                plot_simple_opt_flag,
                 plot_dist_wat_bal_flag)
 
     #=========================================================================
@@ -291,7 +264,7 @@ def main():
         _dir = os.path.dirname(opt_res_pkl_path)
 
         for _pkl_path in iglob(os.path.join(_dir,
-                                            '*_dist__calib_kfold_*.%s' % _ext)):
+                                            '*__calib_kfold_*.%s' % _ext)):
             plot_pops(_pkl_path, n_cpus)
     #==========================================================================
 
