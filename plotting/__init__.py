@@ -28,8 +28,6 @@ def plot_vars(
     simple_opt_flag_gen = (plot_simple_opt_flag for i in range(n_cats))
     wat_bal_flag_gen = (plot_wat_bal_flag for i in range(n_cats))
 
-    print('\n\nPlotting opt_results...')
-
     if n_cpus > 1:
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
@@ -63,8 +61,6 @@ def plot_pops(path_to_opt_res_pkl, n_cpus):
 
     opt_res_gen = (opt_results_dict[cat] for cat in cats_list)
 
-    print('\n\nPlotting DE population...')
-
     if n_cpus > 1:
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
@@ -95,8 +91,6 @@ def plot_kfold_effs(kfold_opt_res_paths, compare_ann_cyc_flag, n_cpus):
 
     const_args = (kfold_opt_res_paths, compare_ann_cyc_flag)
     cats_paths_gen = ((cat, const_args) for cat in cats_list)
-
-    print('\n\nPlotting kfold results...')
 
     if n_cpus > 1:
         mp_pool = ProcessPool(n_cpus)

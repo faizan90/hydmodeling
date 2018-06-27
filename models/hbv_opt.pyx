@@ -221,7 +221,7 @@ cpdef dict hbv_opt_de(args):
     lrst_mult_arr = np.zeros((n_cpus, n_recs + 1), dtype=DT_D_NP)
 
     cats_outflow_mult_arr = np.zeros((n_cpus,
-                                      n_recs,
+                                      cats_outflow_arr.shape[0],
                                       cats_outflow_arr.shape[1]), 
                                      dtype=DT_D_NP)
 
@@ -627,18 +627,11 @@ cpdef dict hbv_opt_de(args):
                 if not prm_opt_stop_arr[k]:
                     continue
    
-#                 # TODO: This is creating problems apparently
-#                 # after some parameters had converged, the rest took a long
-#                 # while to converge.
-#                 for j in range(n_pop):
-#                     pop[j, k] = prms_mean_thrs_arr[k, 0]
-#                 best_params[k] = prms_mean_thrs_arr[k, 0]
-#  
 #                 with gil:
                 print('\nParameter no. %d optimized at iteration: %d!' %
                       (k, iter_curr))
-                print('%d out of %d to go!\n' %
-                      (n_prms - int(ddmv), n_prms))
+                ddmv += 1
+                print('%d out of %d to go!\n' % (n_prms - int(ddmv), n_prms))
 
         iter_curr += 1
 
@@ -670,9 +663,9 @@ cpdef dict hbv_opt_de(args):
         temp_arr,
         prec_arr,
         petn_arr,
-        cats_outflow_arr,
-        stms_inflow_arr,
-        stms_outflow_arr,
+        cats_outflow_arr,  # no mult arr
+        stms_inflow_arr,  # no mult arr
+        stms_outflow_arr,  # no mult arr
         dem_net_arr,
         hbv_prms[tid],
         bds_dfs,
@@ -680,18 +673,18 @@ cpdef dict hbv_opt_de(args):
         cat_to_idx_map,
         stm_to_idx_map)
 
-    cat_idx = cat_to_idx_map[cat_no]
-    for j in range(n_recs):
-        for k in range(n_stms):
-            stm = stms_idxs[k]
-            stm_idx = stm_to_idx_map[stm]
-
-            stms_inflow_arr[j, stm_idx] = stms_inflow_mult_arr[tid, j, stm_idx]
-
-            stms_outflow_arr[j, stm_idx] = (
-                stms_outflow_mult_arr[tid, j, stm_idx])
-
-        cats_outflow_arr[j, cat_idx] = cats_outflow_mult_arr[tid, j, cat_idx]
+#     cat_idx = cat_to_idx_map[cat_no]
+#     for j in range(n_recs):
+#         for k in range(n_stms):
+#             stm = stms_idxs[k]
+#             stm_idx = stm_to_idx_map[stm]
+# 
+#             stms_inflow_arr[j, stm_idx] = stms_inflow_mult_arr[tid, j, stm_idx]
+# 
+#             stms_outflow_arr[j, stm_idx] = (
+#                 stms_outflow_mult_arr[tid, j, stm_idx])
+# 
+#         cats_outflow_arr[j, cat_idx] = cats_outflow_mult_arr[tid, j, cat_idx]
 
     print('Number of iterations:', iter_curr)
     print('Objective function value:', fval_pre_global)
@@ -718,4 +711,4 @@ cpdef dict hbv_opt_de(args):
             'n_calls': np.asarray(n_calls),
             'pop_pre_obj_vals': np.asarray(pre_obj_vals),
             'pop_curr_obj_vals': np.asarray(curr_obj_vals),
-            'qsim_arr': np.asarray(qsim_mult_arr[tid, :])}
+            'qsim_arr': np.asarray(qsim_mult_arr[tid])}

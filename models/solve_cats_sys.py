@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from .dtypes import get_fc_pwp_is
 from .hbv_opt import hbv_opt_de
 from .py_ftns import hbv_mult_cat_loop_py
 from .misc_ftns import (
@@ -21,6 +22,8 @@ from .misc_ftns import (
     get_aspect_and_slope_scale_arr_cy)
 
 plt.ioff()
+
+fc_i, pwp_i = get_fc_pwp_is()
 
 
 def solve_cats_sys(
@@ -223,7 +226,7 @@ def solve_cats_sys(
                      for sel_cat in sel_cats}
 
     dumm_dict = None
-    kfold_params_dict = {}
+    kfold_prms_dict = {}
 
     kwargs = {'use_obs_flow_flag': use_obs_flow_flag,
               'run_as_lump_flag':run_as_lump_flag}
@@ -309,7 +312,7 @@ def solve_cats_sys(
             kfolds,
             kwargs=kwargs)
 
-        kfold_params_dict[kf_i + 1] = _
+        kfold_prms_dict[kf_i + 1] = _
 
         # for the calibrated params, run for all the time steps
         calib_run = False
@@ -337,7 +340,7 @@ def solve_cats_sys(
             opt_schm_vars_dict,
             cat_to_idx_dict,
             stm_to_idx_dict,
-            kfold_params_dict[kf_i + 1],
+            kfold_prms_dict[kf_i + 1],
             calib_run,
             kfolds,
             kwargs=kwargs)
@@ -351,14 +354,14 @@ def solve_cats_sys(
             prms_list = []
 
             for iter_no in k_folds_list:
-                prms_list.append(kfold_params_dict[iter_no][cat])
+                prms_list.append(kfold_prms_dict[iter_no][cat])
 
             cats_kfold_prms_dict[cat] = prms_list
 
-        out_params_dict_path = (opt_pkl_path.rsplit('.', -1)[0] +
+        out_prms_dict_path = (opt_pkl_path.rsplit('.', -1)[0] +
                                 '_k_fold_params.pkl')
 
-        pkl_cur = open(out_params_dict_path, 'wb')
+        pkl_cur = open(out_prms_dict_path, 'wb')
         pickle.dump(cats_kfold_prms_dict, pkl_cur)
         pkl_cur.close()
 
@@ -366,33 +369,33 @@ def solve_cats_sys(
 
 
 def _solve_k_cats_sys(
-        in_q_df,
-        in_ppt_dfs_dict,
-        in_tem_dfs_dict,
-        in_pet_dfs_dict,
-        in_aux_vars_dict,
-        in_cats_prcssed_df,
-        in_stms_prcssed_df,
-        in_dem_net_df,
-        opt_pkl_path,
-        bounds_dict,
-        all_prms_flags,
-        route_type,
-        obj_ftn_wts,
-        warm_up_steps,
-        n_cpus,
-        out_dir,
-        water_bal_step_size,
-        sep,
-        kf_i,
-        ini_arrs_dict,
-        opt_schm_vars_dict,
-        cat_to_idx_dict,
-        stm_to_idx_dict,
-        sim_params_dict,
-        calib_run,
-        kfolds,
-        kwargs):
+    in_q_df,
+    in_ppt_dfs_dict,
+    in_tem_dfs_dict,
+    in_pet_dfs_dict,
+    in_aux_vars_dict,
+    in_cats_prcssed_df,
+    in_stms_prcssed_df,
+    in_dem_net_df,
+    opt_pkl_path,
+    bounds_dict,
+    all_prms_flags,
+    route_type,
+    obj_ftn_wts,
+    warm_up_steps,
+    n_cpus,
+    out_dir,
+    water_bal_step_size,
+    sep,
+    kf_i,
+    ini_arrs_dict,
+    opt_schm_vars_dict,
+    cat_to_idx_dict,
+    stm_to_idx_dict,
+    sim_prms_dict,
+    calib_run,
+    kfolds,
+    kwargs):
 
     cats_outflow_arr = np.zeros((in_q_df.shape[0],
                                  in_cats_prcssed_df.shape[0]),
@@ -413,10 +416,10 @@ def _solve_k_cats_sys(
     if opt_pkl_path:
         opt_results_dict = {}
 
-    params_dict = {}
+    prms_dict = {}
 
     if calib_run:
-        params_dict = {}
+        prms_dict = {}
         calib_valid_suff = 'calib'
     else:
         calib_valid_suff = 'valid'
@@ -466,7 +469,9 @@ def _solve_k_cats_sys(
                 curr_us_stms_idxs.append(chk_opt_stm_idx)
 
         n_stms = len(curr_us_stms_idxs)
-        print('n_stms:', n_stms, ', cat_no:', cat)
+
+        if calib_run:
+            print('n_stms:', n_stms, ', cat_no:', cat)
 
         q_arr = in_q_df[cat].values.copy(order='C')
         tem_arr = in_tem_dfs_dict[cat].values.T.copy(order='C')
@@ -638,6 +643,9 @@ def _solve_k_cats_sys(
             if np.any(all_prms_flags[:, 3]):
                 aspect_scale_arr = get_aspect_scale_arr_cy(aspect_arr)
 
+                assert np.all((aspect_scale_arr >= 0) &
+                              (aspect_scale_arr <= 1))
+
                 if aux_vars:
                     _beg_idx = sum([_.size for _ in aux_vars])
                 else:
@@ -651,6 +659,9 @@ def _solve_k_cats_sys(
             if np.any(all_prms_flags[:, 4]):
                 slope_scale_arr = get_slope_scale_arr_cy(slope_arr)
 
+                assert np.all((slope_scale_arr >= 0) &
+                              (slope_scale_arr <= 1))
+
                 if aux_vars:
                     _beg_idx = sum([_.size for _ in aux_vars])
                 else:
@@ -663,8 +674,10 @@ def _solve_k_cats_sys(
 
             if np.any(all_prms_flags[:, 5]):
                 aspect_slope_scale_arr = get_aspect_and_slope_scale_arr_cy(
-                    aspect_arr,
-                    slope_arr)
+                    aspect_arr, slope_arr)
+
+                assert np.all((aspect_slope_scale_arr >= 0) &
+                              (aspect_slope_scale_arr <= 1))
 
                 if aux_vars:
                     _beg_idx = sum([_.size for _ in aux_vars])
@@ -819,7 +832,7 @@ def _solve_k_cats_sys(
             curr_cat_params.append(_opt_list)
 
         else:
-            sim_params_arr = sim_params_dict[cat]
+            sim_params_arr = sim_prms_dict[cat]
             curr_cat_params.append(sim_params_arr)
 
             curr_cat_params.append([])  # to keep indicies consistent
@@ -868,77 +881,90 @@ def _solve_k_cats_sys(
         else:
             curr_cat_params.append(cat_area_ratios_arr)
 
-        print('\n')
-        opt_strt_time = timeit.default_timer()
-
         if calib_run:
+            print('\n')
+            opt_strt_time = timeit.default_timer()
+
             if opt_schm_vars_dict['opt_schm'] == 'DE':
-                out_params_dict = hbv_opt_de(curr_cat_params)
+                out_prms_dict = hbv_opt_de(curr_cat_params)
             else:
                 raise ValueError('opt_schm (%s) can only be DE!' %
                                  opt_schm_vars_dict['opt_schm'])
 
-            params_dict[cat] = (out_params_dict['params'],
-                                out_params_dict['route_params'])
-        else:
-            out_params_dict = hbv_mult_cat_loop_py(curr_cat_params)
+            prms_dict[cat] = (out_prms_dict['params'],
+                              out_prms_dict['route_params'])
 
-        opt_end_time = timeit.default_timer()
-        print('Opt time was: %0.3f seconds' % (opt_end_time - opt_strt_time))
-        print('\n')
+            opt_end_time = timeit.default_timer()
+            print('Opt time was: %0.3f seconds\n' %
+                  (opt_end_time - opt_strt_time))
+
+            # a test of fc and pwp ratio
+            _prms = out_prms_dict['params']
+            mean_ratio = _prms[0, pwp_i] / _prms[0, fc_i]
+
+            print(f'Mean pwp/fc ratio: {mean_ratio:0.3f}')
+
+        else:
+            out_prms_dict = hbv_mult_cat_loop_py(curr_cat_params)
 
         if opt_pkl_path:
-            out_params_dict['off_idx'] = warm_up_steps
-            out_params_dict['conv_ratio'] = conv_ratio
-            out_params_dict['ini_arr'] = ini_arr
-            out_params_dict['out_suff'] = str(cat)
-            out_params_dict['out_dir'] = out_dir
-            out_params_dict['out_pref'] = '%0.2d' % kf_i
-            out_params_dict['calib_valid_suff'] = calib_valid_suff
-            out_params_dict['opt_schm_vars_dict'] = opt_schm_vars_dict
-            out_params_dict['run_as_lump_flag'] = run_as_lump_flag
+            out_prms_dict['off_idx'] = warm_up_steps
+            out_prms_dict['conv_ratio'] = conv_ratio
+            out_prms_dict['ini_arr'] = ini_arr
+            out_prms_dict['out_suff'] = str(cat)
+            out_prms_dict['out_dir'] = out_dir
+            out_prms_dict['out_pref'] = '%0.2d' % kf_i
+            out_prms_dict['calib_valid_suff'] = calib_valid_suff
+            out_prms_dict['opt_schm_vars_dict'] = opt_schm_vars_dict
+            out_prms_dict['run_as_lump_flag'] = run_as_lump_flag
 
             if calib_run:
-                out_params_dict['use_prms_labs'] = use_prms_labs
-                out_params_dict['bds_arr'] = bounds_arr
+                out_prms_dict['use_prms_labs'] = use_prms_labs
+                out_prms_dict['bds_arr'] = bounds_arr
 
-            out_params_dict['kfolds'] = kfolds
+                out_prms_dict['use_prms_idxs'] = use_prms_idxs
+                out_prms_dict['all_prms_flags'] = all_prms_flags
+                out_prms_dict['prms_span_idxs'] = prms_span_idxs
+                out_prms_dict['aux_vars'] = aux_vars
+                out_prms_dict['aux_var_infos'] = aux_var_infos
 
-            out_params_dict['area_arr'] = cat_area_ratios_arr
+            out_prms_dict['kfolds'] = kfolds
 
-            out_params_dict['temp_arr'] = tem_arr
-            out_params_dict['prec_arr'] = ppt_arr
-            out_params_dict['pet_arr'] = pet_arr
-            out_params_dict['q_arr'] = q_arr
+            out_prms_dict['area_arr'] = cat_area_ratios_arr
+
+            out_prms_dict['temp_arr'] = tem_arr
+            out_prms_dict['prec_arr'] = ppt_arr
+            out_prms_dict['pet_arr'] = pet_arr
+            out_prms_dict['q_arr'] = q_arr
 
             if calib_run and np.any(all_prms_flags[:, 1]):
-                out_params_dict['lulc_arr'] = lulc_arr
+                out_prms_dict['lulc_arr'] = lulc_arr
 
             if calib_run and np.any(all_prms_flags[:, 2]):
-                out_params_dict['soil_arr'] = soil_arr
+                out_prms_dict['soil_arr'] = soil_arr
 
             if calib_run and np.any(all_prms_flags[:, 3]):
-                out_params_dict['aspect_scale_arr'] = aspect_scale_arr
+                out_prms_dict['aspect_scale_arr'] = aspect_scale_arr
 
             if calib_run and np.any(all_prms_flags[:, 4]):
-                out_params_dict['slope_scale_arr'] = slope_scale_arr
+                out_prms_dict['slope_scale_arr'] = slope_scale_arr
 
             if calib_run and np.any(all_prms_flags[:, 5]):
-                out_params_dict['aspect_slope_scale_arr'] = (
+                out_prms_dict['aspect_slope_scale_arr'] = (
                     aspect_slope_scale_arr)
 
-            out_params_dict['all_prms_flags'] = all_prms_flags
-            out_params_dict['water_bal_step_size'] = water_bal_step_size
-            out_params_dict['use_obs_flow_flag'] = use_obs_flow_flag
+            out_prms_dict['all_prms_flags'] = all_prms_flags
+            out_prms_dict['water_bal_step_size'] = water_bal_step_size
+            out_prms_dict['use_obs_flow_flag'] = use_obs_flow_flag
 
-            out_params_dict['shape'] = cat_shape
-            out_params_dict['rows'] = cat_rows_idxs
-            out_params_dict['cols'] = cat_cols_idxs
+            out_prms_dict['shape'] = cat_shape
+            out_prms_dict['rows'] = cat_rows_idxs
+            out_prms_dict['cols'] = cat_cols_idxs
 
             if n_stms:
                 curr_us_stm_idx = stm_to_idx_dict[curr_us_stm]
                 extra_inflow = stms_outflow_arr[:, curr_us_stm_idx]
-                out_params_dict['extra_us_inflow'] = (
+                out_prms_dict['extra_us_inflow'] = (
                     extra_inflow).copy(order='C')
 
             if route_type == 0:
@@ -949,12 +975,12 @@ def _solve_k_cats_sys(
                 else:
                     route_labs = [['lag_%d' % i, 'wt_%d' % i]
                                   for i in curr_us_stms]
-                    out_params_dict['route_labs'] = route_labs
+                    out_prms_dict['route_labs'] = route_labs
             else:
                 raise NotImplementedError('Implement stuff for this routing '
                                           'type!')
 
-            opt_results_dict[cat] = out_params_dict
+            opt_results_dict[cat] = out_prms_dict
 
         in_cats_prcssed_df.loc[cat, 'prcssed'] = True
         in_cats_prcssed_df.loc[cat, 'optd'] = True
@@ -1052,7 +1078,6 @@ def _solve_k_cats_sys(
         out_cats_outflow_path, sep=str(sep), float_format='%0.5f')
 
     if opt_pkl_path:
-        print('\nSaving optimization pickle...')
         _ = opt_pkl_path.rsplit('.', 1)
         _[0] = _[0] + ('__%s_kfold_%0.2d' % (calib_valid_suff, kf_i))
         _ = _[0] + '.' + _[1]
@@ -1061,4 +1086,4 @@ def _solve_k_cats_sys(
         pickle.dump(opt_results_dict, pkl_cur)
         pkl_cur.close()
 
-    return params_dict
+    return prms_dict

@@ -223,13 +223,17 @@ def main():
     # plot the optimization results
     #=========================================================================
     if plot_opt_results:
+        print('\n\nPlotting opt_results...')
+
         plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean('plot_simple_opt_flag')
         plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean('plot_dist_wat_bal_flag')
+
         _ext = opt_res_pkl_path.rsplit('.', 1)[-1]
         _dir = os.path.dirname(opt_res_pkl_path)
 
-        for _pkl_path in iglob(os.path.join(_dir,
-                                            '*__calib_kfold_*.%s' % _ext)):
+        for _pkl_path in iglob(
+            os.path.join(_dir, '*__calib_kfold_*.%s' % _ext)):
+
             plot_vars(
                 _pkl_path,
                 n_cpus,
@@ -241,6 +245,8 @@ def main():
     #=========================================================================
 
     if plot_kfold_results:
+        print('\n\nPlotting kfold results...')
+
         _ext = opt_res_pkl_path.rsplit('.', 1)[1]
         _dir = os.path.dirname(opt_res_pkl_path)
 
@@ -249,20 +255,21 @@ def main():
 
         assert kfold_opt_res_paths, 'kfold_opt_res_paths is empty!'
 
-        plot_kfold_effs(kfold_opt_res_paths,
-                        compare_ann_cyc_flag,
-                        n_cpus)
+        plot_kfold_effs(kfold_opt_res_paths, compare_ann_cyc_flag, n_cpus)
 
     #==========================================================================
     # Plot parameter final population
     #==========================================================================
 
     if plot_pop:
+        print('\n\nPlotting DE population...')
+
         _ext = opt_res_pkl_path.rsplit('.', 1)[-1]
         _dir = os.path.dirname(opt_res_pkl_path)
 
-        for _pkl_path in iglob(os.path.join(_dir,
-                                            '*__calib_kfold_*.%s' % _ext)):
+        for _pkl_path in iglob(
+            os.path.join(_dir, '*__calib_kfold_*.%s' % _ext)):
+
             plot_pops(_pkl_path, n_cpus)
     #==========================================================================
 
