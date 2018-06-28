@@ -8,6 +8,7 @@ Created on %(date)s
 import os
 import timeit
 import pickle
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,102 @@ from .misc_ftns import (
 plt.ioff()
 
 fc_i, pwp_i = get_fc_pwp_is()
+
+
+def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
+    out_dict = {cat: aux_dict[cat] for cat in cats}
+    if lf:
+        out_dict = {cat: np.array([(area_dict[cat] * out_dict[cat]).sum()])
+                    for cat in cats}
+    return out_dict
+
+
+def _get_k_aux_vars_dict(
+        in_dict,
+        cats,
+        all_prms_flags,
+        run_as_lump_flag):
+
+    out_dict = {}
+
+    area_dict = {cat: in_dict['area_ratios'][cat] for cat in cats}
+    out_dict['area_ratios'] = area_dict
+
+    # TODO: this is not final. cats_shape is actually the total shape of the
+    # all catchments on grid. It only matters while plotting
+    if run_as_lump_flag:
+        cats_shape = (1, 1)
+        cats_rows_idxs = {cat: np.array([0]) for cat in cats}
+        cats_cols_idxs = {cat: np.array([0]) for cat in cats}
+    else:
+        cats_shape = in_dict['shape']
+        cats_rows_idxs = {cat: in_dict['rows'][cat] for cat in cats}
+        cats_cols_idxs = {cat: in_dict['cols'][cat] for cat in cats}
+
+    out_dict['shape'] = cats_shape
+    out_dict['rows'] = cats_rows_idxs
+    out_dict['cols'] = cats_cols_idxs
+
+    _get_aux_dict_p = partial(
+        _get_k_aux_dict,
+        cats=cats,
+        all_prms_flags=all_prms_flags,
+        lf=run_as_lump_flag)
+
+    if np.any(all_prms_flags[:, 1]):
+        out_dict['lulc_ratios'] = _get_aux_dict_p(in_dict['lulc_ratios'])
+
+    if np.any(all_prms_flags[:, 2]):
+        out_dict['soil_ratios'] = _get_aux_dict_p(in_dict['soil_ratios'])
+
+    if np.any(all_prms_flags[:, 3] | all_prms_flags[:, 5]):
+        out_dict['aspect'] = _get_aux_dict_p(in_dict['aspect'])
+
+    if np.any(all_prms_flags[:, 4] | all_prms_flags[:, 5]):
+        out_dict['slope'] = _get_aux_dict_p(in_dict['slope'])
+
+    if run_as_lump_flag:
+        out_dict['area_ratios'] = {
+            cat: np.array([area_dict[cat].sum()]) for cat in cats}
+
+    return out_dict
+
+
+def _get_var_dict(in_df_dict, cats, area_dict, db, de, lf):
+    out_dict = {}
+    for cat in cats:
+        _df_1 = in_df_dict[cat].loc[db:de]
+        if lf:
+            _df_2 = pd.DataFrame(index=_df_1.index, dtype=float, columns=[0])
+            _vals = _df_1.values * area_dict[cat]
+            _df_2.values[:] = _vals.sum(axis=1).reshape(-1, 1)
+            _df_1 = _df_2
+        out_dict[cat] = _df_1
+    return out_dict
+
+
+def _get_var_dicts(in_ppts,
+                   in_tems,
+                   in_pets,
+                   area_dict,
+                   cats,
+                   db,
+                   de,
+                   lf):
+
+    _get_var_dict_p = partial(
+        _get_var_dict,
+        cats=cats,
+        area_dict=area_dict,
+        db=db,
+        de=de,
+        lf=lf)
+
+    out_ppts = _get_var_dict_p(in_ppts)
+    out_tems = _get_var_dict_p(in_tems)
+    out_pets = _get_var_dict_p(in_pets)
+
+    return (out_ppts, out_tems, out_pets)
 
 
 def solve_cats_sys(
@@ -173,35 +270,11 @@ def solve_cats_sys(
     in_q_df[in_q_df.values < min_q_thresh] = min_q_thresh
     assert in_q_df.shape[0] == n_steps
 
-    fin_ppt_dfs_dict = {}
-    fin_tem_dfs_dict = {}
-    fin_pet_dfs_dict = {}
-
-    for key in sel_cats:
-        fin_ppt_dfs_dict[key] = in_ppt_dfs_dict[key].loc[beg_date:end_date]
-        fin_tem_dfs_dict[key] = in_tem_dfs_dict[key].loc[beg_date:end_date]
-        fin_pet_dfs_dict[key] = in_pet_dfs_dict[key].loc[beg_date:end_date]
-
-        del in_ppt_dfs_dict[key]
-        del in_tem_dfs_dict[key]
-        del in_pet_dfs_dict[key]
-
-        assert fin_ppt_dfs_dict[key].shape[0] == n_steps
-        assert fin_tem_dfs_dict[key].shape[0] == n_steps
-        assert fin_pet_dfs_dict[key].shape[0] == n_steps
-
-        assert (fin_ppt_dfs_dict[key].shape[1] ==
-                fin_tem_dfs_dict[key].shape[1] ==
-                fin_pet_dfs_dict[key].shape[1])
-
-        if np.any(np.isnan(fin_tem_dfs_dict[key].values)):
-            raise RuntimeError('NaNs in in_tem_df')
-        if np.any(np.isnan(fin_ppt_dfs_dict[key].values)):
-            raise RuntimeError('NaNs in in_ppt_df')
-        if np.any(np.isnan(fin_pet_dfs_dict[key].values)):
-            raise RuntimeError('NaNs in in_pet_df')
-
-    assert all([fin_ppt_dfs_dict, fin_tem_dfs_dict, fin_pet_dfs_dict])
+    k_aux_cell_vars_dict = _get_k_aux_vars_dict(
+        aux_cell_vars_dict,
+        sel_cats,
+        all_prms_flags,
+        run_as_lump_flag)
 
     if not in_stms_prcssed_df.shape[0]:
         print('\n')
@@ -219,6 +292,38 @@ def solve_cats_sys(
     _vals = np.arange(in_stms_prcssed_df.shape[0]).tolist()
     stm_to_idx_dict = dict(zip(_keys, _vals))
 
+    (fin_ppt_dfs_dict,
+     fin_tem_dfs_dict,
+     fin_pet_dfs_dict) = _get_var_dicts(
+        in_ppt_dfs_dict,
+        in_tem_dfs_dict,
+        in_pet_dfs_dict,
+        aux_cell_vars_dict['area_ratios'],
+        sel_cats,
+        beg_date,
+        end_date,
+        run_as_lump_flag)
+
+    del in_ppt_dfs_dict, in_tem_dfs_dict, in_pet_dfs_dict
+
+    assert all([fin_ppt_dfs_dict, fin_tem_dfs_dict, fin_pet_dfs_dict])
+    for cat in sel_cats:
+        assert (n_steps ==
+                fin_ppt_dfs_dict[cat].shape[0] ==
+                fin_tem_dfs_dict[cat].shape[0] ==
+                fin_pet_dfs_dict[cat].shape[0])
+
+        assert (fin_ppt_dfs_dict[cat].shape[1] ==
+                fin_tem_dfs_dict[cat].shape[1] ==
+                fin_pet_dfs_dict[cat].shape[1])
+
+        if np.any(np.isnan(fin_ppt_dfs_dict[cat].values)):
+            raise RuntimeError('NaNs in precipiation!')
+        if np.any(np.isnan(fin_tem_dfs_dict[cat].values)):
+            raise RuntimeError('NaNs in temperature!')
+        if np.any(np.isnan(fin_pet_dfs_dict[cat].values)):
+            raise RuntimeError('NaNs in PET!')
+
     ini_arrs_dict = {sel_cat:
                      np.zeros((fin_tem_dfs_dict[sel_cat].shape[1], 4),
                               dtype=np.float64,
@@ -230,6 +335,7 @@ def solve_cats_sys(
 
     kwargs = {'use_obs_flow_flag': use_obs_flow_flag,
               'run_as_lump_flag':run_as_lump_flag}
+
     for kf_i in range(n_sel_idxs - 1):
         _beg_i = uni_sel_idxs_arr[kf_i]
         _end_i = uni_sel_idxs_arr[kf_i + 1]
@@ -246,45 +352,10 @@ def solve_cats_sys(
             sel_cat: fin_pet_dfs_dict[sel_cat].iloc[_beg_i:_end_i]
             for sel_cat in sel_cats}
 
-        k_aux_cell_vars_dict = {}
-        k_aux_cell_vars_dict['area_ratios'] = {
-            sel_cat: aux_cell_vars_dict['area_ratios'][sel_cat]
-            for sel_cat in sel_cats}
-
-        k_aux_cell_vars_dict['shape'] = aux_cell_vars_dict['shape']
-
-        k_aux_cell_vars_dict['rows'] = {
-            sel_cat: aux_cell_vars_dict['rows'][sel_cat]
-            for sel_cat in sel_cats}
-
-        k_aux_cell_vars_dict['cols'] = {
-            sel_cat: aux_cell_vars_dict['cols'][sel_cat]
-            for sel_cat in sel_cats}
-
-        if 'aspect' in aux_cell_vars_dict:
-            k_aux_cell_vars_dict['aspect'] = {
-                sel_cat: aux_cell_vars_dict['aspect'][sel_cat]
-                for sel_cat in sel_cats}
-
-        if 'slope' in aux_cell_vars_dict:
-            k_aux_cell_vars_dict['slope'] = {
-               sel_cat: aux_cell_vars_dict['slope'][sel_cat]
-               for sel_cat in sel_cats}
-
-        if 'lulc_ratios' in aux_cell_vars_dict:
-            k_aux_cell_vars_dict['lulc_ratios'] = {
-                sel_cat: aux_cell_vars_dict['lulc_ratios'][sel_cat]
-                for sel_cat in sel_cats}
-
-        if 'soil_ratios' in aux_cell_vars_dict:
-            k_aux_cell_vars_dict['soil_ratios'] = {
-                sel_cat: aux_cell_vars_dict['soil_ratios'][sel_cat]
-                for sel_cat in sel_cats}
-
         # one time for calibration period only
         calib_run = True
         _ = _solve_k_cats_sys(
-            in_q_df.iloc[_beg_i:_end_i].copy(),
+            in_q_df,
             k_ppt_dfs_dict,
             k_tem_dfs_dict,
             k_pet_dfs_dict,
@@ -494,18 +565,6 @@ def _solve_k_cats_sys(
                 pet_arr.shape[1] ==
                 q_arr.shape[0])
 
-        if run_as_lump_flag:
-            _area_rshp = cat_area_ratios_arr.reshape(-1, 1)
-            tem_arr = (_area_rshp * tem_arr).sum(axis=0).reshape(1, -1)
-            ppt_arr = (_area_rshp * ppt_arr).sum(axis=0).reshape(1, -1)
-            pet_arr = (_area_rshp * pet_arr).sum(axis=0).reshape(1, -1)
-            ini_arr = (_area_rshp * ini_arr).sum(axis=0).reshape(1, -1)
-            cat_area_ratios_arr = np.array([_area_rshp.sum()])
-
-            cat_shape = (1, 1)
-            cat_rows_idxs = np.array([0])
-            cat_cols_idxs = np.array([0])
-
         n_cells = ini_arr.shape[0]
 
         all_prms_labs = ['tt',
@@ -560,12 +619,6 @@ def _solve_k_cats_sys(
                 assert 'lulc_ratios' in in_aux_vars_dict
 
                 lulc_arr = in_aux_vars_dict['lulc_ratios'][cat]
-                if run_as_lump_flag:
-                    _area_rshp = (
-                        in_aux_vars_dict['area_ratios'][cat].reshape(-1, 1))
-                    lulc_arr = (
-                        _area_rshp * lulc_arr).sum(axis=0).reshape(1, -1)
-
                 _ = lulc_arr.shape[1]
                 lulc_drop_idxs = (lulc_arr.max(axis=0) == 0)
                 if lulc_drop_idxs.sum():
@@ -588,12 +641,6 @@ def _solve_k_cats_sys(
                 assert 'soil_ratios' in in_aux_vars_dict
 
                 soil_arr = in_aux_vars_dict['soil_ratios'][cat]
-                if run_as_lump_flag:
-                    _area_rshp = (
-                        in_aux_vars_dict['area_ratios'][cat].reshape(-1, 1))
-                    soil_arr = (
-                        _area_rshp * soil_arr).sum(axis=0).reshape(1, -1)
-
                 _ = soil_arr.shape[1]
                 soil_drop_idxs = (soil_arr.max(axis=0) == 0)
                 if soil_drop_idxs.sum():
@@ -621,11 +668,6 @@ def _solve_k_cats_sys(
                 assert 'aspect' in in_aux_vars_dict
 
                 aspect_arr = in_aux_vars_dict['aspect'][cat]
-
-                if run_as_lump_flag:
-                    _area = in_aux_vars_dict['area_ratios'][cat]
-                    aspect_arr = np.array([(_area * aspect_arr).sum(axis=0)])
-
                 assert aspect_arr.ndim == 1
                 assert aspect_arr.shape[0] == n_cells
 
@@ -633,10 +675,6 @@ def _solve_k_cats_sys(
                 assert 'slope' in in_aux_vars_dict
 
                 slope_arr = in_aux_vars_dict['slope'][cat]
-                if run_as_lump_flag:
-                    _area = in_aux_vars_dict['area_ratios'][cat]
-                    slope_arr = np.array([(_area * slope_arr).sum(axis=0)])
-
                 assert slope_arr.ndim == 1
                 assert slope_arr.shape[0] == n_cells
 
