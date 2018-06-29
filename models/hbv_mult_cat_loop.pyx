@@ -1,6 +1,6 @@
-# cython: nonecheck=False
-# cython: boundscheck=False
-# cython: wraparound=False
+# cython: nonecheck=True
+# cython: boundscheck=True
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -8,6 +8,19 @@
 
 from .hbv_loop cimport hbv_loop
 from .routing cimport route_strms
+
+from .dtypes cimport (
+    curr_us_stm_i,
+    route_type_i,
+    cat_no_i,
+    n_stms_i,
+    n_hbv_cols_i,
+    use_obs_flow_flag_i,
+    opt_flag_i,
+    n_cells_i,
+    n_hbv_prms_i,
+    rnof_q_conv_i,
+    err_val_i)
 
 cdef DT_UL use_c = 1
 
@@ -70,7 +83,7 @@ cdef DT_D hbv_mult_cat_loop(
         qsim_arr[i] = 0.0
         lrst_arr[i + 1] = 0.0
 
-    if (misc_longs[5] > 0):
+    if (misc_longs[n_stms_i] > 0):
         route_strms(
             stm_idxs,
             cat_to_idx_map,
@@ -81,8 +94,8 @@ cdef DT_D hbv_mult_cat_loop(
             cats_outflow_arr,
             stms_inflow_arr,
             stms_outflow_arr,
-            &misc_longs[5],
-            &misc_longs[3])
+            &misc_longs[n_stms_i],
+            &misc_longs[route_type_i])
 
     if use_c == 1:
         res = hbv_c_loop(
@@ -96,12 +109,12 @@ cdef DT_D hbv_mult_cat_loop(
             &qsim_arr[0],
             &outs_arr[0, 0, 0],
             &n_recs,
-            &misc_longs[9],
-            &misc_longs[10],
-            &misc_longs[6],
-            &misc_doubles[0],
-            &misc_doubles[5],
-            &misc_longs[8])
+            &misc_longs[n_cells_i],
+            &misc_longs[n_hbv_prms_i],
+            &misc_longs[n_hbv_cols_i],
+            &misc_doubles[rnof_q_conv_i],
+            &misc_doubles[err_val_i],
+            &misc_longs[opt_flag_i])
     else:
         res = hbv_loop(
             temp_arr,
@@ -113,25 +126,25 @@ cdef DT_D hbv_mult_cat_loop(
             lrst_arr,
             qsim_arr,
             outs_arr,
-            &misc_doubles[0],
-            &misc_doubles[5],
-            &misc_longs[8])
+            &misc_doubles[rnof_q_conv_i],
+            &misc_doubles[err_val_i],
+            &misc_longs[opt_flag_i])
 
     if res == 0.0:
-        if (misc_longs[1] != -2):
+        if (misc_longs[curr_us_stm_i] != -2):
             stm_idx = stm_to_idx_map[misc_longs[1]]
             for i in range(n_recs):
-                qsim_arr[i] = qsim_arr[i] + (
-                    stms_outflow_arr[i, stm_idx])
+                qsim_arr[i] = qsim_arr[i] + stms_outflow_arr[i, stm_idx]
 
-        cat_idx = cat_to_idx_map[misc_longs[4]]
-        if misc_longs[7] == 0:
+        cat_idx = cat_to_idx_map[misc_longs[cat_no_i]]
+        if misc_longs[use_obs_flow_flag_i] == 0:
             for i in range(n_recs):
                 cats_outflow_arr[i, cat_idx] = qsim_arr[i]
-        elif misc_longs[7] == 1:
+        elif misc_longs[use_obs_flow_flag_i] == 1:
             for i in range(n_recs):
                 cats_outflow_arr[i, cat_idx] = qact_arr[i]
         else:
             with gil: print(
-                ('Incorrect use_obs_flow_flag: %d' % misc_longs[7]))
+                ('Incorrect use_obs_flow_flag: %d' % 
+                 misc_longs[use_obs_flow_flag_i]))
     return res

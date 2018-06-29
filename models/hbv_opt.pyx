@@ -1,6 +1,6 @@
-# cython: nonecheck=False
-# cython: boundscheck=False
-# cython: wraparound=False
+# cython: nonecheck=True
+# cython: boundscheck=True
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -23,6 +23,12 @@ from .misc_ftns cimport (
     get_ln_mean,
     get_variance,
     del_idx)
+from .misc_ftns_partial cimport (
+    get_demr_prt, 
+    get_ln_demr_prt,
+    get_mean_prt,
+    get_ln_mean_prt,
+    get_variance_prt)
 from .dtypes cimport (
     DT_D,
     DT_UL,
@@ -33,7 +39,25 @@ from .dtypes cimport (
     n_hbv_prms, 
     obj_longs_ct, 
     obj_doubles_ct,
-    err_val)
+    err_val,
+    off_idx_i,
+    curr_us_stm_i,
+    n_hm_prms_i,
+    route_type_i,
+    cat_no_i,
+    n_stms_i,
+    n_hbv_cols_i,
+    use_obs_flow_flag_i,
+    opt_flag_i,
+    n_cells_i,
+    n_hbv_prms_i,
+    use_step_flag_i,
+    rnof_q_conv_i,
+    demr_i,
+    ln_demr_i,
+    mean_ref_i,
+    act_std_dev_i,
+    err_val_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -58,7 +82,7 @@ cpdef dict hbv_opt_de(args):
 
         #======================================================================
         # Basic optimization related parameters
-        DT_UL opt_flag = 1, use_obs_flow_flag
+        DT_UL opt_flag = 1, use_obs_flow_flag, use_step_flag
         DT_UL max_iters, max_cont_iters, off_idx, n_prms, n_hm_prms
         DT_UL iter_curr = 0, last_succ_i = 0, n_succ = 0, cont_iter = 0
 
@@ -69,7 +93,7 @@ cpdef dict hbv_opt_de(args):
         list accept_vars
         list total_vars
 
-        DT_UL[::1] prm_opt_stop_arr, obj_longs
+        DT_UL[::1] prm_opt_stop_arr, obj_longs, use_step_arr
         DT_UL[:, ::1] prms_flags, prms_span_idxs, f_var_infos
         DT_UL[:, :, ::1] prms_idxs
 
@@ -171,7 +195,9 @@ cpdef dict hbv_opt_de(args):
      n_stms,
      n_cells,
      use_obs_flow_flag,
-     n_hm_prms) = args[6]
+     n_hm_prms,
+     use_step_flag,
+     use_step_arr) = args[6]
 
     (area_arr,
      prms_idxs, 
@@ -245,13 +271,24 @@ cpdef dict hbv_opt_de(args):
         time.sleep(0.001)
     warm_up_mp(&seeds_arr[0], n_cpus)
 
-    mean_ref = get_mean(qact_arr, &off_idx)
-    ln_mean_ref = get_ln_mean(qact_arr, &off_idx)
-
-    demr = get_demr(qact_arr, &mean_ref, &off_idx)
-    ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &off_idx)
-
-    act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
+    if use_step_flag:
+        mean_ref = get_mean_prt(qact_arr, use_step_arr, &off_idx)
+        ln_mean_ref = get_ln_mean_prt(qact_arr, use_step_arr, &off_idx)
+    
+        demr = get_demr_prt(qact_arr, use_step_arr, &mean_ref, &off_idx)
+        ln_demr = get_ln_demr_prt(
+            qact_arr, use_step_arr, &ln_mean_ref, &off_idx)
+    
+        act_std_dev = get_variance_prt(
+            &mean_ref, qact_arr, use_step_arr, &off_idx)**0.5
+    else:
+        mean_ref = get_mean(qact_arr, &off_idx)
+        ln_mean_ref = get_ln_mean(qact_arr, &off_idx)
+    
+        demr = get_demr(qact_arr, &mean_ref, &off_idx)
+        ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &off_idx)
+    
+        act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
 
     bds_dfs = np.zeros((n_prms, 2), dtype=DT_D_NP)
 
@@ -264,25 +301,26 @@ cpdef dict hbv_opt_de(args):
     # size and other constants needed in the obj_ftn
     # so that all are in a single variable
     obj_longs = np.zeros(obj_longs_ct, dtype=DT_UL_NP)
-    obj_longs[0] = off_idx
-    obj_longs[1] = curr_us_stm
-    obj_longs[2] = n_hm_prms
-    obj_longs[3] = route_type
-    obj_longs[4] = cat_no
-    obj_longs[5] = n_stms
-    obj_longs[6] = n_hbv_cols
-    obj_longs[7] = use_obs_flow_flag
-    obj_longs[8] = opt_flag
-    obj_longs[9] = n_cells
-    obj_longs[10] = n_hbv_prms
+    obj_longs[off_idx_i] = off_idx
+    obj_longs[curr_us_stm_i] = curr_us_stm
+    obj_longs[n_hm_prms_i] = n_hm_prms
+    obj_longs[route_type_i] = route_type
+    obj_longs[cat_no_i] = cat_no
+    obj_longs[n_stms_i] = n_stms
+    obj_longs[n_hbv_cols_i] = n_hbv_cols
+    obj_longs[use_obs_flow_flag_i] = use_obs_flow_flag
+    obj_longs[opt_flag_i] = opt_flag
+    obj_longs[n_cells_i] = n_cells
+    obj_longs[n_hbv_prms_i] = n_hbv_prms
+    obj_longs[use_step_flag_i] = use_step_flag
 
     obj_doubles = np.zeros(obj_doubles_ct, dtype=DT_D_NP)
-    obj_doubles[0] = rnof_q_conv
-    obj_doubles[1] = demr
-    obj_doubles[2] = ln_demr
-    obj_doubles[3] = mean_ref
-    obj_doubles[4] = act_std_dev
-    obj_doubles[5] = err_val
+    obj_doubles[rnof_q_conv_i] = rnof_q_conv
+    obj_doubles[demr_i] = demr
+    obj_doubles[ln_demr_i] = ln_demr
+    obj_doubles[mean_ref_i] = mean_ref
+    obj_doubles[act_std_dev_i] = act_std_dev
+    obj_doubles[err_val_i] = err_val
 
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]
@@ -360,6 +398,7 @@ cpdef dict hbv_opt_de(args):
             n_calls,
             stms_idxs,
             obj_longs,
+            use_step_arr,
             prms_flags,
             f_var_infos,
             prms_idxs,
@@ -524,6 +563,7 @@ cpdef dict hbv_opt_de(args):
                 n_calls,
                 stms_idxs,
                 obj_longs,
+                use_step_arr,
                 prms_flags,
                 f_var_infos,
                 prms_idxs,
@@ -646,6 +686,7 @@ cpdef dict hbv_opt_de(args):
         n_calls,
         stms_idxs,
         obj_longs,
+        use_step_arr,
         prms_flags,
         f_var_infos,
         prms_idxs,

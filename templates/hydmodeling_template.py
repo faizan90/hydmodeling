@@ -44,7 +44,7 @@ def main():
     test_model_flag = False
     plot_pop = False
 
-    optimize = True
+#     optimize = True
 #     plot_opt_results = True
     plot_kfold_results = True
 #     test_model_flag = True
@@ -53,11 +53,11 @@ def main():
     #==========================================================================
     # Optimize distributed model
     #==========================================================================
-    in_hyd_mod_dir = cfp['OPT_HYD_MODEL']['in_hyd_mod_dir']
+    in_hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
 
-    in_dem_net_file = cfp['OPT_HYD_MODEL']['in_dem_net_file']
-    in_cats_prcssed_file = cfp['OPT_HYD_MODEL']['in_cats_prcssed_file']
-    in_stms_prcssed_file = cfp['OPT_HYD_MODEL']['in_stms_prcssed_file']
+    in_dem_net_file = cfp['GET_STMS']['dem_net_file']
+    in_cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
+    in_stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
 
     # always in cumecs
     in_q_file = cfp['OPT_HYD_MODEL']['in_q_file']
@@ -171,6 +171,17 @@ def main():
         in_q_df = pd.read_csv(in_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=in_date_fmt)
 
+        in_use_step_ser = pd.Series(
+            index=in_q_df.index,
+            data=np.ones(in_q_df.shape[0], dtype=np.int32))
+
+#         valid_months = [1, 2, 3, 10, 11, 12]  # summer calib
+# #         valid_months = [4, 5, 6, 7, 8, 9]  # winter calib
+#         _bool_idxs = np.zeros(in_q_df.shape[0], dtype=bool)
+#         for _month in valid_months:
+#             _bool_idxs = _bool_idxs | (in_use_step_ser.index.month == _month)
+#         in_use_step_ser.loc[_bool_idxs] = 0
+
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
         in_pet_dfs_dict = load_pickle(in_pet_file)
@@ -194,6 +205,7 @@ def main():
             in_cats_prcssed_df,
             in_stms_prcssed_df,
             in_dem_net_df,
+            in_use_step_ser,
             in_q_df,
             in_ppt_dfs_dict,
             in_temp_dfs_dict,

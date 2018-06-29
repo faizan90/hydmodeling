@@ -27,106 +27,11 @@ plt.ioff()
 fc_i, pwp_i = get_fc_pwp_is()
 
 
-def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
-    out_dict = {cat: aux_dict[cat] for cat in cats}
-    if lf:
-        out_dict = {cat: np.array([(area_dict[cat] * out_dict[cat]).sum()])
-                    for cat in cats}
-    return out_dict
-
-
-def _get_k_aux_vars_dict(
-        in_dict,
-        cats,
-        all_prms_flags,
-        run_as_lump_flag):
-
-    out_dict = {}
-
-    area_dict = {cat: in_dict['area_ratios'][cat] for cat in cats}
-    out_dict['area_ratios'] = area_dict
-
-    # TODO: this is not final. cats_shape is actually the total shape of the
-    # all catchments on grid. It only matters while plotting
-    if run_as_lump_flag:
-        cats_shape = (1, 1)
-        cats_rows_idxs = {cat: np.array([0]) for cat in cats}
-        cats_cols_idxs = {cat: np.array([0]) for cat in cats}
-    else:
-        cats_shape = in_dict['shape']
-        cats_rows_idxs = {cat: in_dict['rows'][cat] for cat in cats}
-        cats_cols_idxs = {cat: in_dict['cols'][cat] for cat in cats}
-
-    out_dict['shape'] = cats_shape
-    out_dict['rows'] = cats_rows_idxs
-    out_dict['cols'] = cats_cols_idxs
-
-    _get_aux_dict_p = partial(
-        _get_k_aux_dict,
-        cats=cats,
-        all_prms_flags=all_prms_flags,
-        lf=run_as_lump_flag)
-
-    if np.any(all_prms_flags[:, 1]):
-        out_dict['lulc_ratios'] = _get_aux_dict_p(in_dict['lulc_ratios'])
-
-    if np.any(all_prms_flags[:, 2]):
-        out_dict['soil_ratios'] = _get_aux_dict_p(in_dict['soil_ratios'])
-
-    if np.any(all_prms_flags[:, 3] | all_prms_flags[:, 5]):
-        out_dict['aspect'] = _get_aux_dict_p(in_dict['aspect'])
-
-    if np.any(all_prms_flags[:, 4] | all_prms_flags[:, 5]):
-        out_dict['slope'] = _get_aux_dict_p(in_dict['slope'])
-
-    if run_as_lump_flag:
-        out_dict['area_ratios'] = {
-            cat: np.array([area_dict[cat].sum()]) for cat in cats}
-
-    return out_dict
-
-
-def _get_var_dict(in_df_dict, cats, area_dict, db, de, lf):
-    out_dict = {}
-    for cat in cats:
-        _df_1 = in_df_dict[cat].loc[db:de]
-        if lf:
-            _df_2 = pd.DataFrame(index=_df_1.index, dtype=float, columns=[0])
-            _vals = _df_1.values * area_dict[cat]
-            _df_2.values[:] = _vals.sum(axis=1).reshape(-1, 1)
-            _df_1 = _df_2
-        out_dict[cat] = _df_1
-    return out_dict
-
-
-def _get_var_dicts(in_ppts,
-                   in_tems,
-                   in_pets,
-                   area_dict,
-                   cats,
-                   db,
-                   de,
-                   lf):
-
-    _get_var_dict_p = partial(
-        _get_var_dict,
-        cats=cats,
-        area_dict=area_dict,
-        db=db,
-        de=de,
-        lf=lf)
-
-    out_ppts = _get_var_dict_p(in_ppts)
-    out_tems = _get_var_dict_p(in_tems)
-    out_pets = _get_var_dict_p(in_pets)
-
-    return (out_ppts, out_tems, out_pets)
-
-
 def solve_cats_sys(
     in_cats_prcssed_df,
     in_stms_prcssed_df,
     in_dem_net_df,
+    in_use_step_ser,
     in_q_df,
     in_ppt_dfs_dict,
     in_tem_dfs_dict,
@@ -159,16 +64,23 @@ def solve_cats_sys(
     assert isinstance(in_cats_prcssed_df, pd.DataFrame)
     assert isinstance(in_stms_prcssed_df, pd.DataFrame)
     assert isinstance(in_dem_net_df, pd.DataFrame)
+
+    assert isinstance(in_use_step_ser, pd.Series)
+    assert np.issubdtype(in_use_step_ser.values.dtype, np.int32)
+
     assert isinstance(in_q_df, pd.DataFrame)
 
     for _df in in_ppt_dfs_dict.values():
         assert isinstance(_df, pd.DataFrame)
+        assert np.issubdtype(_df.values.dtype, np.float64)
 
     for _df in in_tem_dfs_dict.values():
         assert isinstance(_df, pd.DataFrame)
+        assert np.issubdtype(_df.values.dtype, np.float64)
 
     for _df in in_pet_dfs_dict.values():
         assert isinstance(_df, pd.DataFrame)
+        assert np.issubdtype(_df.values.dtype, np.float64)
 
     assert isinstance(aux_cell_vars_dict, dict)
 
@@ -333,8 +245,21 @@ def solve_cats_sys(
     dumm_dict = None
     kfold_prms_dict = {}
 
+    k_in_use_step_ser = in_use_step_ser.loc[beg_date:end_date]
+    assert k_in_use_step_ser.shape[0] == n_steps
+    assert np.all((k_in_use_step_ser.values >= 0) &
+                  (k_in_use_step_ser.values <= 1))
+    assert np.any(k_in_use_step_ser.values > 0)
+
+    if in_use_step_ser.values.sum() == in_use_step_ser.shape[0]:
+        use_step_flag = False
+    else:
+        use_step_flag = True
+    print('INFO: use_step_flag:', use_step_flag)
+
     kwargs = {'use_obs_flow_flag': use_obs_flow_flag,
-              'run_as_lump_flag':run_as_lump_flag}
+              'run_as_lump_flag': run_as_lump_flag,
+              'use_step_flag': use_step_flag}
 
     for kf_i in range(n_sel_idxs - 1):
         _beg_i = uni_sel_idxs_arr[kf_i]
@@ -355,7 +280,8 @@ def solve_cats_sys(
         # one time for calibration period only
         calib_run = True
         _ = _solve_k_cats_sys(
-            in_q_df,
+            k_in_use_step_ser.iloc[_beg_i:_end_i],
+            in_q_df.iloc[_beg_i:_end_i],
             k_ppt_dfs_dict,
             k_tem_dfs_dict,
             k_pet_dfs_dict,
@@ -388,6 +314,7 @@ def solve_cats_sys(
         # for the calibrated params, run for all the time steps
         calib_run = False
         _ = _solve_k_cats_sys(
+            k_in_use_step_ser,
             in_q_df,
             fin_ppt_dfs_dict,
             fin_tem_dfs_dict,
@@ -440,6 +367,7 @@ def solve_cats_sys(
 
 
 def _solve_k_cats_sys(
+    in_use_step_ser,
     in_q_df,
     in_ppt_dfs_dict,
     in_tem_dfs_dict,
@@ -497,6 +425,14 @@ def _solve_k_cats_sys(
 
     use_obs_flow_flag = int(kwargs['use_obs_flow_flag'])
     run_as_lump_flag = int(kwargs['run_as_lump_flag'])
+    use_step_flag = int(kwargs['use_step_flag'])
+
+    assert in_use_step_ser.shape[0] == in_q_df.shape[0]
+
+    if use_step_flag:
+        use_step_arr = in_use_step_ser.values.astype(np.int32, 'c')
+    else:
+        use_step_arr = np.array([0], dtype=np.int32)
 
     for cat in in_cats_prcssed_df.index:
         curr_cat_params = []
@@ -563,7 +499,11 @@ def _solve_k_cats_sys(
         assert (tem_arr.shape[1] ==
                 ppt_arr.shape[1] ==
                 pet_arr.shape[1] ==
-                q_arr.shape[0])
+                q_arr.shape[0]), (
+                    tem_arr.shape[1],
+                    ppt_arr.shape[1],
+                    pet_arr.shape[1],
+                    q_arr.shape[0])
 
         n_cells = ini_arr.shape[0]
 
@@ -904,7 +844,9 @@ def _solve_k_cats_sys(
                                 n_stms,
                                 n_cells,
                                 use_obs_flow_flag,
-                                n_hm_params])
+                                n_hm_params,
+                                use_step_flag,
+                                use_step_arr])
 
         assert cat_area_ratios_arr.shape[0] == n_cells
 
@@ -995,6 +937,9 @@ def _solve_k_cats_sys(
             out_prms_dict['water_bal_step_size'] = water_bal_step_size
             out_prms_dict['use_obs_flow_flag'] = use_obs_flow_flag
 
+            out_prms_dict['use_step_flag'] = use_step_flag
+            out_prms_dict['use_step_arr'] = use_step_arr
+
             out_prms_dict['shape'] = cat_shape
             out_prms_dict['rows'] = cat_rows_idxs
             out_prms_dict['cols'] = cat_cols_idxs
@@ -1028,7 +973,7 @@ def _solve_k_cats_sys(
                 in_stms_prcssed_df.loc[_, 'optd'] = True
                 in_stms_prcssed_df.loc[_, 'prcssed'] = True
 
-    if False:
+    if True:
         # in case of debugging
         print('\nPlotting stream inflows\\outflows and catchment outflows...')
         for stm in in_dem_net_df.index:
@@ -1125,3 +1070,101 @@ def _solve_k_cats_sys(
         pkl_cur.close()
 
     return prms_dict
+
+
+def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
+    out_dict = {cat: aux_dict[cat] for cat in cats}
+    if lf:
+        out_dict = {cat: np.array([(area_dict[cat] * out_dict[cat]).sum()])
+                    for cat in cats}
+    for cat in cats:
+        assert not np.any(np.isnan(out_dict[cat]))
+    return out_dict
+
+
+def _get_k_aux_vars_dict(
+        in_dict,
+        cats,
+        all_prms_flags,
+        run_as_lump_flag):
+
+    out_dict = {}
+
+    area_dict = {cat: in_dict['area_ratios'][cat] for cat in cats}
+    out_dict['area_ratios'] = area_dict
+
+    # TODO: this is not final. cats_shape is actually the total shape of the
+    # all catchments on grid. It only matters while plotting
+    if run_as_lump_flag:
+        cats_shape = (1, 1)
+        cats_rows_idxs = {cat: np.array([0]) for cat in cats}
+        cats_cols_idxs = {cat: np.array([0]) for cat in cats}
+    else:
+        cats_shape = in_dict['shape']
+        cats_rows_idxs = {cat: in_dict['rows'][cat] for cat in cats}
+        cats_cols_idxs = {cat: in_dict['cols'][cat] for cat in cats}
+
+    out_dict['shape'] = cats_shape
+    out_dict['rows'] = cats_rows_idxs
+    out_dict['cols'] = cats_cols_idxs
+
+    _get_aux_dict_p = partial(
+        _get_k_aux_dict,
+        cats=cats,
+        all_prms_flags=all_prms_flags,
+        lf=run_as_lump_flag)
+
+    if np.any(all_prms_flags[:, 1]):
+        out_dict['lulc_ratios'] = _get_aux_dict_p(in_dict['lulc_ratios'])
+
+    if np.any(all_prms_flags[:, 2]):
+        out_dict['soil_ratios'] = _get_aux_dict_p(in_dict['soil_ratios'])
+
+    if np.any(all_prms_flags[:, 3] | all_prms_flags[:, 5]):
+        out_dict['aspect'] = _get_aux_dict_p(in_dict['aspect'])
+
+    if np.any(all_prms_flags[:, 4] | all_prms_flags[:, 5]):
+        out_dict['slope'] = _get_aux_dict_p(in_dict['slope'])
+
+    if run_as_lump_flag:
+        out_dict['area_ratios'] = {
+            cat: np.array([area_dict[cat].sum()]) for cat in cats}
+
+    return out_dict
+
+
+def _get_var_dict(in_df_dict, cats, area_dict, db, de, lf):
+    out_dict = {}
+    for cat in cats:
+        _df_1 = in_df_dict[cat].loc[db:de]
+        if lf:
+            _df_2 = pd.DataFrame(index=_df_1.index, dtype=float, columns=[0])
+            _vals = _df_1.values * area_dict[cat]
+            _df_2.values[:] = _vals.sum(axis=1).reshape(-1, 1)
+            _df_1 = _df_2
+        out_dict[cat] = _df_1
+    return out_dict
+
+
+def _get_var_dicts(in_ppts,
+                   in_tems,
+                   in_pets,
+                   area_dict,
+                   cats,
+                   db,
+                   de,
+                   lf):
+
+    _get_var_dict_p = partial(
+        _get_var_dict,
+        cats=cats,
+        area_dict=area_dict,
+        db=db,
+        de=de,
+        lf=lf)
+
+    out_ppts = _get_var_dict_p(in_ppts)
+    out_tems = _get_var_dict_p(in_tems)
+    out_pets = _get_var_dict_p(in_pets)
+
+    return (out_ppts, out_tems, out_pets)

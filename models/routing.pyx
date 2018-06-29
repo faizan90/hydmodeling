@@ -1,6 +1,6 @@
-# cython: nonecheck=False
-# cython: boundscheck=False
-# cython: wraparound=False
+# cython: nonecheck=True
+# cython: boundscheck=True
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -47,7 +47,6 @@ cdef void musk_route(
     C3 = ((2 * lag[0] * (1 - wt[0])) - del_t[0]) / C0
 
     outflow_arr[0, stm_idx[0]] = inflow_arr[0]
-
     for i in range(1, n_recs[0]):
         outflow_arr[i, stm_idx[0]] = ((inflow_arr[i] * C1) + 
                                       (inflow_arr[i - 1] * C2) + 

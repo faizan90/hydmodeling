@@ -14,6 +14,14 @@ from .misc_ftns import (
     get_ns_var_res_cy,
     get_ln_ns_var_res_cy)
 
+from .misc_ftns_partial import (
+    get_ns_prt_cy,
+    get_ln_ns_prt_cy,
+    get_pcorr_prt_cy,
+    get_kge_prt_cy,
+    get_ns_var_res_prt_cy,
+    get_ln_ns_var_res_prt_cy)
+
 from .hbv_opt import hbv_opt_de
 
 from .py_ftns import (

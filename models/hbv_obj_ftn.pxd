@@ -8,6 +8,7 @@ cdef DT_D obj_ftn(
           DT_UL[::1] n_calls,
     const DT_UL[::1] stm_idxs,
     const DT_UL[::1] obj_longs,
+    const DT_UL[::1] use_step_arr,
 
     const DT_UL[:, ::1] prms_flags,
     const DT_UL[:, ::1] f_var_infos,

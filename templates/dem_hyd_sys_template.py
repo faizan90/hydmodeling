@@ -18,7 +18,7 @@ from hydmodeling import (
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read('dem_hyd_ansys_cfg.ini')
+    cfp.read('config_hydmodeling_template.ini')
 
     n_cpus = cfp['DEFAULT'].getint('n_cpus')
 
@@ -71,7 +71,7 @@ def main():
     in_cats_file = hyd_ansys.watersheds_shp
     in_gauges_coords_file = hyd_ansys.gage_shp_moved
     gauge_coords_field_name = cfp['GET_STMS']['gauge_coords_field_name']
-    out_df_file = cfp['GET_STMS']['out_df_file']
+    out_df_file = cfp['GET_STMS']['dem_net_file']
     out_wat_ids_file = cfp['GET_STMS']['out_wat_ids_file']
     sep = cfp['DEFAULT']['sep']
 
@@ -93,9 +93,9 @@ def main():
     #=========================================================================
     prcss_cats_list = cfp['CREATE_STM_RELS']['prcss_cats_list'].split(',')
 
-    out_hyd_mod_dir = cfp['CREATE_STM_RELS']['out_hyd_mod_dir']
-    out_cats_prcssed_file = cfp['CREATE_STM_RELS']['out_cats_prcssed_file']
-    out_stms_prcssed_file = cfp['CREATE_STM_RELS']['out_stms_prcssed_file']
+    out_hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
+    out_cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
+    out_stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
     watershed_field_name = cfp['CREATE_STM_RELS']['watershed_field_name']
     out_cats_rel_fig_path = cfp['CREATE_STM_RELS']['out_cats_rel_fig_path']
 

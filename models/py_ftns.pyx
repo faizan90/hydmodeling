@@ -1,6 +1,6 @@
-# cython: nonecheck=False
-# cython: boundscheck=False
-# cython: wraparound=False
+# cython: nonecheck=True
+# cython: boundscheck=True
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -22,7 +22,20 @@ from .dtypes cimport (
     n_hbv_prms, 
     obj_longs_ct, 
     obj_doubles_ct,
-    err_val)
+    err_val,
+    off_idx_i,
+    curr_us_stm_i,
+    n_hm_prms_i,
+    route_type_i,
+    cat_no_i,
+    n_stms_i,
+    n_hbv_cols_i,
+    use_obs_flow_flag_i,
+    opt_flag_i,
+    n_cells_i,
+    n_hbv_prms_i,
+    rnof_q_conv_i,
+    err_val_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -169,7 +182,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
     '''
     cdef:
         long curr_us_stm
-        DT_UL route_type, cat_no, n_cpus, use_obs_flow_flag
+        DT_UL route_type, cat_no, n_cpus, use_obs_flow_flag, use_step_flag
         DT_UL cat, stm, off_idx, n_cells, opt_flag = 0
         DT_UL n_stms, n_hm_prms
 
@@ -177,7 +190,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
 
         cmap[long, long] cat_to_idx_map, stm_to_idx_map
          
-        DT_UL[::1] stm_idxs
+        DT_UL[::1] stm_idxs, use_step_arr
 
         DT_D[::1] qact_arr, obj_ftn_wts, qsim_arr, lrst_arr
         DT_D[::1] inflow_arr, area_arr
@@ -204,7 +217,9 @@ cpdef dict hbv_mult_cat_loop_py(args):
      n_stms,
      n_cells,
      use_obs_flow_flag,
-     n_hm_prms) = args[6]
+     n_hm_prms,
+     use_step_flag,
+     use_step_arr) = args[6]
      
     area_arr = args[7]
  
@@ -221,21 +236,21 @@ cpdef dict hbv_mult_cat_loop_py(args):
         stm_to_idx_map[stm] = stm_to_idx_dict[stm]
 
     misc_longs = np.zeros(obj_longs_ct, dtype=DT_UL_NP)
-    misc_longs[0] = off_idx
-    misc_longs[1] = curr_us_stm
-    misc_longs[2] = n_hm_prms
-    misc_longs[3] = route_type
-    misc_longs[4] = cat_no
-    misc_longs[5] = n_stms
-    misc_longs[6] = n_hbv_cols
-    misc_longs[7] = use_obs_flow_flag
-    misc_longs[8] = opt_flag
-    misc_longs[9] = n_cells
-    misc_longs[10] = n_hbv_prms
+    misc_longs[off_idx_i] = off_idx
+    misc_longs[curr_us_stm_i] = curr_us_stm
+    misc_longs[n_hm_prms_i] = n_hm_prms
+    misc_longs[route_type_i] = route_type
+    misc_longs[cat_no_i] = cat_no
+    misc_longs[n_stms_i] = n_stms
+    misc_longs[n_hbv_cols_i] = n_hbv_cols
+    misc_longs[use_obs_flow_flag_i] = use_obs_flow_flag
+    misc_longs[opt_flag_i] = opt_flag
+    misc_longs[n_cells_i] = n_cells
+    misc_longs[n_hbv_prms_i] = n_hbv_prms
 
     misc_doubles = np.zeros(obj_doubles_ct, dtype=DT_D_NP)
-    misc_doubles[0] = rnof_q_conv
-    misc_doubles[5] = err_val
+    misc_doubles[rnof_q_conv_i] = rnof_q_conv
+    misc_doubles[err_val_i] = err_val
 
     signal = hbv_mult_cat_loop(
         stm_idxs,

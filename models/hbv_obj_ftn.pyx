@@ -1,6 +1,6 @@
-# cython: nonecheck=False
-# cython: boundscheck=False
-# cython: wraparound=False
+# cython: nonecheck=True
+# cython: boundscheck=True
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -9,7 +9,18 @@
 from .routing cimport tfm_opt_to_route_prms
 from .opt_to_hbv_prms cimport tfm_opt_to_hbv_prms
 from .misc_ftns cimport get_ns, get_ln_ns, get_kge
+from .misc_ftns_partial cimport get_ns_prt, get_ln_ns_prt, get_kge_prt
+
 from .hbv_mult_cat_loop cimport hbv_mult_cat_loop
+from .dtypes cimport (
+    n_stms_i,
+    n_hm_prms_i,
+    off_idx_i,
+    use_step_flag_i,
+    demr_i,
+    ln_demr_i,
+    mean_ref_i,
+    act_std_dev_i)
 
 
 cdef DT_D obj_ftn(
@@ -18,6 +29,7 @@ cdef DT_D obj_ftn(
           DT_UL[::1] n_calls,
     const DT_UL[::1] stm_idxs,
     const DT_UL[::1] obj_longs,
+    const DT_UL[::1] use_step_arr,
 
     const DT_UL[:, ::1] prms_flags,
     const DT_UL[:, ::1] f_var_infos,
@@ -64,11 +76,11 @@ cdef DT_D obj_ftn(
         bds_dfs,
         hbv_prms)
 
-    if (obj_longs[5] > 0):
+    if (obj_longs[n_stms_i] > 0):
         tfm_opt_to_route_prms(
-            opt_prms[obj_longs[2]:], 
+            opt_prms[obj_longs[n_hm_prms_i]:], 
             route_prms, 
-            bds_dfs[obj_longs[2]:, :])
+            bds_dfs[obj_longs[n_hm_prms_i]:, :])
 
     res = hbv_mult_cat_loop(
         stm_idxs,
@@ -96,25 +108,56 @@ cdef DT_D obj_ftn(
     obj_ftn_wts_sum = 0.0
     if res == 0.0:
         if (obj_ftn_wts[0] != 0):
-            res = (obj_ftn_wts[0] * 
-                   get_ns(qact_arr, qsim_arr, &obj_doubles[1], &obj_longs[0]))
+            if obj_longs[use_step_flag_i]:
+                res = (obj_ftn_wts[0] *
+                       get_ns_prt(qact_arr,
+                                  qsim_arr,
+                                  use_step_arr,
+                                  &obj_doubles[demr_i],
+                                  &obj_longs[off_idx_i]))
+            else:
+                res = (obj_ftn_wts[0] *
+                       get_ns(qact_arr,
+                              qsim_arr,
+                              &obj_doubles[demr_i],
+                              &obj_longs[off_idx_i]))
+
             obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[0]
 
         if (obj_ftn_wts[1] != 0):
-            res = res + (obj_ftn_wts[1] *
-                         get_ln_ns(qact_arr, 
-                                   qsim_arr, 
-                                   &obj_doubles[2], 
-                                   &obj_longs[0]))
+            if obj_longs[use_step_flag_i]:
+                res = res + (obj_ftn_wts[1] *
+                             get_ln_ns_prt(qact_arr,
+                                           qsim_arr,
+                                           use_step_arr,
+                                           &obj_doubles[ln_demr_i],
+                                           &obj_longs[off_idx_i]))
+            else:
+                res = res + (obj_ftn_wts[1] *
+                             get_ln_ns(qact_arr,
+                                       qsim_arr,
+                                       &obj_doubles[ln_demr_i],
+                                       &obj_longs[off_idx_i]))
+
             obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[1]
 
         if (obj_ftn_wts[2] != 0):
-            res = res + (obj_ftn_wts[2] *
-                         get_kge(qact_arr,
-                                 qsim_arr,
-                                 &obj_doubles[3],
-                                 &obj_doubles[4],
-                                 &obj_longs[0]))
+            if obj_longs[use_step_flag_i]:
+                res = res + (obj_ftn_wts[2] *
+                             get_kge_prt(qact_arr,
+                                         qsim_arr,
+                                         use_step_arr,
+                                         &obj_doubles[mean_ref_i],
+                                         &obj_doubles[act_std_dev_i],
+                                         &obj_longs[off_idx_i]))
+            else:
+                res = res + (obj_ftn_wts[2] *
+                             get_kge(qact_arr,
+                                     qsim_arr,
+                                     &obj_doubles[mean_ref_i],
+                                     &obj_doubles[act_std_dev_i],
+                                     &obj_longs[off_idx_i]))
+
             obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[2]
 
     n_calls[tid[0]] = n_calls[tid[0]] + 1
