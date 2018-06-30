@@ -142,7 +142,6 @@ cpdef dict hbv_opt_de(args):
         DT_D[:, ::1] inis_arr, temp_arr, prec_arr, petn_arr, route_prms
         DT_D[:, ::1] dem_net_arr, cats_outflow_arr, stms_inflow_arr
         DT_D[:, ::1] stms_outflow_arr, qsim_mult_arr, inflow_mult_arr
-        DT_D[:, ::1] lrst_mult_arr
         DT_D[:, :, ::1] cats_outflow_mult_arr
         DT_D[:, :, ::1] stms_inflow_mult_arr, stms_outflow_mult_arr
         DT_D[:, :, :, ::1] outs_mult_arr
@@ -244,7 +243,6 @@ cpdef dict hbv_opt_de(args):
 
     qsim_mult_arr = np.zeros((n_cpus, n_recs), dtype=DT_D_NP)
     inflow_mult_arr = qsim_mult_arr.copy()
-    lrst_mult_arr = np.zeros((n_cpus, n_recs + 1), dtype=DT_D_NP)
 
     cats_outflow_mult_arr = np.zeros((n_cpus,
                                       cats_outflow_arr.shape[0],
@@ -407,7 +405,6 @@ cpdef dict hbv_opt_de(args):
             qact_arr,
             area_arr,
             qsim_mult_arr[tid],
-            lrst_mult_arr[tid],
             inflow_mult_arr[tid],
             f_vars,
             obj_doubles,
@@ -572,7 +569,6 @@ cpdef dict hbv_opt_de(args):
                 qact_arr,
                 area_arr,
                 qsim_mult_arr[tid],
-                lrst_mult_arr[tid],
                 inflow_mult_arr[tid],
                 f_vars,
                 obj_doubles,
@@ -695,7 +691,6 @@ cpdef dict hbv_opt_de(args):
         qact_arr,
         area_arr,
         qsim_mult_arr[tid],
-        lrst_mult_arr[tid],
         inflow_mult_arr[tid],
         f_vars,
         obj_doubles,

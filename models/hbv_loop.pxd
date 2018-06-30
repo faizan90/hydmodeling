@@ -8,7 +8,6 @@ cdef DT_D hbv_loop(
           DT_D[:, ::1] prms_arr,
     const DT_D[:, ::1] inis_arr,
     const DT_D[::1] area_arr,
-          DT_D[::1] lrst_arr,
           DT_D[::1] qsim_arr,
           DT_D[:, :, ::1] outs_arr,
     const DT_D *rnof_q_conv,

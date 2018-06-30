@@ -17,6 +17,7 @@ from matplotlib.font_manager import FontProperties as f_props
 
 from ..models import (
     hbv_c_loop_py,
+    hbv_loop_py,
     get_ns_cy,
     get_ln_ns_cy,
     get_pcorr_cy,
@@ -275,7 +276,7 @@ def _plot_hbv_kf(
     n_recs = temp_dist_arr.shape[1]
     n_cells = temp_dist_arr.shape[0]
 
-    all_outputs_dict = hbv_c_loop_py(
+    all_outputs_dict = hbv_loop_py(
         temp_dist_arr,
         prec_dist_arr,
         pet_dist_arr,
@@ -302,7 +303,7 @@ def _plot_hbv_kf(
     ur_run_uu = all_output[:, 6]
     ur_run_ul = all_output[:, 7]
     ur_to_lr_run = all_output[:, 8]
-    lr_sto_arr = all_outputs_dict['lrst_arr']
+    lr_sto_arr = all_output[:, 9]
     q_sim_arr = all_outputs_dict['qsim_arr']
     lr_run_arr = lr_sto_arr * prms_arr[10]
 

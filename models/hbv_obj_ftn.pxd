@@ -20,7 +20,6 @@ cdef DT_D obj_ftn(
     const DT_D[::1] qact_arr,
     const DT_D[::1] area_arr,
           DT_D[::1] qsim_arr,
-          DT_D[::1] lrst_arr,
           DT_D[::1] inflow_arr,
     const DT_D[::1] f_vars,
     const DT_D[::1] obj_doubles,

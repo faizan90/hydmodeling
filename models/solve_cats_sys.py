@@ -257,15 +257,14 @@ def solve_cats_sys(
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
-    for entry in os.listdir(out_dir):
-        if os.path.isdir(entry):
-            shutil.rmtree(entry)
 
     out_db_dir = os.path.join(out_dir, '01_database')
-    os.mkdir(out_db_dir)
+    if not os.path.exists(out_db_dir):
+        os.mkdir(out_db_dir)
 
     out_hgs_dir = os.path.join(out_dir, '02_hydrographs')
-    os.mkdir(out_hgs_dir)
+    if not os.path.exists(out_hgs_dir):
+        os.mkdir(out_hgs_dir)
 
     dirs_dict = {}
     dirs_dict['main'] = out_dir

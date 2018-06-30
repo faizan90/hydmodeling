@@ -28,7 +28,6 @@ cdef DT_D hbv_loop(
           DT_D[:, ::1] prms_arr,
     const DT_D[:, ::1] inis_arr,
     const DT_D[::1] area_arr,
-          DT_D[::1] lrst_arr,
           DT_D[::1] qsim_arr,
           DT_D[:, :, ::1] outs_arr,
     const DT_D *rnof_q_conv,
@@ -41,7 +40,7 @@ cdef DT_D hbv_loop(
 
         # var idxs
         Py_ssize_t snow_i, lppt_i, somo_i, rnof_i, evtn_i
-        Py_ssize_t ur_i, ur_uo_i, ur_lo_i, ur_lr_i, p_cm_i
+        Py_ssize_t ur_i, ur_uo_i, ur_lo_i, ur_lr_i, lr_i
 
         # vars
         DT_D temp, prec, petn, pre_snow, snow_melt, lppt, pre_somo
@@ -50,7 +49,7 @@ cdef DT_D hbv_loop(
 
         # prm idxs
         Py_ssize_t tt_i, cm_i, pwp_i, fc_i, beta_i, k_uu_i
-        Py_ssize_t ur_thr_i, k_ul_i, k_d_i, k_ll_i
+        Py_ssize_t ur_thr_i, k_ul_i, k_d_i, k_ll_i, p_cm_i
 
         # prms
         DT_D tt, cm, pwp, fc, beta, k_uu, ur_thr, k_ul, k_d, k_ll
@@ -69,6 +68,7 @@ cdef DT_D hbv_loop(
     ur_uo_i = 6
     ur_lo_i = 7
     ur_lr_i = 8
+    lr_i = 9
 
     # indicies of variables in the prms_arr    
     tt_i = 0
@@ -88,7 +88,7 @@ cdef DT_D hbv_loop(
         outs_arr[j, 0, snow_i] = inis_arr[j, 0]
         outs_arr[j, 0, somo_i] = inis_arr[j, 1]
         outs_arr[j, 0, ur_i] = inis_arr[j, 2]
-    lrst_arr[0] = inis_arr[0, 3]
+        outs_arr[j, 0, lr_i] = inis_arr[j, 3]
 
     for j in range(temp_arr.shape[0]):
         temp_j_arr = temp_arr[j, :]
@@ -111,11 +111,16 @@ cdef DT_D hbv_loop(
 
         cell_area = area_arr[j]
 
+#         with gil:
+#             print(f'{tt:0.4f}, {cm:0.4f}, {p_cm:0.4f}, {fc:0.4f}, {beta:0.4f}, '
+#                   f'{pwp:0.4f}, {ur_thr:0.4f}, {k_uu:0.4f}, {k_ul:0.4f}, '
+#                   f'{k_d:0.4f}, {k_ll:0.4f}')
+
         # previous step
         pre_snow = outs_j_arr[0, snow_i]
         pre_somo = outs_j_arr[0, somo_i]
         pre_ur_sto = outs_j_arr[0, ur_i]
-        pre_lr_sto = lrst_arr[0]
+        pre_lr_sto = outs_j_arr[0, lr_i]
 
         for i in range(1, temp_arr.shape[1] + 1):
             if opt_flag[0]:
@@ -141,18 +146,16 @@ cdef DT_D hbv_loop(
             lppt = outs_j_arr[cur_i, lppt_i]
 
             # soil moisture and ET
-            if (pre_somo < 0) or (fc <= 0):
+            if (pre_somo < 0):
                 #with gil: print('%f, %f' % (pre_somo, fc))
                 return -err_val[0]
 
             if pre_somo > pwp:
-                rel_fc = 1.0
+                outs_j_arr[cur_i, evtn_i] = petn
             else:
-                rel_fc = (pre_somo / fc)
+                outs_j_arr[cur_i, evtn_i] = (pre_somo / fc) * petn 
 
-            outs_j_arr[cur_i, evtn_i] = rel_fc * petn
-
-            rel_fc_beta = rel_fc**beta
+            rel_fc_beta = (pre_somo / fc)**beta
 
             outs_j_arr[cur_i, somo_i] = (pre_somo -
                                          outs_j_arr[cur_i, evtn_i] +
@@ -166,7 +169,8 @@ cdef DT_D hbv_loop(
             ur_uo_rnof = outs_j_arr[cur_i, ur_uo_i]
 
             # seepage to groundwater
-            outs_j_arr[cur_i, ur_lr_i] = (pre_ur_sto - ur_uo_rnof) * k_d
+            outs_j_arr[cur_i, ur_lr_i] = (
+                max(0.0, (pre_ur_sto - ur_uo_rnof) * k_d))
             ur_lr_seep = outs_j_arr[cur_i, ur_lr_i]
 
             # runoff, upper reservoir, lower outlet 
@@ -186,12 +190,10 @@ cdef DT_D hbv_loop(
                      outs_j_arr[cur_i, rnof_i])))
             pre_ur_sto = outs_j_arr[cur_i, ur_i]
 
-            # lower reservoir runoff
+            # lower reservoir runoff and storage
             lr_rnof = pre_lr_sto * k_ll
-
-            # lower reservoir storage
-            lrst_arr[i] += (pre_lr_sto + ur_lr_seep - lr_rnof) * cell_area
-            pre_lr_sto = pre_lr_sto + ur_lr_seep - lr_rnof
+            outs_j_arr[cur_i, lr_i] = (pre_lr_sto + ur_lr_seep - lr_rnof)
+            pre_lr_sto = outs_j_arr[cur_i, lr_i]
 
             # upper and lower reservoirs combined discharge
             qsim_arr[i - 1] += (rnof_q_conv[0] *

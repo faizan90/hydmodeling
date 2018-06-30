@@ -50,7 +50,6 @@ cdef extern from "hbv_c_loop.h" nogil:
             const DT_D *prms_arr,
             const DT_D *inis_arr,
             const DT_D *area_arr,
-                  DT_D *lrst_arr,
                   DT_D *qsim_arr,
                   DT_D *outs_arr,
             const DT_UL *n_time_steps,
@@ -77,7 +76,6 @@ cpdef dict hbv_loop_py(
  
         DT_D loop_ret#, _st, _sp
  
-        DT_D[::1] lrst_arr
         DT_D[::1] qsim_arr
         DT_D[:, :, ::1] outs_arr
          
@@ -90,7 +88,6 @@ cpdef dict hbv_loop_py(
  
     outs_arr = np.zeros((n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
     qsim_arr = np.zeros(n_time_steps, dtype=DT_D_NP)
-    lrst_arr = np.zeros(n_time_steps + 1, dtype=DT_D_NP)
  
 #     _st = timeit.default_timer()
     loop_ret = hbv_loop(
@@ -100,7 +97,6 @@ cpdef dict hbv_loop_py(
         prms_arr,
         inis_arr,
         area_arr,
-        lrst_arr,
         qsim_arr,
         outs_arr,
         &rnof_q_conv,
@@ -113,7 +109,6 @@ cpdef dict hbv_loop_py(
     out_dict['loop_ret'] = loop_ret
     out_dict['outs_arr'] = np.asarray(outs_arr[:, 1:, :])
     out_dict['qsim_arr'] = np.asarray(qsim_arr)
-    out_dict['lrst_arr'] = np.asarray(lrst_arr [1:])
     return out_dict
 
 
@@ -132,7 +127,6 @@ cpdef dict hbv_c_loop_py(
 
         DT_D loop_ret#, _st, _sp
 
-        DT_D[::1] lrst_arr
         DT_D[::1] qsim_arr
         DT_D[:, :, ::1] outs_arr
         
@@ -145,7 +139,6 @@ cpdef dict hbv_c_loop_py(
 
     outs_arr = np.zeros((n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
     qsim_arr = np.zeros(n_time_steps, dtype=DT_D_NP)
-    lrst_arr = np.zeros(n_time_steps + 1, dtype=DT_D_NP)
 
 #     _st = timeit.default_timer()
     loop_ret = hbv_c_loop(
@@ -155,7 +148,6 @@ cpdef dict hbv_c_loop_py(
         &prms_arr[0, 0],
         &inis_arr[0, 0],
         &area_arr[0],
-        &lrst_arr[0],
         &qsim_arr[0],
         &outs_arr[0, 0, 0],
         &n_time_steps,
@@ -172,7 +164,6 @@ cpdef dict hbv_c_loop_py(
     out_dict['loop_ret'] = loop_ret
     out_dict['outs_arr'] = np.asarray(outs_arr[:, 1:, :])
     out_dict['qsim_arr'] = np.asarray(qsim_arr)
-    out_dict['lrst_arr'] = np.asarray(lrst_arr[1:])
     return out_dict
 
 
@@ -192,7 +183,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
          
         DT_UL[::1] stm_idxs, use_step_arr
 
-        DT_D[::1] qact_arr, obj_ftn_wts, qsim_arr, lrst_arr
+        DT_D[::1] qact_arr, obj_ftn_wts, qsim_arr
         DT_D[::1] inflow_arr, area_arr
 
         DT_D[:, ::1] inis_arr, temp_arr, prec_arr, petn_arr
@@ -225,7 +216,6 @@ cpdef dict hbv_mult_cat_loop_py(args):
  
     inflow_arr = np.zeros(cats_outflow_arr.shape[0], dtype=DT_D_NP)
     qsim_arr = inflow_arr.copy()
-    lrst_arr = np.zeros(cats_outflow_arr.shape[0] + 1, dtype=DT_D_NP)
     outs_arr = np.zeros((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols), 
                         dtype=DT_D_NP)
 
@@ -258,7 +248,6 @@ cpdef dict hbv_mult_cat_loop_py(args):
         qact_arr,
         area_arr,
         qsim_arr,
-        lrst_arr,
         inflow_arr,
         misc_doubles,
         route_prms,
@@ -283,6 +272,5 @@ cpdef dict hbv_mult_cat_loop_py(args):
                            dtype=DT_D_NP)
 
     return {'outs_arr': np.array(outs_arr[:, 1:, :]),
-            'lrst_arr': np.array(lrst_arr[1:]),
             'qsim_arr': np.asarray(qsim_arr),
             'inflow_arr': np.asarray(inflow_arr)}

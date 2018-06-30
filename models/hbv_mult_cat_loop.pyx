@@ -22,7 +22,7 @@ from .dtypes cimport (
     rnof_q_conv_i,
     err_val_i)
 
-cdef DT_UL use_c = 1
+cdef DT_UL use_c = 0
 
 
 cdef extern from "hbv_c_loop.h" nogil:
@@ -34,7 +34,6 @@ cdef extern from "hbv_c_loop.h" nogil:
             const DT_D *prms_arr,
             const DT_D *inis_arr,
             const DT_D *area_arr,
-                  DT_D *lrst_arr,
                   DT_D *qsim_arr,
                   DT_D *outs_arr,
             const DT_UL *n_time_steps,
@@ -53,7 +52,6 @@ cdef DT_D hbv_mult_cat_loop(
     const DT_D[::1] qact_arr,
     const DT_D[::1] area_arr,
           DT_D[::1] qsim_arr,
-          DT_D[::1] lrst_arr,
           DT_D[::1] inflow_arr,
     const DT_D[::1] misc_doubles,
           DT_D[::1] route_prms,
@@ -81,7 +79,6 @@ cdef DT_D hbv_mult_cat_loop(
 
     for i in range(n_recs):
         qsim_arr[i] = 0.0
-        lrst_arr[i + 1] = 0.0
 
     if (misc_longs[n_stms_i] > 0):
         route_strms(
@@ -105,7 +102,6 @@ cdef DT_D hbv_mult_cat_loop(
             &hbv_prms[0, 0],
             &inis_arr[0, 0],
             &area_arr[0],
-            &lrst_arr[0],
             &qsim_arr[0],
             &outs_arr[0, 0, 0],
             &n_recs,
@@ -123,7 +119,6 @@ cdef DT_D hbv_mult_cat_loop(
             hbv_prms,
             inis_arr,
             area_arr,
-            lrst_arr,
             qsim_arr,
             outs_arr,
             &misc_doubles[rnof_q_conv_i],

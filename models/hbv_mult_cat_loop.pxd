@@ -9,7 +9,6 @@ cdef DT_D hbv_mult_cat_loop(
     const DT_D[::1] qact_arr,
     const DT_D[::1] area_arr,
           DT_D[::1] qsim_arr,
-          DT_D[::1] lrst_arr,
           DT_D[::1] inflow_arr,
     const DT_D[::1] misc_doubles,
           DT_D[::1] route_prms,

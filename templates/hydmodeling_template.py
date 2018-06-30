@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on %(date)s
 
@@ -41,16 +40,16 @@ def main():
     optimize_flag = False
     plot_opt_results_flag = False
     plot_kfold_results_flag = False
-    test_model_flag = False
     plot_kfold_prms_flag = False
     plot_pop_flag = False
+    test_model_flag = False
 
-    optimize_flag = True
+#     optimize_flag = True
 #     plot_opt_results_flag = True
 #     plot_kfold_results_flag = True
-#     test_model_flag = True
 #     plot_kfold_prms_flag = True
-    plot_pop_flag = True
+#     plot_pop_flag = True
+#     test_model_flag = True
 
     #==========================================================================
     # Optimize distributed model
@@ -235,7 +234,7 @@ def main():
     # plot the optimization results
     #=========================================================================
     if plot_opt_results_flag:
-        print('\n\nPlotting opt_results...')
+        print('\n\nPlotting hbv variables...')
 
         plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean('plot_simple_opt_flag')
         plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean('plot_wat_bal_flag')

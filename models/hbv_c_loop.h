@@ -32,7 +32,6 @@ DT_D hbv_c_loop(
 	const DT_D *prms_arr,
 	const DT_D *inis_arr,
 	const DT_D *area_arr,
-          DT_D *lrst_arr,
           DT_D *qsim_arr,
           DT_D *outs_arr,
     const DT_UL *n_time_steps,
@@ -52,7 +51,7 @@ DT_D hbv_c_loop(
 
 	// var idxs
 	size_t snow_i, lppt_i, somo_i, rnof_i, evtn_i;
-	size_t ur_i, ur_uo_i, ur_lo_i, ur_lr_i, p_cm_i;
+	size_t ur_i, ur_uo_i, ur_lo_i, ur_lr_i, lr_i;
 
 	// vars
 	DT_D temp, prec, petn, pre_snow, snow_melt, lppt, pre_somo;
@@ -61,7 +60,7 @@ DT_D hbv_c_loop(
 
 	// prm idxs
 	size_t tt_i, cm_i, pwp_i, fc_i, beta_i, k_uu_i;
-	size_t ur_thr_i, k_ul_i, k_d_i, k_ll_i;
+	size_t ur_thr_i, k_ul_i, k_d_i, k_ll_i, p_cm_i;
 
 	// prms
 	DT_D tt, cm, pwp, fc, beta, k_uu, ur_thr, k_ul, k_d, k_ll;
@@ -80,6 +79,7 @@ DT_D hbv_c_loop(
 	ur_uo_i = 6;
 	ur_lo_i = 7;
 	ur_lr_i = 8;
+	lr_i = 9;
 
 	// indicies of variables in the prms_arr
 	tt_i = 0;
@@ -111,8 +111,8 @@ DT_D hbv_c_loop(
 		outs_arr[j + snow_i] = inis_arr[i + 0];
 		outs_arr[j + somo_i] = inis_arr[i + 1];
 		outs_arr[j + ur_i] = inis_arr[i + 2];
+		outs_arr[j + lr_i] = inis_arr[i + 3];
 	}
-	lrst_arr[0] = inis_arr[3];
 
 //	clock_t start = clock(), diff;
 
@@ -147,7 +147,7 @@ DT_D hbv_c_loop(
         pre_snow = outs_j_arr[snow_i];
         pre_somo = outs_j_arr[somo_i];
         pre_ur_sto = outs_j_arr[ur_i];
-        pre_lr_sto = lrst_arr[0];
+        pre_lr_sto = outs_j_arr[lr_i];
         for (n = 0, p = *n_vars_outs_arr;
              n < *n_time_steps;
              ++n, p = (p + *n_vars_outs_arr)) {
@@ -211,8 +211,8 @@ DT_D hbv_c_loop(
             // runoff, upper reservoir, lower outlet
             outs_j_arr[cur_i + ur_lo_i] = (
             	max(0.0, (pre_ur_sto -
-            		ur_uo_rnof -
-					ur_lr_seep) * k_ul));
+						  ur_uo_rnof -
+						  ur_lr_seep) * k_ul));
             ur_lo_rnof = outs_j_arr[cur_i + ur_lo_i];
 
             // upper reservoir storage
@@ -225,12 +225,10 @@ DT_D hbv_c_loop(
 					 outs_j_arr[cur_i + rnof_i])));
             pre_ur_sto = outs_j_arr[cur_i + ur_i];
 
-            // lower reservoir runoff
+            // lower reservoir runoff and storage
             lr_rnof = pre_lr_sto * k_ll;
-
-            // lower reservoir storage
-            lrst_arr[n + 1] += (pre_lr_sto + ur_lr_seep - lr_rnof) * cell_area;
-            pre_lr_sto = pre_lr_sto + ur_lr_seep - lr_rnof;
+            outs_j_arr[cur_i + lr_i] = (pre_lr_sto + ur_lr_seep - lr_rnof);
+            pre_lr_sto = outs_j_arr[cur_i + lr_i];
 
             // upper and lower reservoirs combined discharge
             qsim_arr[n] += (rnof_q_conv[0] *
