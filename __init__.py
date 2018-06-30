@@ -39,4 +39,5 @@ from .models import (
     get_ns_var_res_prt_cy,
     get_ln_ns_var_res_prt_cy)
 
-from .plotting import plot_vars, plot_pops, plot_kfold_effs
+from .plotting import (
+    plot_vars, plot_pops, plot_kfold_effs, plot_kfolds_best_prms)

@@ -357,7 +357,7 @@ def solve_cats_sys(
             cats_kfold_prms_dict[cat] = prms_list
 
         out_prms_dict_path = (opt_pkl_path.rsplit('.', -1)[0] +
-                                '_k_fold_params.pkl')
+                                '_kfold_params.pkl')
 
         pkl_cur = open(out_prms_dict_path, 'wb')
         pickle.dump(cats_kfold_prms_dict, pkl_cur)
@@ -414,6 +414,7 @@ def _solve_k_cats_sys(
 
     if opt_pkl_path:
         opt_results_dict = {}
+        data_dict = {}
 
     prms_dict = {}
 
@@ -872,7 +873,8 @@ def _solve_k_cats_sys(
                                  opt_schm_vars_dict['opt_schm'])
 
             prms_dict[cat] = (out_prms_dict['params'],
-                              out_prms_dict['route_params'])
+                              out_prms_dict['route_params'],
+                              out_prms_dict['opt_params'])
 
             opt_end_time = timeit.default_timer()
             print('Opt time was: %0.3f seconds\n' %
@@ -912,9 +914,13 @@ def _solve_k_cats_sys(
 
             out_prms_dict['area_arr'] = cat_area_ratios_arr
 
-            out_prms_dict['temp_arr'] = tem_arr
-            out_prms_dict['prec_arr'] = ppt_arr
-            out_prms_dict['pet_arr'] = pet_arr
+            if opt_pkl_path and (not calib_run):
+                cat_data_dict = {}
+                cat_data_dict['temp_arr'] = tem_arr
+                cat_data_dict['prec_arr'] = ppt_arr
+                cat_data_dict['pet_arr'] = pet_arr
+                data_dict[cat] = cat_data_dict
+
             out_prms_dict['q_arr'] = q_arr
 
             if calib_run and np.any(all_prms_flags[:, 1]):
@@ -1069,13 +1075,21 @@ def _solve_k_cats_sys(
         pickle.dump(opt_results_dict, pkl_cur)
         pkl_cur.close()
 
+        if data_dict:
+            _ = opt_pkl_path.rsplit('.', 1)
+            _[0] = _[0] + ('__%s_kfold_%0.2d_data' % (calib_valid_suff, kf_i))
+            _ = _[0] + '.' + _[1]
+
+            pkl_cur = open(_, 'wb')
+            pickle.dump(data_dict, pkl_cur)
+            pkl_cur.close()
     return prms_dict
 
 
 def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
     out_dict = {cat: aux_dict[cat] for cat in cats}
     if lf:
-        out_dict = {cat: np.array([(area_dict[cat] * out_dict[cat]).sum()])
+        out_dict = {cat: np.array([(area_dict[cat] * out_dict[cat]).sum(axis=0)])
                     for cat in cats}
     for cat in cats:
         assert not np.any(np.isnan(out_dict[cat]))
@@ -1090,15 +1104,32 @@ def _get_k_aux_vars_dict(
 
     out_dict = {}
 
-    area_dict = {cat: in_dict['area_ratios'][cat] for cat in cats}
+    area_dict = {cat: in_dict['area_ratios'][cat].reshape(-1, 1)
+                 for cat in cats}
     out_dict['area_ratios'] = area_dict
 
     # TODO: this is not final. cats_shape is actually the total shape of the
     # all catchments on grid. It only matters while plotting
     if run_as_lump_flag:
-        cats_shape = (1, 1)
-        cats_rows_idxs = {cat: np.array([0]) for cat in cats}
-        cats_cols_idxs = {cat: np.array([0]) for cat in cats}
+        n_cats = len(cats)
+        loc_rows = max(1, int(0.25 * n_cats))
+        loc_cols = max(1, int(np.ceil(n_cats / loc_rows)))
+
+        cats_shape = (loc_rows, loc_cols)
+
+        cats_rows_idxs = {}
+        cats_cols_idxs = {}
+        k = 0
+        for i in range(loc_rows):
+            if k >= n_cats:
+                break
+            for j in range(loc_cols):
+                cats_rows_idxs[cats[k]] = np.array([i])
+                cats_cols_idxs[cats[k]] = np.array([j])
+                k += 1
+
+                if k >= n_cats:
+                    break
     else:
         cats_shape = in_dict['shape']
         cats_rows_idxs = {cat: in_dict['rows'][cat] for cat in cats}
@@ -1110,8 +1141,8 @@ def _get_k_aux_vars_dict(
 
     _get_aux_dict_p = partial(
         _get_k_aux_dict,
+        area_dict=area_dict,
         cats=cats,
-        all_prms_flags=all_prms_flags,
         lf=run_as_lump_flag)
 
     if np.any(all_prms_flags[:, 1]):

@@ -20,7 +20,8 @@ from hydmodeling import (
     solve_cats_sys,
     plot_vars,
     plot_pops,
-    plot_kfold_effs)
+    plot_kfold_effs,
+    plot_kfolds_best_prms)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -38,17 +39,19 @@ def main():
     main_dir = cfp['DEFAULT']['main_dir']
     os.chdir(main_dir)
 
-    optimize = False
-    plot_opt_results = False
-    plot_kfold_results = False
+    optimize_flag = False
+    plot_opt_results_flag = False
+    plot_kfold_results_flag = False
     test_model_flag = False
-    plot_pop = False
+    plot_kfold_prms_flag = False
+    plot_pop_flag = False
 
-#     optimize = True
-#     plot_opt_results = True
-    plot_kfold_results = True
+#     optimize_flag = True
+#     plot_opt_results_flag = True
+#     plot_kfold_results_flag = True
 #     test_model_flag = True
-    plot_pop = True
+    plot_kfold_prms_flag = True
+#     plot_pop_flag = True
 
     #==========================================================================
     # Optimize distributed model
@@ -160,7 +163,7 @@ def main():
                                k_d_flags,
                                k_ll_flags], dtype=np.int32)
 
-    if optimize:
+    if optimize_flag:
         in_cats_prcssed_df = pd.read_csv(in_cats_prcssed_file,
                                          sep=str(sep),
                                          index_col=0)
@@ -197,9 +200,9 @@ def main():
         if np.any(all_prms_flags[:, 2]):
             aux_cell_vars_dict['soil_ratios'] = in_cell_vars_dict['soil_ratios']
         if np.any(all_prms_flags[:, 3]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['aspect'] = in_cell_vars_dict['aspect']
+            aux_cell_vars_dict['aspect'] = in_cell_vars_dict['aspect'].reshape(-1, 1)
         if np.any(all_prms_flags[:, 4]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['slope'] = in_cell_vars_dict['slope']
+            aux_cell_vars_dict['slope'] = in_cell_vars_dict['slope'].reshape(-1, 1)
 
         solve_cats_sys(
             in_cats_prcssed_df,
@@ -234,7 +237,7 @@ def main():
     #=========================================================================
     # plot the optimization results
     #=========================================================================
-    if plot_opt_results:
+    if plot_opt_results_flag:
         print('\n\nPlotting opt_results...')
 
         plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean('plot_simple_opt_flag')
@@ -256,24 +259,35 @@ def main():
     # Plot the k-fold results
     #=========================================================================
 
-    if plot_kfold_results:
+    if plot_kfold_results_flag:
         print('\n\nPlotting kfold results...')
 
         _ext = opt_res_pkl_path.rsplit('.', 1)[1]
         _dir = os.path.dirname(opt_res_pkl_path)
 
-        _1 = 'opt_results__valid_kfold*.%s' % _ext
+        _1 = 'opt_results__valid_kfold_[0-9][0-9].%s' % _ext
         kfold_opt_res_paths = glob(os.path.join(_dir, _1))
 
         assert kfold_opt_res_paths, 'kfold_opt_res_paths is empty!'
 
-        plot_kfold_effs(kfold_opt_res_paths, compare_ann_cyc_flag, n_cpus)
+        plot_kfold_effs(
+            kfold_opt_res_paths, compare_ann_cyc_flag, n_cpus)
+
+    if plot_kfold_prms_flag:
+        _ext = opt_res_pkl_path.rsplit('.', 1)[1]
+        _dir = os.path.dirname(opt_res_pkl_path)
+        _2 = 'opt_results_kfold_params.%s' % _ext
+        kfold_prms_path = os.path.join(_dir, _2)
+        info_prms_path = os.path.join(
+            _dir, 'opt_results__calib_kfold_01.%s' % _ext)
+
+        plot_kfolds_best_prms(kfold_prms_path, info_prms_path)
 
     #==========================================================================
     # Plot parameter final population
     #==========================================================================
 
-    if plot_pop:
+    if plot_pop_flag:
         print('\n\nPlotting DE population...')
 
         _ext = opt_res_pkl_path.rsplit('.', 1)[-1]

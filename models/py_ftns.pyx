@@ -201,7 +201,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
 
         DT_D[:, :, ::1] outs_arr
 
-    hbv_prms, route_prms = args[0]
+    hbv_prms, route_prms, *_ = args[0]
 
     inis_arr, temp_arr, prec_arr, petn_arr, qact_arr = args[3]
 

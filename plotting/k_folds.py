@@ -15,7 +15,7 @@ import parse as pe
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-# from adjustText import adjust_text
+from adjustText import adjust_text
 from pathos.multiprocessing import ProcessPool
 
 from ..models import (
@@ -45,10 +45,9 @@ def plot_cat_kfold_effs(cat_paths):
     for i, path in enumerate(paths):
         with open(path, 'rb') as _hdl:
             in_dict = pickle.load(_hdl)
+            assert kfolds == in_dict[cat]['kfolds']
 
             if not i:
-                assert in_dict[cat]['kfolds'] == kfolds
-
                 qact_arr = in_dict[cat]['q_arr']
                 off_idx = in_dict[cat]['off_idx']
                 date_idx = in_dict['out_cats_flow_df'][cat].index
@@ -59,7 +58,6 @@ def plot_cat_kfold_effs(cat_paths):
 
             kf_i = pe.search('valid_kfold_{:d}.', os.path.basename(path))[0]
 
-            assert kfolds == in_dict[cat]['kfolds']
             kfold_q_sers_dict[kf_i] = in_dict['out_cats_flow_df'][cat].values
             del in_dict
 
@@ -311,129 +309,160 @@ def plot_cat_kfold_effs(cat_paths):
     plt.savefig(out_kfold_fig_loc, bbox_inches='tight', dpi=200)
     plt.close()
 
-#     plt.figure(figsize=(15, 9))
-#     tick_font_size = 10
-#     best_params_arr = []
-#     for i in range(kfolds):
-#         best_params_arr.append(cat_k_fold_params_dict[i])
-#     best_params_arr = np.array(best_params_arr)
-#
-#     param_syms = ['TT',
-#                   'C_melt',
-#                   'FC',
-#                   'Beta',
-#                   'PWP',
-#                   'ur_thresh',
-#                   'K_u',
-#                   'K_l',
-#                   'K_d',
-#                   'K_ll']
-#
-#     stats_cols = ['min', 'max', 'mean', 'stdev', 'min_bd', 'max_bd']
-#     n_stats_cols = len(stats_cols)
-#
-#     bounds_arr = cat_data_dict['bds_arr']
-#
-#     n_params = cat_k_fold_params_dict[0].shape[0]
-#     curr_min = best_params_arr.min(axis=0)
-#     curr_max = best_params_arr.max(axis=0)
-#     curr_mean = best_params_arr.mean(axis=0)
-#     curr_stdev = best_params_arr.std(axis=0)
-#     min_opt_bounds = bounds_arr.min(axis=1)
-#     max_opt_bounds = bounds_arr.max(axis=1)
-#     xx, yy = np.meshgrid(np.arange(-0.5, n_params, 1),
-#                          np.arange(-0.5, n_stats_cols, 1))
-#
-#     stats_arr = np.vstack([curr_min,
-#                            curr_max,
-#                            curr_mean,
-#                            curr_stdev,
-#                            min_opt_bounds,
-#                            max_opt_bounds])
-#
-#     stats_ax = plt.subplot2grid((4, 1), (0, 0), rowspan=1, colspan=1)
-#     stats_ax.pcolormesh(xx,
-#                         yy,
-#                         stats_arr,
-#                         cmap=plt.get_cmap('Blues'),
-#                         vmin=-np.inf,
-#                         vmax=np.inf)
-#
-#     stats_xx, stats_yy = np.meshgrid(np.arange(n_stats_cols),
-#                                      np.arange(n_params))
-#     stats_xx = stats_xx.ravel()
-#     stats_yy = stats_yy.ravel()
-#
-#     [stats_ax.text(stats_yy[i],
-#                    stats_xx[i],
-#                    ('%3.4f' % stats_arr[stats_xx[i], stats_yy[i]]).rstrip('0'),
-#                    va='center',
-#                    ha='center')
-#      for i in range(int(n_stats_cols * n_params))]
-#
-#     stats_ax.set_xticks(list(range(0, n_params)))
-#     stats_ax.set_xticklabels(param_syms)
-#     stats_ax.set_xlim(-0.5, n_params - 0.5)
-#     stats_ax.set_yticks(list(range(0, n_stats_cols)))
-#     stats_ax.set_ylim(-0.5, n_stats_cols - 0.5)
-#     stats_ax.set_yticklabels(stats_cols)
-#
-#     stats_ax.spines['left'].set_position(('outward', 10))
-#     stats_ax.spines['right'].set_position(('outward', 10))
-#     stats_ax.spines['top'].set_position(('outward', 10))
-#     stats_ax.spines['bottom'].set_visible(False)
-#
-#     stats_ax.set_ylabel('Statistics')
-#
-#     stats_ax.tick_params(labelleft=True,
-#                          labelbottom=False,
-#                          labeltop=True,
-#                          labelright=True)
-#
-#     stats_ax.xaxis.set_ticks_position('top')
-#
-#     norm_pop = ((best_params_arr - bounds_arr[:, 0]) /
-#                 (bounds_arr[:, 1] - bounds_arr[:, 0]))
-#
-#     params_ax = plt.subplot2grid((4, 1),
-#                                  (1, 0),
-#                                  rowspan=3,
-#                                  colspan=1,
-#                                  sharex=stats_ax)
-#     plot_range = list(range(0, bounds_arr.shape[0]))
-#     plt_texts = []
-#     for i in range(kfolds):
-#         params_ax.plot(plot_range,
-#                        norm_pop[i],
-#                        alpha=0.85,
-#                        label='Fold no: %d' % i)
-#         for j in range(bounds_arr.shape[0]):
-#             _ = params_ax.text(plot_range[j],
-#                                norm_pop[i, j],
-#                                ('%3.4f' %
-#                                 best_params_arr[i, j]).rstrip('0'),
-#                                va='top',
-#                                ha='left')
-#             plt_texts.append(_)
-#
-#     adjust_text(plt_texts, only_move={'points': 'y', 'text': 'y'})
-#
-#     params_ax.set_ylim(0., 1.)
-#     params_ax.set_xticks(list(range(best_params_arr.shape[1])))
-#     params_ax.set_xticklabels(param_syms)
-#     params_ax.set_xlim(-0.5, n_params - 0.5)
-#     params_ax.set_ylabel('Normalized value')
-#     params_ax.grid()
-#     params_ax.legend(framealpha=0.5)
-#
-#     title_str = 'Comparison of best parameters'
-#     plt.suptitle(title_str, size=tick_font_size + 10)
-#     plt.subplots_adjust(hspace=0.15)
-#
-#     out_params_fig_loc = os.path.join(out_dir,
-#                                       'kfolds_params_compare_%s.png' % (out_suff))
-#     plt.savefig(out_params_fig_loc, bbox='tight_layout')
-#     plt.close()
+
+def _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict):
+    plt.figure(figsize=(max(20, best_prms_list[0].shape[0]), 12))
+    tick_font_size = 10
+    best_params_arr = np.array(best_prms_list)
+    norm_pop = best_params_arr.copy()
+
+    stats_cols = ['min', 'max', 'mean', 'stdev', 'min_bd', 'max_bd']
+    n_stats_cols = len(stats_cols)
+
+    bounds_arr = cat_info_dict['bds_arr']
+
+    best_params_arr = (
+        (best_params_arr * (bounds_arr[:, 1] - bounds_arr[:, 0])) +
+        bounds_arr[:, 0])
+
+    n_params = bounds_arr.shape[0]
+    curr_min = best_params_arr.min(axis=0)
+    curr_max = best_params_arr.max(axis=0)
+    curr_mean = best_params_arr.mean(axis=0)
+    curr_stdev = best_params_arr.std(axis=0)
+    min_opt_bounds = bounds_arr.min(axis=1)
+    max_opt_bounds = bounds_arr.max(axis=1)
+    xx, yy = np.meshgrid(np.arange(-0.5, n_params, 1),
+                         np.arange(-0.5, n_stats_cols, 1))
+
+    stats_arr = np.vstack([curr_min,
+                           curr_max,
+                           curr_mean,
+                           curr_stdev,
+                           min_opt_bounds,
+                           max_opt_bounds])
+
+    stats_ax = plt.subplot2grid((4, 1), (0, 0), rowspan=1, colspan=1)
+    stats_ax.pcolormesh(xx,
+                        yy,
+                        stats_arr,
+                        cmap=plt.get_cmap('Blues'),
+                        vmin=-np.inf,
+                        vmax=np.inf)
+
+    stats_xx, stats_yy = np.meshgrid(np.arange(n_stats_cols),
+                                     np.arange(n_params))
+    stats_xx = stats_xx.ravel()
+    stats_yy = stats_yy.ravel()
+
+    [stats_ax.text(stats_yy[i],
+                   stats_xx[i],
+                   ('%0.4f' % stats_arr[stats_xx[i], stats_yy[i]]).rstrip('0'),
+                   va='center',
+                   ha='center')
+     for i in range(int(n_stats_cols * n_params))]
+
+    stats_ax.set_xticks(list(range(0, n_params)))
+    stats_ax.set_xticklabels(best_prms_labs)
+    stats_ax.set_xlim(-0.5, n_params - 0.5)
+    stats_ax.set_yticks(list(range(0, n_stats_cols)))
+    stats_ax.set_ylim(-0.5, n_stats_cols - 0.5)
+    stats_ax.set_yticklabels(stats_cols)
+
+    stats_ax.spines['left'].set_position(('outward', 10))
+    stats_ax.spines['right'].set_position(('outward', 10))
+    stats_ax.spines['top'].set_position(('outward', 10))
+    stats_ax.spines['bottom'].set_visible(False)
+
+    stats_ax.set_ylabel('Statistics')
+
+    stats_ax.tick_params(labelleft=True,
+                         labelbottom=False,
+                         labeltop=True,
+                         labelright=True)
+
+    stats_ax.xaxis.set_ticks_position('top')
+    stats_ax.yaxis.set_ticks_position('both')
+
+    for _tick in stats_ax.get_xticklabels():
+        _tick.set_rotation(60)
+
+    params_ax = plt.subplot2grid((4, 1),
+                                 (1, 0),
+                                 rowspan=3,
+                                 colspan=1,
+                                 sharex=stats_ax)
+    plot_range = list(range(0, bounds_arr.shape[0]))
+    plt_texts = []
+    for i in range(kfolds):
+        params_ax.plot(plot_range,
+                       norm_pop[i],
+                       alpha=0.85,
+                       label='Fold no: %d' % i)
+        for j in range(bounds_arr.shape[0]):
+            _ = params_ax.text(plot_range[j],
+                               norm_pop[i, j],
+                               ('%3.4f' %
+                                best_params_arr[i, j]).rstrip('0'),
+                               va='top',
+                               ha='left')
+            plt_texts.append(_)
+
+    adjust_text(plt_texts, only_move={'points': 'y', 'text': 'y'})
+
+    params_ax.set_ylim(0., 1.)
+    params_ax.set_xticks(list(range(best_params_arr.shape[1])))
+    params_ax.set_xticklabels(best_prms_labs)
+    params_ax.set_xlim(-0.5, n_params - 0.5)
+    params_ax.set_ylabel('Normalized value')
+    params_ax.grid()
+    params_ax.legend(framealpha=0.5)
+
+    params_ax.tick_params(labelleft=True,
+                          labelbottom=True,
+                          labeltop=False,
+                          labelright=True)
+    params_ax.yaxis.set_ticks_position('both')
+
+    for _tick in params_ax.get_xticklabels():
+        _tick.set_rotation(60)
+
+    title_str = 'Comparison of kfold best parameters'
+    plt.suptitle(title_str, size=tick_font_size + 10)
+    plt.subplots_adjust(hspace=0.15)
+
+    out_dir = cat_info_dict['out_dir']
+    out_suff = cat_info_dict['out_suff']
+    out_params_fig_loc = os.path.join(
+        out_dir, 'kfolds_prms_compare_%s.png' % (out_suff))
+    plt.savefig(out_params_fig_loc, bbox='tight_layout')
+    plt.close()
+    return
+
+
+def plot_kfolds_best_prms(kfold_prms_path, info_prms_path):
+
+    with open(kfold_prms_path, 'rb') as _hdl:
+        prms_dict = pickle.load(_hdl)
+        cats = list(prms_dict.keys())
+#         n_cats = len(cats)
+        kfolds = len(prms_dict[cats[0]])
+
+    with open(info_prms_path, 'rb') as _hdl:
+        cats_info_dict = pickle.load(_hdl)
+
+    for cat in cats:
+        best_prms_list = []
+        best_prms_labs = []
+
+        cat_info_dict = cats_info_dict[cat]
+
+        for i in range(kfolds):
+            best_prms_list.append(prms_dict[cat][i][2])
+
+        best_prms_labs = cat_info_dict['use_prms_labs']
+
+        _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict)
     return
 
 
