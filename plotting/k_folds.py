@@ -8,10 +8,10 @@ Created on Oct 12, 2017
 import os
 import timeit
 import time
-import pickle
+import shelve
 from pathlib import Path
+from glob import glob
 
-import parse as pe
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -31,35 +31,35 @@ from ..models import (
     get_pcorr_prt_cy)
 
 
-def plot_cat_kfold_effs(cat_paths):
+def plot_cat_kfold_effs(args):
+    cat_db_path, (ann_cyc_flag, hgs_db_path) = args
 
-    cat, (paths, ann_cyc_flag) = cat_paths
+    with shelve.open(cat_db_path.rsplit('.', 1)[0], 'r') as db:
+        out_dir = db['data']['dirs_dict']['main']
+        out_dir = os.path.join(out_dir, r'05_kfolds_perf')
 
-    kfolds = len(paths)
-    assert kfolds >= 1, 'kfolds can be 1 or greater only!'
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
 
-    out_dir = os.path.dirname(paths[0])
-    out_suff = str(cat)
+        kfolds = db['data']['kfolds']
+        cat = db['cat']
+
+        off_idx = db['data']['off_idx']
+
+        use_step_flag = db['valid']['kf_01']['use_step_flag']
+        if use_step_flag:
+            use_step_arr = db['valid']['kf_01']['use_step_arr']
 
     kfold_q_sers_dict = {}
-    for i, path in enumerate(paths):
-        with open(path, 'rb') as _hdl:
-            in_dict = pickle.load(_hdl)
-            assert kfolds == in_dict[cat]['kfolds']
+    with shelve.open(hgs_db_path, 'r') as db:
+        for i in range(1, kfolds + 1):
+            kf_str = f'kf_{i:02d}'
+            kfold_q_sers_dict[i] = db['valid'][kf_str]['out_cats_flow_df'][cat].values
+        else:
+            date_idx = db['valid'][kf_str]['out_cats_flow_df'].index
+            qact_arr = db['valid'][kf_str]['qact_df'][cat].values
 
-            if not i:
-                qact_arr = in_dict[cat]['q_arr']
-                off_idx = in_dict[cat]['off_idx']
-                date_idx = in_dict['out_cats_flow_df'][cat].index
-
-                use_step_flag = in_dict[cat]['use_step_flag']
-                if use_step_flag:
-                    use_step_arr = in_dict[cat]['use_step_arr']
-
-            kf_i = pe.search('valid_kfold_{:d}.', os.path.basename(path))[0]
-
-            kfold_q_sers_dict[kf_i] = in_dict['out_cats_flow_df'][cat].values
-            del in_dict
+    assert kfolds >= 1, 'kfolds can be 1 or greater only!'
 
     if ann_cyc_flag:
         try:
@@ -127,12 +127,12 @@ def plot_cat_kfold_effs(cat_paths):
                                 fill_value=np.nan)
     over_all_perf_str_arr = np.full(shape=(n_perfs, kfolds),
                                     fill_value='',
-                                    dtype='|U%s' % arr_str_len)
+                                    dtype=f'|U{arr_str_len}')
     kfold_perfos_arr = np.full(shape=(n_perfs, kfolds, kfolds),
                                fill_value=np.nan)
     kfold_perfos_str_arr = np.full(shape=(n_perfs, kfolds, kfolds),
                                    fill_value='',
-                                   dtype='|U%s' % arr_str_len)
+                                   dtype=f'|U{arr_str_len}')
 
     for iter_no in range(kfolds):
         for kf_i in range(n_sel_idxs + 1):
@@ -160,10 +160,10 @@ def plot_cat_kfold_effs(cat_paths):
 
                 if kf_i < kfolds:
                     kfold_perfos_arr[i, iter_no, kf_i] = perf_val
-                    kfold_perfos_str_arr[i, iter_no, kf_i] = '%0.4f' % perf_val
+                    kfold_perfos_str_arr[i, iter_no, kf_i] = f'{perf_val:0.4f}'
                 elif kf_i > kfolds:
                     over_all_perf_arr[i, iter_no] = perf_val
-                    over_all_perf_str_arr[i, iter_no] = '%0.4f' % perf_val
+                    over_all_perf_str_arr[i, iter_no] = f'{perf_val:0.4f}'
                 else:
                     raise RuntimeError('Fucked up!')
 
@@ -172,14 +172,15 @@ def plot_cat_kfold_effs(cat_paths):
                     curr_qact_arr, qsim_arr, curr_prt_calib_arr, off_idx)
                 valid_perf_val = perfo_ftn(
                     curr_qact_arr, qsim_arr, curr_prt_valid_arr, off_idx)
-
+                _cstr = f'\n{calib_perf_val:0.4f}'
+                _vstr = f'\n{valid_perf_val:0.4f}'
                 if kf_i < kfolds:
                     kfold_perfos_arr[i, iter_no, kf_i] = perf_val
-                    kfold_perfos_str_arr[i, iter_no, kf_i] += '\n%0.4f' % calib_perf_val
-                    kfold_perfos_str_arr[i, iter_no, kf_i] += '\n%0.4f' % valid_perf_val
+                    kfold_perfos_str_arr[i, iter_no, kf_i] += _cstr
+                    kfold_perfos_str_arr[i, iter_no, kf_i] += _vstr
                 elif kf_i > kfolds:
-                    over_all_perf_str_arr[i, iter_no] += '\n%0.4f' % calib_perf_val
-                    over_all_perf_str_arr[i, iter_no] += '\n%0.4f' % valid_perf_val
+                    over_all_perf_str_arr[i, iter_no] += _cstr
+                    over_all_perf_str_arr[i, iter_no] += _vstr
                 else:
                     raise RuntimeError('Fucked up!')
 
@@ -196,22 +197,24 @@ def plot_cat_kfold_effs(cat_paths):
                 cyc_perf_val = perfo_ftns_list[i](curr_qact_arr,
                                                   curr_q_cyc_arr,
                                                   off_idx)
+                _rstr = f'\n{res_perf_val:0.4f}'
+                _ystr = f'\n{cyc_perf_val:0.4f}'
 
                 if kf_i < kfolds:
-                    kfold_perfos_str_arr[i, iter_no, kf_i] += '\n%0.4f' % res_perf_val
-                    kfold_perfos_str_arr[i, iter_no, kf_i] += '\n%0.4f' % cyc_perf_val
+                    kfold_perfos_str_arr[i, iter_no, kf_i] += _rstr
+                    kfold_perfos_str_arr[i, iter_no, kf_i] += _ystr
 
                     if ((cyc_perf_val > kfold_perfos_arr[i, iter_no, kf_i]) and
                         (res_perf_val > 0)):
-                        print('1 Impossible:', out_suff, i, iter_no)
+                        print('1 Impossible:', cat, i, iter_no)
 
                 elif kf_i > kfolds:
-                    over_all_perf_str_arr[i, iter_no] += '\n%0.4f' % res_perf_val
-                    over_all_perf_str_arr[i, iter_no] += '\n%0.4f' % cyc_perf_val
+                    over_all_perf_str_arr[i, iter_no] += _rstr
+                    over_all_perf_str_arr[i, iter_no] += _ystr
 
                     if ((cyc_perf_val > over_all_perf_arr[i, iter_no]) and
                             (res_perf_val > 0)):
-                        print('2 Impossible:', out_suff, i, iter_no)
+                        print('2 Impossible:', cat, i, iter_no)
 
                 else:
                     raise RuntimeError('Fucked up!')
@@ -299,18 +302,46 @@ def plot_cat_kfold_effs(cat_paths):
     cb_ax.text(1, 0, key_str_right, va='top', ha='right', size=fts)
 
     title_str = ''
-    title_str += '%d-folds overall/split calibration and validation results\n'
-    title_str += 'for the catchment: %d with %d steps per fold\n'
-    plt.suptitle(title_str % (kfolds, int(out_suff), uni_sel_idxs_list[1]))
+    title_str += f'{kfolds}-folds overall/split calibration and validation '
+    title_str += f'results\nfor the catchment: {cat} with '
+    title_str += f'{uni_sel_idxs_list[1]} steps per fold\n'
+    plt.suptitle(title_str)
     plt.subplots_adjust(top=0.8)
 
-    out_kfold_fig_loc = os.path.join(
-        out_dir, 'kfolds_compare_%s.png' % (out_suff))
+    out_kfold_fig_loc = os.path.join(out_dir, f'kfolds_compare_{cat}.png')
     plt.savefig(out_kfold_fig_loc, bbox_inches='tight', dpi=200)
     plt.close()
 
 
-def _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict):
+def plot_kfolds_best_prms(dbs_dir):
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+
+    assert cats_dbs
+    for cat_db in cats_dbs:
+        with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
+            cat = db['cat']
+            kfolds = db['data']['kfolds']
+            bds_arr = db['calib']['kf_01']['bds_arr']
+            best_prms_labs = db['calib']['kf_01']['use_prms_labs']
+
+            out_dir = db['data']['dirs_dict']['main']
+            out_dir = os.path.join(out_dir, r'05_kfolds_perf')
+            if not os.path.exists(out_dir):
+                os.mkdir(out_dir)
+
+            best_prms_list = []
+            for i in range(1, kfolds + 1):
+                best_prms_list.append(db['calib'][f'kf_{i:02d}']['opt_prms'])
+
+        _kfold_best_prms(
+            cat, kfolds, best_prms_list, best_prms_labs, bds_arr, out_dir)
+    return
+
+
+def _kfold_best_prms(
+        cat, kfolds, best_prms_list, best_prms_labs, bounds_arr, out_dir):
+
     plt.figure(figsize=(max(20, best_prms_list[0].shape[0]), 12))
     tick_font_size = 10
     best_params_arr = np.array(best_prms_list)
@@ -318,8 +349,6 @@ def _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict):
 
     stats_cols = ['min', 'max', 'mean', 'stdev', 'min_bd', 'max_bd']
     n_stats_cols = len(stats_cols)
-
-    bounds_arr = cat_info_dict['bds_arr']
 
     best_params_arr = (
         (best_params_arr * (bounds_arr[:, 1] - bounds_arr[:, 0])) +
@@ -355,11 +384,12 @@ def _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict):
     stats_xx = stats_xx.ravel()
     stats_yy = stats_yy.ravel()
 
-    [stats_ax.text(stats_yy[i],
-                   stats_xx[i],
-                   ('%0.4f' % stats_arr[stats_xx[i], stats_yy[i]]).rstrip('0'),
-                   va='center',
-                   ha='center')
+    [stats_ax.text(
+        stats_yy[i],
+        stats_xx[i],
+        (f'{stats_arr[stats_xx[i], stats_yy[i]]:0.4f}').rstrip('0'),
+        va='center',
+        ha='center')
      for i in range(int(n_stats_cols * n_params))]
 
     stats_ax.set_xticks(list(range(0, n_params)))
@@ -398,14 +428,14 @@ def _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict):
         params_ax.plot(plot_range,
                        norm_pop[i],
                        alpha=0.85,
-                       label='Fold no: %d' % i)
+                       label=f'Fold no: {i}')
         for j in range(bounds_arr.shape[0]):
-            _ = params_ax.text(plot_range[j],
-                               norm_pop[i, j],
-                               ('%3.4f' %
-                                best_params_arr[i, j]).rstrip('0'),
-                               va='top',
-                               ha='left')
+            _ = params_ax.text(
+                plot_range[j],
+                norm_pop[i, j],
+                (f'{best_params_arr[i, j]:0.4f}').rstrip('0'),
+                va='top',
+                ha='left')
             plt_texts.append(_)
 
     adjust_text(plt_texts, only_move={'points': 'y', 'text': 'y'})
@@ -431,38 +461,10 @@ def _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict):
     plt.suptitle(title_str, size=tick_font_size + 10)
     plt.subplots_adjust(hspace=0.15)
 
-    out_dir = cat_info_dict['out_dir']
-    out_suff = cat_info_dict['out_suff']
     out_params_fig_loc = os.path.join(
-        out_dir, 'kfolds_prms_compare_%s.png' % (out_suff))
+        out_dir, f'kfolds_prms_compare_{cat}.png')
     plt.savefig(out_params_fig_loc, bbox='tight_layout')
     plt.close()
-    return
-
-
-def plot_kfolds_best_prms(kfold_prms_path, info_prms_path):
-
-    with open(kfold_prms_path, 'rb') as _hdl:
-        prms_dict = pickle.load(_hdl)
-        cats = list(prms_dict.keys())
-#         n_cats = len(cats)
-        kfolds = len(prms_dict[cats[0]])
-
-    with open(info_prms_path, 'rb') as _hdl:
-        cats_info_dict = pickle.load(_hdl)
-
-    for cat in cats:
-        best_prms_list = []
-        best_prms_labs = []
-
-        cat_info_dict = cats_info_dict[cat]
-
-        for i in range(kfolds):
-            best_prms_list.append(prms_dict[cat][i][2])
-
-        best_prms_labs = cat_info_dict['use_prms_labs']
-
-        _kfold_best_prms(kfolds, best_prms_list, best_prms_labs, cat_info_dict)
     return
 
 

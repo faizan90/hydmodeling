@@ -111,9 +111,9 @@ cpdef dict hbv_loop_py(
  
     out_dict = {}
     out_dict['loop_ret'] = loop_ret
-    out_dict['outs_arr'] = np.asarray(outs_arr)
+    out_dict['outs_arr'] = np.asarray(outs_arr[:, 1:, :])
     out_dict['qsim_arr'] = np.asarray(qsim_arr)
-    out_dict['lrst_arr'] = np.asarray(lrst_arr)
+    out_dict['lrst_arr'] = np.asarray(lrst_arr [1:])
     return out_dict
 
 
@@ -170,9 +170,9 @@ cpdef dict hbv_c_loop_py(
 
     out_dict = {}
     out_dict['loop_ret'] = loop_ret
-    out_dict['outs_arr'] = np.asarray(outs_arr)
+    out_dict['outs_arr'] = np.asarray(outs_arr[:, 1:, :])
     out_dict['qsim_arr'] = np.asarray(qsim_arr)
-    out_dict['lrst_arr'] = np.asarray(lrst_arr)
+    out_dict['lrst_arr'] = np.asarray(lrst_arr[1:])
     return out_dict
 
 
@@ -201,7 +201,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
 
         DT_D[:, :, ::1] outs_arr
 
-    hbv_prms, route_prms, *_ = args[0]
+    hbv_prms, route_prms = args[0]
 
     inis_arr, temp_arr, prec_arr, petn_arr, qact_arr = args[3]
 
@@ -282,7 +282,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
                            np.nan, 
                            dtype=DT_D_NP)
 
-    return {'out_arr': np.array(outs_arr),
-            'lrst_arr': np.array(lrst_arr),
+    return {'outs_arr': np.array(outs_arr[:, 1:, :]),
+            'lrst_arr': np.array(lrst_arr[1:]),
             'qsim_arr': np.asarray(qsim_arr),
             'inflow_arr': np.asarray(inflow_arr)}

@@ -9,7 +9,6 @@ import os
 import time
 import timeit
 import pickle
-from glob import iglob, glob
 import configparser as cfpm
 from collections import OrderedDict
 
@@ -46,12 +45,12 @@ def main():
     plot_kfold_prms_flag = False
     plot_pop_flag = False
 
-#     optimize_flag = True
+    optimize_flag = True
 #     plot_opt_results_flag = True
 #     plot_kfold_results_flag = True
 #     test_model_flag = True
-    plot_kfold_prms_flag = True
-#     plot_pop_flag = True
+#     plot_kfold_prms_flag = True
+    plot_pop_flag = True
 
     #==========================================================================
     # Optimize distributed model
@@ -69,7 +68,6 @@ def main():
     in_pet_file = cfp['OPT_HYD_MODEL']['in_pet_file']
     in_cell_vars_pkl = cfp['OPT_HYD_MODEL']['in_cell_idxs_pkl']
 
-    opt_res_pkl_path = cfp['OPT_HYD_MODEL']['opt_res_pkl_path']
     sep = cfp['DEFAULT']['sep']
 
     in_date_fmt = cfp['OPT_HYD_MODEL']['in_date_fmt']
@@ -225,15 +223,14 @@ def main():
             bounds_dict,
             all_prms_flags,
             obj_ftn_wts,
-            water_bal_step_size,
             min_q_thresh,
             sep,
-            opt_res_pkl_path,
             kfolds,
             use_obs_flow_flag,
             run_as_lump_flag,
             opt_schm_vars_dict)
 
+    dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
     #=========================================================================
     # plot the optimization results
     #=========================================================================
@@ -241,62 +238,39 @@ def main():
         print('\n\nPlotting opt_results...')
 
         plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean('plot_simple_opt_flag')
-        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean('plot_dist_wat_bal_flag')
+        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean('plot_wat_bal_flag')
 
-        _ext = opt_res_pkl_path.rsplit('.', 1)[-1]
-        _dir = os.path.dirname(opt_res_pkl_path)
-
-        for _pkl_path in iglob(
-            os.path.join(_dir, '*__calib_kfold_*.%s' % _ext)):
-
-            plot_vars(
-                _pkl_path,
-                n_cpus,
-                plot_simple_opt_flag,
-                plot_dist_wat_bal_flag)
+        plot_vars(
+            dbs_dir,
+            water_bal_step_size,
+            plot_simple_opt_flag,
+            plot_dist_wat_bal_flag,
+            n_cpus)
 
     #=========================================================================
     # Plot the k-fold results
     #=========================================================================
 
     if plot_kfold_results_flag:
+        hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
         print('\n\nPlotting kfold results...')
+        plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus)
 
-        _ext = opt_res_pkl_path.rsplit('.', 1)[1]
-        _dir = os.path.dirname(opt_res_pkl_path)
-
-        _1 = 'opt_results__valid_kfold_[0-9][0-9].%s' % _ext
-        kfold_opt_res_paths = glob(os.path.join(_dir, _1))
-
-        assert kfold_opt_res_paths, 'kfold_opt_res_paths is empty!'
-
-        plot_kfold_effs(
-            kfold_opt_res_paths, compare_ann_cyc_flag, n_cpus)
+    #=========================================================================
+    # Plot the best k-fold params
+    #=========================================================================
 
     if plot_kfold_prms_flag:
-        _ext = opt_res_pkl_path.rsplit('.', 1)[1]
-        _dir = os.path.dirname(opt_res_pkl_path)
-        _2 = 'opt_results_kfold_params.%s' % _ext
-        kfold_prms_path = os.path.join(_dir, _2)
-        info_prms_path = os.path.join(
-            _dir, 'opt_results__calib_kfold_01.%s' % _ext)
+        print('\n\nPlotting best kfold prms...')
+        plot_kfolds_best_prms(dbs_dir)
 
-        plot_kfolds_best_prms(kfold_prms_path, info_prms_path)
-
-    #==========================================================================
+    #============================ ==============================================
     # Plot parameter final population
     #==========================================================================
 
     if plot_pop_flag:
         print('\n\nPlotting DE population...')
-
-        _ext = opt_res_pkl_path.rsplit('.', 1)[-1]
-        _dir = os.path.dirname(opt_res_pkl_path)
-
-        for _pkl_path in iglob(
-            os.path.join(_dir, '*__calib_kfold_*.%s' % _ext)):
-
-            plot_pops(_pkl_path, n_cpus)
+        plot_pops(dbs_dir, n_cpus)
     #==========================================================================
 
     return

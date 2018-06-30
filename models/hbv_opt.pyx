@@ -737,9 +737,9 @@ cpdef dict hbv_opt_de(args):
     print('Best parameters:')
     print(['%0.3f' % prm for prm in np.array(best_params).ravel()])
 
-    return {'params': np.asarray(hbv_prms[tid]),
-            'route_params': np.asarray(route_prms[tid]),
-            'opt_params': np.asarray(best_params),
+    return {'hbv_prms': np.asarray(hbv_prms[tid]),
+            'route_prms': np.asarray(route_prms[tid]),
+            'opt_prms': np.asarray(best_params),
             'fmin': fval_pre_global,
             'n_gens': iter_curr,
             'n_succ': n_succ,

@@ -7,7 +7,8 @@ Created on %(date)s
 
 import os
 import timeit
-import pickle
+import shelve
+import shutil
 from functools import partial
 
 import numpy as np
@@ -48,10 +49,8 @@ def solve_cats_sys(
     bounds_dict,
     all_prms_flags,
     obj_ftn_wts,
-    water_bal_step_size,
     min_q_thresh,
     sep,
-    opt_pkl_path,
     kfolds,
     use_obs_flow_flag,
     run_as_lump_flag,
@@ -111,15 +110,10 @@ def solve_cats_sys(
     assert obj_ftn_wts.ndim == 1
     assert np.issubdtype(obj_ftn_wts.dtype, np.float64)
 
-    assert isinstance(water_bal_step_size, int)
-    assert water_bal_step_size >= 0
-
     assert isinstance(min_q_thresh, (float, int))
     assert min_q_thresh >= 0
 
     assert isinstance(sep, str)
-
-    assert isinstance(opt_pkl_path, str)
 
     assert isinstance(kfolds, int)
     assert kfolds >= 1, 'kfolds can only be 1 or greater!'
@@ -159,7 +153,7 @@ def solve_cats_sys(
     if time_freq == 'D':
         pass
     else:
-        raise NotImplementedError('Invalid time-freq: %s' % str(time_freq))
+        raise NotImplementedError(f'Invalid time-freq: {time_freq}')
 
     assert beg_date >= in_q_df.index[0]
     assert all([beg_date >= _df.index[0] for _df in in_ppt_dfs_dict.values()])
@@ -261,6 +255,23 @@ def solve_cats_sys(
               'run_as_lump_flag': run_as_lump_flag,
               'use_step_flag': use_step_flag}
 
+    old_wd = os.getcwd()
+    os.chdir(out_dir)
+    for entry in os.listdir(out_dir):
+        if os.path.isdir(entry):
+            shutil.rmtree(entry)
+
+    out_db_dir = os.path.join(out_dir, '01_database')
+    os.mkdir(out_db_dir)
+
+    out_hgs_dir = os.path.join(out_dir, '02_hydrographs')
+    os.mkdir(out_hgs_dir)
+
+    dirs_dict = {}
+    dirs_dict['main'] = out_dir
+    dirs_dict['db'] = out_db_dir
+    dirs_dict['hgs'] = out_hgs_dir
+
     for kf_i in range(n_sel_idxs - 1):
         _beg_i = uni_sel_idxs_arr[kf_i]
         _end_i = uni_sel_idxs_arr[kf_i + 1]
@@ -289,15 +300,13 @@ def solve_cats_sys(
             in_cats_prcssed_df,
             in_stms_prcssed_df,
             in_dem_net_df,
-            opt_pkl_path,
             bounds_dict,
             all_prms_flags,
             route_type,
             obj_ftn_wts,
             warm_up_steps,
             n_cpus,
-            out_dir,
-            water_bal_step_size,
+            dirs_dict,
             sep,
             kf_i + 1,
             ini_arrs_dict,
@@ -313,7 +322,7 @@ def solve_cats_sys(
 
         # for the calibrated params, run for all the time steps
         calib_run = False
-        _ = _solve_k_cats_sys(
+        _solve_k_cats_sys(
             k_in_use_step_ser,
             in_q_df,
             fin_ppt_dfs_dict,
@@ -323,15 +332,13 @@ def solve_cats_sys(
             in_cats_prcssed_df,
             in_stms_prcssed_df,
             in_dem_net_df,
-            opt_pkl_path,
             bounds_dict,
             all_prms_flags,
             route_type,
             obj_ftn_wts,
             warm_up_steps,
             n_cpus,
-            out_dir,
-            water_bal_step_size,
+            dirs_dict,
             sep,
             kf_i + 1,
             ini_arrs_dict,
@@ -343,26 +350,7 @@ def solve_cats_sys(
             kfolds,
             kwargs=kwargs)
 
-    if opt_pkl_path:
-        # for every kfold, save params of every catchment
-        cats_kfold_prms_dict = {}
-        k_folds_list = list(range(1, n_sel_idxs))
-
-        for cat in in_cats_prcssed_df.index:
-            prms_list = []
-
-            for iter_no in k_folds_list:
-                prms_list.append(kfold_prms_dict[iter_no][cat])
-
-            cats_kfold_prms_dict[cat] = prms_list
-
-        out_prms_dict_path = (opt_pkl_path.rsplit('.', -1)[0] +
-                                '_kfold_params.pkl')
-
-        pkl_cur = open(out_prms_dict_path, 'wb')
-        pickle.dump(cats_kfold_prms_dict, pkl_cur)
-        pkl_cur.close()
-
+    os.chdir(old_wd)
     return
 
 
@@ -376,15 +364,13 @@ def _solve_k_cats_sys(
     in_cats_prcssed_df,
     in_stms_prcssed_df,
     in_dem_net_df,
-    opt_pkl_path,
     bounds_dict,
     all_prms_flags,
     route_type,
     obj_ftn_wts,
     warm_up_steps,
     n_cpus,
-    out_dir,
-    water_bal_step_size,
+    dirs_dict,
     sep,
     kf_i,
     ini_arrs_dict,
@@ -411,15 +397,9 @@ def _solve_k_cats_sys(
         raise RuntimeError('NaNs in_dem_net_arr')
 
     all_us_cat_stms = []
-
-    if opt_pkl_path:
-        opt_results_dict = {}
-        data_dict = {}
-
     prms_dict = {}
 
     if calib_run:
-        prms_dict = {}
         calib_valid_suff = 'calib'
     else:
         calib_valid_suff = 'valid'
@@ -461,7 +441,7 @@ def _solve_k_cats_sys(
             curr_us_stm = -2
 
         assert curr_us_stm is not None, (
-            'Could not find ds for cat %d!' % int(cat))
+            f'Could not find ds for cat {cat}!')
 
         all_us_cat_stms.append(curr_us_stm)
 
@@ -560,16 +540,16 @@ def _solve_k_cats_sys(
                 assert 'lulc_ratios' in in_aux_vars_dict
 
                 lulc_arr = in_aux_vars_dict['lulc_ratios'][cat]
-                _ = lulc_arr.shape[1]
+                _1 = lulc_arr.shape[1]
                 lulc_drop_idxs = (lulc_arr.max(axis=0) == 0)
                 if lulc_drop_idxs.sum():
                     lulc_arr = lulc_arr[:, ~lulc_drop_idxs].copy(order='c')
-                    print('Land use classes reduced from %d to %d' %
-                          (_, lulc_arr.shape[1]))
+                    _2 = lulc_arr.shape[1]
+                    print(f'Land use classes reduced from {_1} to {_2}')
 
                 n_lulc = lulc_arr.shape[1]
                 assert lulc_arr.shape[0] == n_cells
-                print('n_lulc: %d' % n_lulc)
+                print(f'n_lulc:  {n_lulc}')
                 print('lulc class ratios:\n', lulc_arr.sum(axis=0) / n_cells)
                 assert np.all((lulc_arr >= 0) & (lulc_arr <= 1))
 
@@ -582,16 +562,16 @@ def _solve_k_cats_sys(
                 assert 'soil_ratios' in in_aux_vars_dict
 
                 soil_arr = in_aux_vars_dict['soil_ratios'][cat]
-                _ = soil_arr.shape[1]
+                _1 = soil_arr.shape[1]
                 soil_drop_idxs = (soil_arr.max(axis=0) == 0)
                 if soil_drop_idxs.sum():
                     soil_arr = soil_arr[:, ~soil_drop_idxs].copy(order='c')
-                    print('Soil classes reduced from %d to %d' %
-                          (_, soil_arr.shape[1]))
+                    _2 = soil_arr.shape[1]
+                    print(f'Soil classes reduced from {_1} to {_2}')
 
                 n_soil = soil_arr.shape[1]
                 assert soil_arr.shape[0] == n_cells
-                print('n_soil: %d' % n_soil)
+                print(f'n_soil: {n_soil}')
                 assert np.all((soil_arr >= 0) & (soil_arr <= 1))
 
                 if aux_vars:
@@ -703,18 +683,16 @@ def _solve_k_cats_sys(
 
                 if all_prms_flags[i, 1]:
                     _bef_len = len(use_prms_labs)
-                    use_prms_labs.extend([
-                        '%s_lc_%0.2d' % (all_prms_labs[i], j)
-                        for j in range(n_lulc)])
+                    use_prms_labs.extend([f'{all_prms_labs[i]}_lc_{j:02d}'
+                                          for j in range(n_lulc)])
                     use_prms_idxs[i, 1, :] = _bef_len, len(use_prms_labs)
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_lulc)
 
                 if all_prms_flags[i, 2]:
                     _bef_len = len(use_prms_labs)
-                    use_prms_labs.extend([
-                        '%s_sl_%0.2d' % (all_prms_labs[i], j)
-                        for j in range(n_soil)])
+                    use_prms_labs.extend([f'{all_prms_labs[i]}_sl_{j:02d}'
+                                          for j in range(n_soil)])
                     use_prms_idxs[i, 2, :] = _bef_len, len(use_prms_labs)
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_soil)
@@ -723,7 +701,7 @@ def _solve_k_cats_sys(
                     _bef_len = len(use_prms_labs)
 
                     use_prms_labs.extend(
-                        ['%s_at_%s' % (all_prms_labs[i], _at_sp_labs[j])
+                        [f'{all_prms_labs[i]}_at_{_at_sp_labs[j]}'
                          for j in range(3)])
 
                     use_prms_idxs[i, 3, :] = _bef_len, len(use_prms_labs)
@@ -735,7 +713,7 @@ def _solve_k_cats_sys(
                     _bef_len = len(use_prms_labs)
 
                     use_prms_labs.extend(
-                        ['%s_sp_%s' % (all_prms_labs[i], _at_sp_labs[j])
+                        [f'{all_prms_labs[i]}_sp_{_at_sp_labs[j]}'
                          for j in range(3)])
 
                     use_prms_idxs[i, 4, :] = _bef_len, len(use_prms_labs)
@@ -747,7 +725,7 @@ def _solve_k_cats_sys(
                     _bef_len = len(use_prms_labs)
 
                     use_prms_labs.extend(
-                        ['%s_at_sp_%s' % (all_prms_labs[i], _at_sp_labs[j])
+                        [f'{all_prms_labs[i]}_at_sp_{_at_sp_labs[j]}'
                          for j in range(3)])
 
                     use_prms_idxs[i, 5, :] = _bef_len, len(use_prms_labs)
@@ -779,9 +757,9 @@ def _solve_k_cats_sys(
                         bounds_list.append(wt_bds[i])
 
                         use_prms_labs.append(
-                            'musk_%0.2d_lag' % curr_us_stms_idxs[i])
+                            f'musk_{curr_us_stms_idxs[i]}_lag')
                         use_prms_labs.append(
-                            'musk_%0.2d_wt' % curr_us_stms_idxs[i])
+                            f'musk_{curr_us_stms_idxs[i]}_wt')
 
                 else:
                     raise NotImplementedError('Incorrect route_type!')
@@ -867,109 +845,127 @@ def _solve_k_cats_sys(
             opt_strt_time = timeit.default_timer()
 
             if opt_schm_vars_dict['opt_schm'] == 'DE':
-                out_prms_dict = hbv_opt_de(curr_cat_params)
+                out_db_dict = hbv_opt_de(curr_cat_params)
             else:
-                raise ValueError('opt_schm (%s) can only be DE!' %
-                                 opt_schm_vars_dict['opt_schm'])
+                raise ValueError(
+                    f'opt_schm ({opt_schm_vars_dict["opt_schm"]}) '
+                    'can only be DE!')
 
-            prms_dict[cat] = (out_prms_dict['params'],
-                              out_prms_dict['route_params'],
-                              out_prms_dict['opt_params'])
+            prms_dict[cat] = (out_db_dict['hbv_prms'],
+                              out_db_dict['route_prms'])
 
             opt_end_time = timeit.default_timer()
             print('Opt time was: %0.3f seconds\n' %
                   (opt_end_time - opt_strt_time))
 
             # a test of fc and pwp ratio
-            _prms = out_prms_dict['params']
+            _prms = out_db_dict['hbv_prms']
             mean_ratio = _prms[0, pwp_i] / _prms[0, fc_i]
 
             print(f'Mean pwp/fc ratio: {mean_ratio:0.3f}')
 
         else:
-            out_prms_dict = hbv_mult_cat_loop_py(curr_cat_params)
+            out_db_dict = hbv_mult_cat_loop_py(curr_cat_params)
 
-        if opt_pkl_path:
-            out_prms_dict['off_idx'] = warm_up_steps
-            out_prms_dict['conv_ratio'] = conv_ratio
-            out_prms_dict['ini_arr'] = ini_arr
-            out_prms_dict['out_suff'] = str(cat)
-            out_prms_dict['out_dir'] = out_dir
-            out_prms_dict['out_pref'] = '%0.2d' % kf_i
-            out_prms_dict['calib_valid_suff'] = calib_valid_suff
-            out_prms_dict['opt_schm_vars_dict'] = opt_schm_vars_dict
-            out_prms_dict['run_as_lump_flag'] = run_as_lump_flag
+        out_db_dict['ini_arr'] = ini_arr
+        out_db_dict['calib_valid_suff'] = calib_valid_suff
+        out_db_dict['opt_schm_vars_dict'] = opt_schm_vars_dict
+
+        out_db_dict['tem_arr'] = tem_arr
+        out_db_dict['ppt_arr'] = ppt_arr
+        out_db_dict['pet_arr'] = pet_arr
+        out_db_dict['qact_arr'] = q_arr
+
+        out_db_dict['use_step_flag'] = use_step_flag
+        out_db_dict['use_step_arr'] = use_step_arr
+
+        if calib_run:
+            out_db_dict['use_prms_labs'] = use_prms_labs
+            out_db_dict['bds_arr'] = bounds_arr
+
+            out_db_dict['use_prms_idxs'] = use_prms_idxs
+            out_db_dict['all_prms_flags'] = all_prms_flags
+            out_db_dict['prms_span_idxs'] = prms_span_idxs
+            out_db_dict['aux_vars'] = aux_vars
+            out_db_dict['aux_var_infos'] = aux_var_infos
+
+        if n_stms:
+            curr_us_stm_idx = stm_to_idx_dict[curr_us_stm]
+            extra_inflow = stms_outflow_arr[:, curr_us_stm_idx]
+            out_db_dict['extra_us_inflow'] = (
+                extra_inflow).copy(order='C')
+
+        if route_type == 0:
+            pass
+        elif route_type == 1:
+            if curr_us_stm == -2:
+                pass
+            else:
+                route_labs = [[f'lag_{i}', f'wt_{i}']
+                              for i in curr_us_stms]
+                out_db_dict['route_labs'] = route_labs
+        else:
+            raise NotImplementedError('Implement stuff for this routing '
+                                      'type!')
+
+        _out_db_file = os.path.join(dirs_dict['db'], f'cat_{cat}')
+        with shelve.open(_out_db_file, 'c', writeback=True) as db:
+
+            if 'cat' not in db:
+                db['cat'] = cat
 
             if calib_run:
-                out_prms_dict['use_prms_labs'] = use_prms_labs
-                out_prms_dict['bds_arr'] = bounds_arr
+                if 'calib' not in db:
+                    db['calib'] = {}
 
-                out_prms_dict['use_prms_idxs'] = use_prms_idxs
-                out_prms_dict['all_prms_flags'] = all_prms_flags
-                out_prms_dict['prms_span_idxs'] = prms_span_idxs
-                out_prms_dict['aux_vars'] = aux_vars
-                out_prms_dict['aux_var_infos'] = aux_var_infos
+                db['calib'][f'kf_{kf_i:02d}'] = out_db_dict
 
-            out_prms_dict['kfolds'] = kfolds
-
-            out_prms_dict['area_arr'] = cat_area_ratios_arr
-
-            if opt_pkl_path and (not calib_run):
-                cat_data_dict = {}
-                cat_data_dict['temp_arr'] = tem_arr
-                cat_data_dict['prec_arr'] = ppt_arr
-                cat_data_dict['pet_arr'] = pet_arr
-                data_dict[cat] = cat_data_dict
-
-            out_prms_dict['q_arr'] = q_arr
-
-            if calib_run and np.any(all_prms_flags[:, 1]):
-                out_prms_dict['lulc_arr'] = lulc_arr
-
-            if calib_run and np.any(all_prms_flags[:, 2]):
-                out_prms_dict['soil_arr'] = soil_arr
-
-            if calib_run and np.any(all_prms_flags[:, 3]):
-                out_prms_dict['aspect_scale_arr'] = aspect_scale_arr
-
-            if calib_run and np.any(all_prms_flags[:, 4]):
-                out_prms_dict['slope_scale_arr'] = slope_scale_arr
-
-            if calib_run and np.any(all_prms_flags[:, 5]):
-                out_prms_dict['aspect_slope_scale_arr'] = (
-                    aspect_slope_scale_arr)
-
-            out_prms_dict['all_prms_flags'] = all_prms_flags
-            out_prms_dict['water_bal_step_size'] = water_bal_step_size
-            out_prms_dict['use_obs_flow_flag'] = use_obs_flow_flag
-
-            out_prms_dict['use_step_flag'] = use_step_flag
-            out_prms_dict['use_step_arr'] = use_step_arr
-
-            out_prms_dict['shape'] = cat_shape
-            out_prms_dict['rows'] = cat_rows_idxs
-            out_prms_dict['cols'] = cat_cols_idxs
-
-            if n_stms:
-                curr_us_stm_idx = stm_to_idx_dict[curr_us_stm]
-                extra_inflow = stms_outflow_arr[:, curr_us_stm_idx]
-                out_prms_dict['extra_us_inflow'] = (
-                    extra_inflow).copy(order='C')
-
-            if route_type == 0:
-                pass
-            elif route_type == 1:
-                if curr_us_stm == -2:
-                    pass
-                else:
-                    route_labs = [['lag_%d' % i, 'wt_%d' % i]
-                                  for i in curr_us_stms]
-                    out_prms_dict['route_labs'] = route_labs
             else:
-                raise NotImplementedError('Implement stuff for this routing '
-                                          'type!')
+                if 'valid' not in db:
+                    db['valid'] = {}
 
-            opt_results_dict[cat] = out_prms_dict
+                db['valid'][f'kf_{kf_i:02d}'] = out_db_dict
+
+            if 'data' not in db:
+                db['data'] = {}
+                db['data']['kfolds'] = kfolds
+                db['data']['conv_ratio'] = conv_ratio
+                db['data']['all_prms_flags'] = all_prms_flags
+                db['data']['use_obs_flow_flag'] = use_obs_flow_flag
+                db['data']['area_arr'] = cat_area_ratios_arr
+                db['data']['dirs_dict'] = dirs_dict
+                db['data']['off_idx'] = warm_up_steps
+                db['data']['run_as_lump_flag'] = run_as_lump_flag
+                db['data']['route_type'] = route_type
+                db['data']['all_prms_labs'] = all_prms_labs
+
+                db['data']['shape'] = cat_shape
+                db['data']['rows'] = cat_rows_idxs
+                db['data']['cols'] = cat_cols_idxs
+
+            if not calib_run:
+                if 'vdata' not in db:
+                    db['vdata'] = {}
+
+            if calib_run:
+                if 'cdata' not in db:
+                    db['cdata'] = {}
+
+                if np.any(all_prms_flags[:, 1]):
+                    db['cdata']['lulc_arr'] = lulc_arr
+
+                if np.any(all_prms_flags[:, 2]):
+                    db['cdata']['soil_arr'] = soil_arr
+
+                if np.any(all_prms_flags[:, 3]):
+                    db['cdata']['aspect_scale_arr'] = aspect_scale_arr
+
+                if np.any(all_prms_flags[:, 4]):
+                    db['cdata']['slope_scale_arr'] = slope_scale_arr
+
+                if np.any(all_prms_flags[:, 5]):
+                    db['cdata']['aspect_slope_scale_arr'] = (
+                        aspect_slope_scale_arr)
 
         in_cats_prcssed_df.loc[cat, 'prcssed'] = True
         in_cats_prcssed_df.loc[cat, 'optd'] = True
@@ -997,9 +993,8 @@ def _solve_k_cats_sys(
                      alpha=0.5)
             plt.legend()
             plt.grid()
-            out_name = '%s_kfold_%0.2d__stm_' % (calib_valid_suff, kf_i)
-            out_name += str(int(stm)) + '.png'
-            out_path = os.path.join(out_dir, out_name)
+            out_name = f'{calib_valid_suff}_kfold_{kf_i:02d}__stm_{stm}.png'
+            out_path = os.path.join(dirs_dict['hgs'], out_name)
             plt.savefig(out_path, dpi=200, bbox_inches='tight')
             plt.close()
 
@@ -1021,68 +1016,69 @@ def _solve_k_cats_sys(
 
             plt.legend()
             plt.grid()
-            out_name = '%s_kfold_%0.2d__cat_' % (calib_valid_suff, kf_i)
-            out_name += str(int(cat)) + '.png'
-            out_path = os.path.join(out_dir, out_name)
+            out_name = f'{calib_valid_suff}_kfold_{kf_i:02d}__cat_{cat}.png'
+            out_path = os.path.join(dirs_dict['hgs'], out_name)
             plt.savefig(out_path, dpi=200, bbox_inches='tight')
             plt.close()
 
-    _iter_str = '%s_kfold_%0.2d_' % (calib_valid_suff, kf_i)
+    _iter_str = f'{calib_valid_suff}_kfold_{kf_i:02d}_'
 
-    #==========================================================================
-    # out_stms_inflow_df = pd.DataFrame(data=stms_inflow_arr,
-    #                                   columns=in_stms_prcssed_df.index,
-    #                                   index=in_q_df.index,
-    #                                   dtype=float)
-    # opt_results_dict['out_stms_inflow_df'] = out_stms_inflow_df
-    #
-    # out_stm_inflow_path = (
-    #     os.path.join(out_dir, '%s_stms_inflow.csv' % _iter_str))
-    # out_stms_inflow_df.to_csv(
-    #     out_stm_inflow_path, sep=str(sep), float_format='%0.5f')
-    #==========================================================================
+    if True:
+        hgs_dict = {'qact_df': in_q_df}
 
-    #==========================================================================
-    # out_stms_outflow_df = pd.DataFrame(data=stms_outflow_arr,
-    #                                    columns=in_stms_prcssed_df.index,
-    #                                    index=in_q_df.index,
-    #                                    dtype=float)
-    # opt_results_dict['out_stms_outflow_df'] = out_stms_outflow_df
-    #
-    # out_stm_outflow_path = (
-    #     os.path.join(out_dir, '%s_stms_outflow.csv' % _iter_str))
-    # out_stms_outflow_df.to_csv(
-    #     out_stm_outflow_path, sep=str(sep), float_format='%0.5f')
-    #==========================================================================
+        #======================================================================
+        # out_stms_inflow_df = pd.DataFrame(data=stms_inflow_arr,
+        #                                   columns=in_stms_prcssed_df.index,
+        #                                   index=in_q_df.index,
+        #                                   dtype=float)
+        # hgs_dict['out_stms_inflow_df'] = out_stms_inflow_df
+        #
+        # out_stm_inflow_path = (
+        #     os.path.join(dirs_dict['hgs'], f'{_iter_str}_stms_inflow.csv'))
+        # out_stms_inflow_df.to_csv(
+        #     out_stm_inflow_path, sep=str(sep), float_format='%0.5f')
+        #======================================================================
 
-    out_cats_flow_df = pd.DataFrame(data=cats_outflow_arr,
-                                    columns=in_cats_prcssed_df.index,
-                                    index=in_q_df.index,
-                                    dtype=float)
-    opt_results_dict['out_cats_flow_df'] = out_cats_flow_df
+        #======================================================================
+        # out_stms_outflow_df = pd.DataFrame(data=stms_outflow_arr,
+        #                                    columns=in_stms_prcssed_df.index,
+        #                                    index=in_q_df.index,
+        #                                    dtype=float)
+        # hgs_dict['out_stms_outflow_df'] = out_stms_outflow_df
+        #
+        # out_stm_outflow_path = (
+        #     os.path.join(dirs_dict['hgs'], f'{_iter_str}_stms_outflow.csv'))
+        # out_stms_outflow_df.to_csv(
+        #     out_stm_outflow_path, sep=str(sep), float_format='%0.5f')
+        #======================================================================
 
-    out_cats_outflow_path = (
-        os.path.join(out_dir, '%s_cats_outflow.csv' % _iter_str))
-    out_cats_flow_df.to_csv(
-        out_cats_outflow_path, sep=str(sep), float_format='%0.5f')
+        out_cats_flow_df = pd.DataFrame(data=cats_outflow_arr,
+                                        columns=in_cats_prcssed_df.index,
+                                        index=in_q_df.index,
+                                        dtype=float)
+        hgs_dict['out_cats_flow_df'] = out_cats_flow_df
 
-    if opt_pkl_path:
-        _ = opt_pkl_path.rsplit('.', 1)
-        _[0] = _[0] + ('__%s_kfold_%0.2d' % (calib_valid_suff, kf_i))
-        _ = _[0] + '.' + _[1]
+        out_cats_outflow_path = (
+            os.path.join(dirs_dict['hgs'], f'{_iter_str}_cats_outflow.csv'))
+        out_cats_flow_df.to_csv(
+            out_cats_outflow_path, sep=str(sep), float_format='%0.5f')
 
-        pkl_cur = open(_, 'wb')
-        pickle.dump(opt_results_dict, pkl_cur)
-        pkl_cur.close()
+        out_hgs_dfs_path = (
+            os.path.join(dirs_dict['hgs'], 'hgs_dfs'))
+        with shelve.open(out_hgs_dfs_path, 'c', writeback=True) as db:
+            kf_str = f'kf_{kf_i:02d}'
+            if calib_run:
+                if 'calib' not in db:
+                    db['calib'] = {}
+                db_str = 'calib'
+            else:
+                if 'valid' not in db:
+                    db['valid'] = {}
+                db_str = 'valid'
 
-        if data_dict:
-            _ = opt_pkl_path.rsplit('.', 1)
-            _[0] = _[0] + ('__%s_kfold_%0.2d_data' % (calib_valid_suff, kf_i))
-            _ = _[0] + '.' + _[1]
-
-            pkl_cur = open(_, 'wb')
-            pickle.dump(data_dict, pkl_cur)
-            pkl_cur.close()
+            db[db_str][kf_str] = {}
+            for key in hgs_dict:
+                db[db_str][kf_str][key] = hgs_dict[key]
     return prms_dict
 
 

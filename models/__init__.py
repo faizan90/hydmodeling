@@ -6,6 +6,7 @@ from .misc_ftns import (
     get_ln_ns_cy,
     get_pcorr_cy,
     get_kge_cy,
+    lin_regsn_cy,
 
     get_aspect_scale_arr_cy,
     get_slope_scale_arr_cy,

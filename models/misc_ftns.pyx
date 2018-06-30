@@ -501,3 +501,20 @@ def get_ln_ns_var_res_cy(
     numr = get_ln_sum_sq_diff(ref_arr, sim_arr, &off_idx)
     demr = get_ln_sum_sq_diff(ref_arr, cycle_arr, &off_idx)
     return 1 - (numr / demr)
+
+
+def lin_regsn_cy(
+    const DT_D[::1] x_arr,
+    const DT_D[::1] y_arr,
+    const DT_UL off_idx):
+
+    cdef:
+        DT_D corr, slope, intercept
+        DT_D[::1] y_arr_interp
+    
+    assert x_arr.shape[0] == y_arr.shape[0], 'Inputs have unequal shapes!'
+    assert off_idx < x_arr.shape[0], 'off_idx is too big!'
+
+    y_arr_interp = np.full(x_arr.shape[0], np.nan)
+    lin_regsn(x_arr, y_arr, y_arr_interp, &off_idx, &corr, &slope, &intercept)
+    return np.asarray(y_arr_interp), corr, slope, intercept
