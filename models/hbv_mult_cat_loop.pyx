@@ -60,9 +60,9 @@ cdef DT_D hbv_mult_cat_loop(
           DT_D[:, ::1] temp_arr,
           DT_D[:, ::1] prec_arr,
           DT_D[:, ::1] petn_arr,
-          DT_D[:, ::1] cats_outflow_arr,
-          DT_D[:, ::1] stms_inflow_arr,
-          DT_D[:, ::1] stms_outflow_arr,
+          DT_D[::1, :] cats_outflow_arr,
+          DT_D[::1, :] stms_inflow_arr,
+          DT_D[::1, :] stms_outflow_arr,
     const DT_D[:, ::1] dem_net_arr,
           DT_D[:, ::1] hbv_prms,    
 

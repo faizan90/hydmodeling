@@ -11,6 +11,8 @@ import timeit
 import random
 from libcpp.map cimport map as cmap
 from cython.parallel import prange, threadid
+from cython cimport view
+
 
 import numpy as np
 cimport numpy as np
@@ -140,12 +142,14 @@ cpdef dict hbv_opt_de(args):
 
         DT_D[::1] inflow_arr, qact_arr, f_vars, area_arr
         DT_D[:, ::1] inis_arr, temp_arr, prec_arr, petn_arr, route_prms
-        DT_D[:, ::1] dem_net_arr, cats_outflow_arr, stms_inflow_arr
-        DT_D[:, ::1] stms_outflow_arr, qsim_mult_arr, inflow_mult_arr
-        DT_D[:, :, ::1] cats_outflow_mult_arr
-        DT_D[:, :, ::1] stms_inflow_mult_arr, stms_outflow_mult_arr
+        DT_D[:, ::1] dem_net_arr
+        DT_D[:, ::1] qsim_mult_arr, inflow_mult_arr
         DT_D[:, :, :, ::1] outs_mult_arr
         cmap[long, long] cat_to_idx_map, stm_to_idx_map
+        
+        DT_D[::1, :] cats_outflow_arr, stms_inflow_arr, stms_outflow_arr
+        DT_D[::1, :, :] stms_inflow_mult_arr, stms_outflow_mult_arr
+        DT_D[::1, :, :] cats_outflow_mult_arr
         #======================================================================
 
         #======================================================================
@@ -244,16 +248,19 @@ cpdef dict hbv_opt_de(args):
     qsim_mult_arr = np.zeros((n_cpus, n_recs), dtype=DT_D_NP)
     inflow_mult_arr = qsim_mult_arr.copy()
 
-    cats_outflow_mult_arr = np.zeros((n_cpus,
-                                      cats_outflow_arr.shape[0],
-                                      cats_outflow_arr.shape[1]), 
-                                     dtype=DT_D_NP)
+    cats_outflow_mult_arr = np.zeros((cats_outflow_arr.shape[0],
+                                      cats_outflow_arr.shape[1],
+                                      n_cpus), 
+                                     dtype=DT_D_NP, order='f')
 
-    stms_inflow_mult_arr = np.zeros((n_cpus,
-                                     stms_inflow_arr.shape[0],
-                                     stms_inflow_arr.shape[1]),
-                                    dtype=DT_D_NP)
-    stms_outflow_mult_arr = stms_inflow_mult_arr.copy()
+    stms_inflow_mult_arr = np.zeros((stms_inflow_arr.shape[0],
+                                     stms_inflow_arr.shape[1],
+                                     n_cpus),
+                                    dtype=DT_D_NP, order='f')
+    stms_outflow_mult_arr = np.zeros((stms_inflow_arr.shape[0],
+                                      stms_inflow_arr.shape[1],
+                                      n_cpus),
+                                    dtype=DT_D_NP, order='f')
 
     outs_mult_arr = np.zeros((n_cpus, n_cells, 1, n_hbv_cols), dtype=DT_D_NP)
 
@@ -372,10 +379,10 @@ cpdef dict hbv_opt_de(args):
     for i in range(n_cpus):
         for j in range(n_recs):
             for k in range(stms_inflow_arr.shape[1]):
-                stms_inflow_mult_arr[i, j, k] = stms_inflow_arr[j, k]
-                stms_outflow_mult_arr[i, j, k] = stms_outflow_arr[j, k]
+                stms_inflow_mult_arr[j, k, i] = stms_inflow_arr[j, k]
+                stms_outflow_mult_arr[j, k, i] = stms_outflow_arr[j, k]
             for k in range(cats_outflow_arr.shape[1]):
-                cats_outflow_mult_arr[i, j, k] = cats_outflow_arr[j, k]
+                cats_outflow_mult_arr[j, k, i] = cats_outflow_arr[j, k]
 
     # for the selected parameters, get obj vals
 #     tid = 0
@@ -413,9 +420,9 @@ cpdef dict hbv_opt_de(args):
             temp_arr,
             prec_arr,
             petn_arr,
-            cats_outflow_mult_arr[tid],
-            stms_inflow_mult_arr[tid],
-            stms_outflow_mult_arr[tid],
+            cats_outflow_mult_arr[:, :, tid],
+            stms_inflow_mult_arr[:, :, tid],
+            stms_outflow_mult_arr[:, :, tid],
             dem_net_arr,
             hbv_prms[tid],
             bds_dfs,
@@ -577,9 +584,9 @@ cpdef dict hbv_opt_de(args):
                 temp_arr,
                 prec_arr,
                 petn_arr,
-                cats_outflow_mult_arr[tid],
-                stms_inflow_mult_arr[tid],
-                stms_outflow_mult_arr[tid],
+                cats_outflow_mult_arr[:, :, tid],
+                stms_inflow_mult_arr[:, :, tid],
+                stms_outflow_mult_arr[:, :, tid],
                 dem_net_arr,
                 hbv_prms[tid],
                 bds_dfs,
@@ -604,7 +611,7 @@ cpdef dict hbv_opt_de(args):
 
             for k in range(n_prms):
                 pop[j, k] = u_j_gs[j, k]
-                         
+
             pre_obj_vals[j] = fval_curr
 #             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
 #             total_vars.append((mu_sc_fac, cr_cnst))

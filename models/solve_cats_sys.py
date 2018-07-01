@@ -382,12 +382,12 @@ def _solve_k_cats_sys(
 
     cats_outflow_arr = np.zeros((in_q_df.shape[0],
                                  in_cats_prcssed_df.shape[0]),
-                                order='C',
+                                order='f',
                                 dtype=np.float64)
     stms_inflow_arr = np.zeros((in_q_df.shape[0], in_stms_prcssed_df.shape[0]),
-                               order='C',
+                               order='f',
                                dtype=np.float64)
-    stms_outflow_arr = stms_inflow_arr.copy(order='C')
+    stms_outflow_arr = stms_inflow_arr.copy(order='f')
 
     in_dem_net_arr = np.ascontiguousarray(in_dem_net_df.values,
                                           dtype=np.float64)

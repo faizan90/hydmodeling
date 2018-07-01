@@ -187,8 +187,8 @@ cpdef dict hbv_mult_cat_loop_py(args):
         DT_D[::1] inflow_arr, area_arr
 
         DT_D[:, ::1] inis_arr, temp_arr, prec_arr, petn_arr
-        DT_D[:, ::1] dem_net_arr, cats_outflow_arr, prms_arr
-        DT_D[:, ::1] stms_inflow_arr, stms_outflow_arr
+        DT_D[:, ::1] dem_net_arr, prms_arr
+        DT_D[::1, :] stms_inflow_arr, stms_outflow_arr, cats_outflow_arr
 
         DT_D[:, :, ::1] outs_arr
 
