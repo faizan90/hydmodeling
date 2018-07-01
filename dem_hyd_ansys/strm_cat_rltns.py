@@ -327,8 +327,8 @@ def crt_strms_rltn_tree(
                     fin_stream_no = temp_us_strm
                 elif out_stm == 1:
                     fin_stream_no = stream_no
-                elif cat == up_cat:
-                    fin_stream_no = temp_us_strm
+#                 elif cat == up_cat:
+#                     fin_stream_no = temp_us_strm
 
         assert fin_stream_no is not None, (
             'could not find the final stream for catchment %d!' % process_cat)

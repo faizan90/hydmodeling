@@ -17,7 +17,6 @@ from matplotlib.font_manager import FontProperties as f_props
 
 from ..models import (
     hbv_c_loop_py,
-    hbv_loop_py,
     get_ns_cy,
     get_ln_ns_cy,
     get_pcorr_cy,
@@ -220,7 +219,10 @@ def plot_pop(cat_db):
         out_dir = db['data']['dirs_dict']['main']
         out_dir = os.path.join(out_dir, r'06_population')
         if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
 
         kfolds = db['data']['kfolds']
         cat = db['cat']
@@ -276,7 +278,7 @@ def _plot_hbv_kf(
     n_recs = temp_dist_arr.shape[1]
     n_cells = temp_dist_arr.shape[0]
 
-    all_outputs_dict = hbv_loop_py(
+    all_outputs_dict = hbv_c_loop_py(
         temp_dist_arr,
         prec_dist_arr,
         pet_dist_arr,
@@ -336,6 +338,7 @@ def _plot_hbv_kf(
 
     (tt,
      cm,
+     p_cm,
      fc,
      beta,
      pwp,
@@ -343,8 +346,7 @@ def _plot_hbv_kf(
      k_uu,
      k_ul,
      k_d,
-     k_ll,
-     p_cm) = prms_arr
+     k_ll) = prms_arr
 
     def save_simple_opt(out_dir):
         '''Save the output of the optimize function
@@ -354,7 +356,10 @@ def _plot_hbv_kf(
             'Original and simulated discharge have unequal steps!')
 
         if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
 
         out_fig_loc = os.path.join(
             out_dir, f'{kf_i:02d}_HBV_model_plot_{cat}.png')
@@ -759,10 +764,13 @@ def _plot_hbv_kf(
             'Original and simulated discharge have unequal steps!')
 
         if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
 
         out_fig_loc = os.path.join(
-            out_dir, f'{kf_i}_HBV_water_bal_{cat}.png')
+            out_dir, f'{kf_i:02d}_HBV_water_bal_{cat}.png')
 
         cum_q = np.cumsum(q_act_arr_diff[off_idx:] / conv_ratio)
 

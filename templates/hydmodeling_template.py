@@ -19,7 +19,8 @@ from hydmodeling import (
     plot_vars,
     plot_pops,
     plot_kfold_effs,
-    plot_kfolds_best_prms)
+    plot_kfolds_best_prms,
+    plot_kfolds_best_hbv_prms_2d)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -42,13 +43,15 @@ def main():
     plot_kfold_results_flag = False
     plot_kfold_prms_flag = False
     plot_pop_flag = False
+    plot_2d_prms = False
     test_model_flag = False
 
 #     optimize_flag = True
-#     plot_opt_results_flag = True
-#     plot_kfold_results_flag = True
-#     plot_kfold_prms_flag = True
-#     plot_pop_flag = True
+    plot_opt_results_flag = True
+    plot_kfold_results_flag = True
+    plot_kfold_prms_flag = True
+    plot_pop_flag = True
+    plot_2d_prms = True
 #     test_model_flag = True
 
     #==========================================================================
@@ -262,6 +265,14 @@ def main():
     if plot_kfold_prms_flag:
         print('\n\nPlotting best kfold prms...')
         plot_kfolds_best_prms(dbs_dir)
+
+    #==========================================================================
+    # Plot hbv prms for all cathcments per kfold in 2d
+    #==========================================================================
+
+    if plot_2d_prms:
+        print('\n\nPlotting HBV prms in 2D...')
+        plot_kfolds_best_hbv_prms_2d(dbs_dir)
 
     #============================ ==============================================
     # Plot parameter final population

@@ -4,7 +4,10 @@ import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
 from .sims import plot_hbv, plot_pop
-from .k_folds import plot_cat_kfold_effs, plot_kfolds_best_prms
+from .k_folds import (
+    plot_cat_kfold_effs,
+    plot_kfolds_best_prms,
+    plot_kfolds_best_hbv_prms_2d)
 
 
 def plot_vars(

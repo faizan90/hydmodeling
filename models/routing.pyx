@@ -73,7 +73,7 @@ cdef void route_strms(
     ) nogil except +:
     
     cdef:
-        Py_ssize_t i, j, opt_k
+        Py_ssize_t i, j, opt_k, us_cat_idx, us1_idx, us2_idx
         long stm_idx, ds_cat, us_cat, us_01, us_02, stm
         DT_UL n_recs = inflow_arr.shape[0]
         DT_UL n_dem_net_cols = dem_net_arr.shape[1]
@@ -93,19 +93,22 @@ cdef void route_strms(
         us_02 = <long> dem_net_arr[stm, 4]
         
         if (us_cat != ds_cat):
+            us_cat_idx = cat_to_idx_map[us_cat]
             for j in range(n_recs):
-                inflow_arr[j] = cats_outflow_arr[j, cat_to_idx_map[us_cat]]
+                inflow_arr[j] = cats_outflow_arr[j, us_cat_idx]
 
         else:
             if (us_01 != -2):
+                us1_idx = stm_to_idx_map[us_01]
                 for j in range(n_recs):
-                    inflow_arr[j] = stms_outflow_arr[j, stm_to_idx_map[us_01]]
+                    inflow_arr[j] = stms_outflow_arr[j, us1_idx]
 
             if (us_02 != -2):
+                us2_idx = stm_to_idx_map[us_02]
                 for j in range(n_recs):
                     inflow_arr[j] = (
                         inflow_arr[j] + 
-                        stms_outflow_arr[j, stm_to_idx_map[us_02]])
+                        stms_outflow_arr[j, us2_idx])
 
         for j in range(n_recs):
             stms_inflow_arr[j, stm_idx] = inflow_arr[j]

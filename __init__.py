@@ -41,4 +41,8 @@ from .models import (
     get_ln_ns_var_res_prt_cy)
 
 from .plotting import (
-    plot_vars, plot_pops, plot_kfold_effs, plot_kfolds_best_prms)
+    plot_vars,
+    plot_pops,
+    plot_kfold_effs,
+    plot_kfolds_best_prms,
+    plot_kfolds_best_hbv_prms_2d)

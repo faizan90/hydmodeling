@@ -39,7 +39,10 @@ def plot_cat_kfold_effs(args):
         out_dir = os.path.join(out_dir, r'05_kfolds_perf')
 
         if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
 
         kfolds = db['data']['kfolds']
         cat = db['cat']
@@ -54,10 +57,11 @@ def plot_cat_kfold_effs(args):
     with shelve.open(hgs_db_path, 'r') as db:
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
-            kfold_q_sers_dict[i] = db['valid'][kf_str]['out_cats_flow_df'][cat].values
+            kfold_q_sers_dict[i] = (
+                db['valid'][kf_str]['out_cats_flow_df'][cat].values.copy(order='c'))
         else:
             date_idx = db['valid'][kf_str]['out_cats_flow_df'].index
-            qact_arr = db['valid'][kf_str]['qact_df'][cat].values
+            qact_arr = db['valid'][kf_str]['qact_df'][cat].values.copy(order='c')
 
     assert kfolds >= 1, 'kfolds can be 1 or greater only!'
 
@@ -313,6 +317,108 @@ def plot_cat_kfold_effs(args):
     plt.close()
 
 
+def plot_kfolds_best_hbv_prms_2d(dbs_dir):
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+
+    assert cats_dbs
+
+    kf_prms_dict = {}
+    rows_dict = {}
+    cols_dict = {}
+
+    with shelve.open(cats_dbs[0].rsplit('.', 1)[0], 'r') as db:
+        kfolds = db['data']['kfolds']
+        shape = db['data']['shape']
+
+        prms_labs = db['data']['all_prms_labs']
+
+        out_dir = db['data']['dirs_dict']['main']
+        out_dir = os.path.join(out_dir, r'07_2d_kfold_prms')
+        if not os.path.exists(out_dir):
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
+
+    min_row = +np.inf
+    max_row = -np.inf
+    min_col = +np.inf
+    max_col = -np.inf
+
+    for cat_db in cats_dbs:
+        with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
+            cat = db['cat']
+            assert kfolds == db['data']['kfolds']
+
+            if cat not in rows_dict:
+                rows_dict[cat] = db['data']['rows']
+
+                if rows_dict[cat].min() < min_row:
+                    min_row = rows_dict[cat].min()
+
+                if rows_dict[cat].max() > max_row:
+                    max_row = rows_dict[cat].max()
+
+            if cat not in cols_dict:
+                cols_dict[cat] = db['data']['cols']
+
+                if cols_dict[cat].min() < min_col:
+                    min_col = cols_dict[cat].min()
+
+                if cols_dict[cat].max() > max_col:
+                    max_col = cols_dict[cat].max()
+
+            for i in range(1, kfolds + 1):
+                if i not in kf_prms_dict:
+                    kf_prms_dict[i] = {}
+
+                kf_prms_dict[i][cat] = db['calib'][f'kf_{i:02d}']['hbv_prms']
+
+    plot_min_max_lims = (min_row - 1, max_row + 1, min_col - 1, max_col + 1)
+
+    for i in range(1, kfolds + 1):
+        _plot_kf_prms_2d(
+            i,
+            kf_prms_dict[i],
+            out_dir,
+            prms_labs,
+            shape,
+            rows_dict,
+            cols_dict,
+            plot_min_max_lims)
+
+    return
+
+
+def _plot_kf_prms_2d(
+        kf_i,
+        kf_prms_dict,
+        out_dir,
+        prms_labs,
+        shape,
+        rows_dict,
+        cols_dict,
+        plot_min_max_lims):
+
+    for p_i, prm in enumerate(prms_labs):
+        plot_grid = np.full(shape, np.nan)
+        for cat in kf_prms_dict:
+            cell_prms = kf_prms_dict[cat][:, p_i]
+            plot_grid[rows_dict[cat], cols_dict[cat]] = cell_prms
+
+        plt.figure()
+        plt.imshow(plot_grid, origin='lower')
+        plt.colorbar()
+        plt.title(prm)
+        plt.ylim(plot_min_max_lims[0], plot_min_max_lims[1])
+        plt.xlim(plot_min_max_lims[2], plot_min_max_lims[3])
+        plt.savefig(os.path.join(out_dir, f'{kf_i:02d}_{prm}.png'),
+                    bbox_inches='tight')
+        plt.close()
+    return
+
+
 def plot_kfolds_best_prms(dbs_dir):
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
@@ -328,7 +434,10 @@ def plot_kfolds_best_prms(dbs_dir):
             out_dir = db['data']['dirs_dict']['main']
             out_dir = os.path.join(out_dir, r'05_kfolds_perf')
             if not os.path.exists(out_dir):
-                os.mkdir(out_dir)
+                try:
+                    os.mkdir(out_dir)
+                except:
+                    pass
 
             best_prms_list = []
             for i in range(1, kfolds + 1):

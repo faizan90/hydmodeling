@@ -22,7 +22,7 @@ from .dtypes cimport (
     rnof_q_conv_i,
     err_val_i)
 
-cdef DT_UL use_c = 0
+cdef DT_UL use_c = 1
 
 
 cdef extern from "hbv_c_loop.h" nogil:

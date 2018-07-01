@@ -8,7 +8,6 @@ Created on %(date)s
 import os
 import timeit
 import shelve
-import shutil
 from functools import partial
 
 import numpy as np
@@ -486,6 +485,7 @@ def _solve_k_cats_sys(
                     q_arr.shape[0])
 
         n_cells = ini_arr.shape[0]
+        print('n_cells:', n_cells)
 
         all_prms_labs = ['tt',
                          'cm',
@@ -1099,8 +1099,7 @@ def _get_k_aux_vars_dict(
 
     out_dict = {}
 
-    area_dict = {cat: in_dict['area_ratios'][cat].reshape(-1, 1)
-                 for cat in cats}
+    area_dict = {cat: in_dict['area_ratios'][cat] for cat in cats}
     out_dict['area_ratios'] = area_dict
 
     # TODO: this is not final. cats_shape is actually the total shape of the

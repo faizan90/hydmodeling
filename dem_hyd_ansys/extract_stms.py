@@ -255,7 +255,7 @@ def get_stms(in_dem_net_shp_file,
     recs_and_shapes = list(zip(out_dem_net_writer_01.records,
                                out_dem_net_writer_01.shapes()))
 
-#     assert recs_and_shapes
+    assert recs_and_shapes
 
     def get_cont_streams(cat_no, ds_link_no):
         curr_idx = None
@@ -357,10 +357,10 @@ def get_stms(in_dem_net_shp_file,
     direct_us_streams_list = []
 
     def get_us_stream_fids(stream_fid):
-        us_stream_link_no_1 = \
-            feat_dict[stream_fid].GetFieldAsInteger(us_link_01_col_id)
-        us_stream_link_no_2 = \
-            feat_dict[stream_fid].GetFieldAsInteger(us_link_02_col_id)
+        us_stream_link_no_1 = (
+            feat_dict[stream_fid].GetFieldAsInteger(us_link_01_col_id))
+        us_stream_link_no_2 = (
+            feat_dict[stream_fid].GetFieldAsInteger(us_link_02_col_id))
 
         stream_cond_01 = (us_stream_link_no_1 != -1)
         stream_cond_02 = (us_stream_link_no_2 != -1)
@@ -372,8 +372,8 @@ def get_stms(in_dem_net_shp_file,
                 return
             us_stream_id_01 = None
             for fid in feat_dict:
-                if feat_dict[fid].GetFieldAsInteger(link_col_id) == \
-                        us_stream_link_no_1:
+                if feat_dict[fid].GetFieldAsInteger(link_col_id) == (
+                        us_stream_link_no_1):
                     us_stream_id_01 = fid
             assert us_stream_id_01 is not None, 'us_stream_id_01 is None!'
             get_us_stream_fids(us_stream_id_01)
@@ -383,8 +383,8 @@ def get_stms(in_dem_net_shp_file,
                 return
             us_stream_id_02 = None
             for fid in feat_dict:
-                if feat_dict[fid].GetFieldAsInteger(link_col_id) == \
-                        us_stream_link_no_2:
+                if feat_dict[fid].GetFieldAsInteger(link_col_id) == (
+                        us_stream_link_no_2):
                     us_stream_id_02 = fid
             assert us_stream_id_02 is not None, 'us_stream_id_02 is None!'
             get_us_stream_fids(us_stream_id_02)
