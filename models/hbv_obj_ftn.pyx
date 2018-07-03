@@ -1,10 +1,12 @@
-# cython: nonecheck=True
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: nonecheck=False
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
 # cython: embedsignature=True
+
+# from timeit import default_timer
 
 from .routing cimport tfm_opt_to_route_prms
 from .opt_to_hbv_prms cimport tfm_opt_to_hbv_prms
@@ -65,6 +67,9 @@ cdef DT_D obj_ftn(
 
     cdef:
         DT_D res, obj_ftn_wts_sum
+#         DT_D _beg, _end_1, end_2, _end_f
+
+#     with gil: _beg = default_timer()
 
     tfm_opt_to_hbv_prms(
         prms_flags,
@@ -75,6 +80,10 @@ cdef DT_D obj_ftn(
         bds_dfs,
         hbv_prms)
 
+#     with gil:
+#         _end_1 = default_timer()
+#         print('%0.8f seconds in tfm_opt_to_hbv_prms' % (_end_1 - _beg))
+        
     if (obj_longs[n_stms_i] > 0):
         tfm_opt_to_route_prms(
             opt_prms[obj_longs[n_hm_prms_i]:], 
@@ -103,6 +112,10 @@ cdef DT_D obj_ftn(
         cat_to_idx_map,
         stm_to_idx_map)
 
+#     with gil:
+#         _end_2 = default_timer()
+#         print('%0.8f seconds in hbv_mult_cat_loop' % (_end_2 - _end_1))
+        
     obj_ftn_wts_sum = 0.0
     if res == 0.0:
         if (obj_ftn_wts[0] != 0):
@@ -157,6 +170,10 @@ cdef DT_D obj_ftn(
                                      &obj_longs[off_idx_i]))
 
             obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[2]
+
+#     with gil:
+#         _end_f = default_timer()
+#         print('%0.8f seconds in obj_val' % (_end_f - _end_2))
 
     n_calls[tid[0]] = n_calls[tid[0]] + 1
     return obj_ftn_wts_sum - res

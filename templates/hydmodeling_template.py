@@ -46,7 +46,7 @@ def main():
     plot_2d_prms = False
     test_model_flag = False
 
-#     optimize_flag = True
+    optimize_flag = True
     plot_opt_results_flag = True
     plot_kfold_results_flag = True
     plot_kfold_prms_flag = True
@@ -87,16 +87,16 @@ def main():
     min_q_thresh = cfp['OPT_HYD_MODEL'].getfloat('min_q_thresh')
     run_as_lump_flag = cfp['OPT_HYD_MODEL'].getboolean('run_as_lump_flag')
     obj_ftn_wts = np.array(
-        cfp['OPT_HYD_MODEL']['obj_ftn_wts'].split(','), dtype=np.float64)
+        cfp['OPT_HYD_MODEL']['obj_ftn_wts'].split(sep), dtype=np.float64)
 
     in_opt_schm_vars_dict = cfp['OPT_SCHM_VARS']
     opt_schm_vars_dict = {}
     if in_opt_schm_vars_dict['opt_schm'] == 'DE':
         opt_schm_vars_dict['opt_schm'] = 'DE'
         opt_schm_vars_dict['mu_sc_fac_bds'] = np.array(
-            in_opt_schm_vars_dict['mu_sc_fac_bds'].split(','), dtype=np.float64)
+            in_opt_schm_vars_dict['mu_sc_fac_bds'].split(sep), dtype=np.float64)
         opt_schm_vars_dict['cr_cnst_bds'] = np.array(
-            in_opt_schm_vars_dict['cr_cnst_bds'].split(','), dtype=np.float64)
+            in_opt_schm_vars_dict['cr_cnst_bds'].split(sep), dtype=np.float64)
         opt_schm_vars_dict['pop_size_exp'] = in_opt_schm_vars_dict.getfloat('pop_size_exp')
     else:
         raise NotImplementedError(
@@ -124,32 +124,32 @@ def main():
         bounds_dict['k_ll_bds'] = [float(lump_prms_df.loc['K_ll', 'value'])] * 2
 
     else:
-        bounds_dict['tt_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['tt'].split(',')]
-        bounds_dict['cm_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['cm'].split(',')]
-        bounds_dict['pcm_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['pcm'].split(',')]
-        bounds_dict['fc_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['fc'].split(',')]
-        bounds_dict['beta_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['beta'].split(',')]
-        bounds_dict['pwp_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['pwp'].split(',')]
-        bounds_dict['ur_thr_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['ur_thr'].split(',')]
-        bounds_dict['k_uu_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_uu'].split(',')]
-        bounds_dict['k_ul_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_ul'].split(',')]
-        bounds_dict['k_d_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_d'].split(',')]
-        bounds_dict['k_ll_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_ll'].split(',')]
-        bounds_dict['exp_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['exp'].split(',')]
-        bounds_dict['musk_lag_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_lag'].split(',')]
-        bounds_dict['musk_wt_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(',')]
+        bounds_dict['tt_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['tt'].split(sep)]
+        bounds_dict['cm_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['cm'].split(sep)]
+        bounds_dict['pcm_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['pcm'].split(sep)]
+        bounds_dict['fc_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['fc'].split(sep)]
+        bounds_dict['beta_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['beta'].split(sep)]
+        bounds_dict['pwp_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['pwp'].split(sep)]
+        bounds_dict['ur_thr_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['ur_thr'].split(sep)]
+        bounds_dict['k_uu_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_uu'].split(sep)]
+        bounds_dict['k_ul_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_ul'].split(sep)]
+        bounds_dict['k_d_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_d'].split(sep)]
+        bounds_dict['k_ll_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_ll'].split(sep)]
+        bounds_dict['exp_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['exp'].split(sep)]
+        bounds_dict['musk_lag_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_lag'].split(sep)]
+        bounds_dict['musk_wt_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(sep)]
 
-    tt_flags = [int(_) for _ in cfp['PRM_FLAGS']['tt'].split(',')]
-    cm_flags = [int(_) for _ in cfp['PRM_FLAGS']['cm'].split(',')]
-    pcm_flags = [int(_) for _ in cfp['PRM_FLAGS']['pcm'].split(',')]
-    fc_flags = [int(_) for _ in cfp['PRM_FLAGS']['fc'].split(',')]
-    beta_flags = [int(_) for _ in cfp['PRM_FLAGS']['beta'].split(',')]
-    pwp_flags = [int(_) for _ in cfp['PRM_FLAGS']['pwp'].split(',')]
-    ur_thr_flags = [int(_) for _ in cfp['PRM_FLAGS']['ur_thr'].split(',')]
-    k_uu_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_uu'].split(',')]
-    k_ul_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ul'].split(',')]
-    k_d_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_d'].split(',')]
-    k_ll_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ll'].split(',')]
+    tt_flags = [int(_) for _ in cfp['PRM_FLAGS']['tt'].split(sep)]
+    cm_flags = [int(_) for _ in cfp['PRM_FLAGS']['cm'].split(sep)]
+    pcm_flags = [int(_) for _ in cfp['PRM_FLAGS']['pcm'].split(sep)]
+    fc_flags = [int(_) for _ in cfp['PRM_FLAGS']['fc'].split(sep)]
+    beta_flags = [int(_) for _ in cfp['PRM_FLAGS']['beta'].split(sep)]
+    pwp_flags = [int(_) for _ in cfp['PRM_FLAGS']['pwp'].split(sep)]
+    ur_thr_flags = [int(_) for _ in cfp['PRM_FLAGS']['ur_thr'].split(sep)]
+    k_uu_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_uu'].split(sep)]
+    k_ul_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ul'].split(sep)]
+    k_d_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_d'].split(sep)]
+    k_ll_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ll'].split(sep)]
 
     all_prms_flags = np.array([tt_flags,
                                cm_flags,
@@ -234,7 +234,7 @@ def main():
 
     dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
     #=========================================================================
-    # plot the optimization results
+    # plot the hbv variables
     #=========================================================================
     if plot_opt_results_flag:
         print('\n\nPlotting hbv variables...')
@@ -267,7 +267,7 @@ def main():
         plot_kfolds_best_prms(dbs_dir)
 
     #==========================================================================
-    # Plot hbv prms for all cathcments per kfold in 2d
+    # Plot hbv prms for all catchments per kfold in 2d
     #==========================================================================
 
     if plot_2d_prms:
@@ -275,7 +275,7 @@ def main():
         plot_kfolds_best_hbv_prms_2d(dbs_dir)
 
     #============================ ==============================================
-    # Plot parameter final population
+    # Plot final parameter population
     #==========================================================================
 
     if plot_pop_flag:
@@ -287,7 +287,7 @@ def main():
 
 
 if __name__ == '__main__':
-    _save_log_ = False
+    _save_log_ = True
     if _save_log_:
         from datetime import datetime
         from std_logger import StdFileLoggerCtrl

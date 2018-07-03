@@ -332,6 +332,7 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
         shape = db['data']['shape']
 
         prms_labs = db['data']['all_prms_labs']
+        lumped_prms_flag = db['data']['run_as_lump_flag']
 
         out_dir = db['data']['dirs_dict']['main']
         out_dir = os.path.join(out_dir, r'07_2d_kfold_prms')
@@ -386,7 +387,8 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
             shape,
             rows_dict,
             cols_dict,
-            plot_min_max_lims)
+            plot_min_max_lims,
+            lumped_prms_flag)
 
     return
 
@@ -399,7 +401,8 @@ def _plot_kf_prms_2d(
         shape,
         rows_dict,
         cols_dict,
-        plot_min_max_lims):
+        plot_min_max_lims,
+        lumped_prms_flag):
 
     for p_i, prm in enumerate(prms_labs):
         plot_grid = np.full(shape, np.nan)
@@ -409,10 +412,22 @@ def _plot_kf_prms_2d(
 
         plt.figure()
         plt.imshow(plot_grid, origin='lower')
-        plt.colorbar()
+
+        if lumped_prms_flag:
+            for cat in kf_prms_dict:
+                plt.text(cols_dict[cat][0],
+                         rows_dict[cat][0],
+                         cat,
+                         va='center',
+                         ha='center')
+
+        plt.colorbar(orientation='horizontal')
         plt.title(prm)
         plt.ylim(plot_min_max_lims[0], plot_min_max_lims[1])
         plt.xlim(plot_min_max_lims[2], plot_min_max_lims[3])
+
+        plt.xticks([], [])
+        plt.yticks([], [])
         plt.savefig(os.path.join(out_dir, f'{kf_i:02d}_{prm}.png'),
                     bbox_inches='tight')
         plt.close()
@@ -485,8 +500,8 @@ def _kfold_best_prms(
                         yy,
                         stats_arr,
                         cmap=plt.get_cmap('Blues'),
-                        vmin=-np.inf,
-                        vmax=np.inf)
+                        vmin=0.0,
+                        vmax=1e30)
 
     stats_xx, stats_yy = np.meshgrid(np.arange(n_stats_cols),
                                      np.arange(n_params))

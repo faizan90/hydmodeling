@@ -1,6 +1,6 @@
-# cython: nonecheck=True
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: nonecheck=False
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -211,11 +211,12 @@ cpdef dict hbv_mult_cat_loop_py(args):
      n_hm_prms,
      use_step_flag,
      use_step_arr) = args[6]
-     
+
     area_arr = args[7]
  
     inflow_arr = np.zeros(cats_outflow_arr.shape[0], dtype=DT_D_NP)
     qsim_arr = inflow_arr.copy()
+    print((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols))
     outs_arr = np.zeros((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols), 
                         dtype=DT_D_NP)
 
@@ -265,6 +266,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
         stm_to_idx_map)
 
     if signal:
+        print(signal)
         print('\nWARNING: signal was nan for cat: %d!\n' % cat_no)
 
         qsim_arr = np.full(cats_outflow_arr.shape[0], 

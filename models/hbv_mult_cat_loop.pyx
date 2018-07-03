@@ -1,10 +1,12 @@
-# cython: nonecheck=True
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: nonecheck=False
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
 # cython: embedsignature=True
+
+# from timeit import default_timer
 
 from .hbv_loop cimport hbv_loop
 from .routing cimport route_strms
@@ -22,7 +24,7 @@ from .dtypes cimport (
     rnof_q_conv_i,
     err_val_i)
 
-cdef DT_UL use_c = 1
+cdef DT_UL use_c = 0
 
 
 cdef extern from "hbv_c_loop.h" nogil:
@@ -76,6 +78,7 @@ cdef DT_D hbv_mult_cat_loop(
         Py_ssize_t i
         DT_UL n_recs = qsim_arr.shape[0], stm_idx, cat_idx
         DT_D res
+#         DT_D _beg, end_1, end_f
 
     for i in range(n_recs):
         qsim_arr[i] = 0.0
@@ -94,6 +97,8 @@ cdef DT_D hbv_mult_cat_loop(
             &misc_longs[n_stms_i],
             &misc_longs[route_type_i])
 
+#     with gil: _beg = default_timer()
+        
     if use_c == 1:
         res = hbv_c_loop(
             &temp_arr[0, 0],
@@ -125,6 +130,10 @@ cdef DT_D hbv_mult_cat_loop(
             &misc_doubles[err_val_i],
             &misc_longs[opt_flag_i])
 
+#     with gil:
+#         _end_1 = default_timer()
+#         print('%0.8f seconds in hbv_c_loop' % (_end_1 - _beg))
+
     if res == 0.0:
         if (misc_longs[curr_us_stm_i] != -2):
             stm_idx = stm_to_idx_map[misc_longs[1]]
@@ -142,4 +151,9 @@ cdef DT_D hbv_mult_cat_loop(
             with gil: print(
                 ('Incorrect use_obs_flow_flag: %d' % 
                  misc_longs[use_obs_flow_flag_i]))
+
+#     with gil:
+#         _end_f = default_timer()
+#         print('%0.8f seconds in qsim add' % (_end_f - _end_1))
+
     return res

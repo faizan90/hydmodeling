@@ -94,8 +94,8 @@ def _plot_k_pop(
                         yy,
                         stats_arr,
                         cmap=plt.get_cmap('Blues'),
-                        vmin=-np.inf,
-                        vmax=np.inf)
+                        vmin=0.0,
+                        vmax=1e30)
 
     stats_xx, stats_yy = np.meshgrid(np.arange(n_stats_cols),
                                      np.arange(n_params))

@@ -41,6 +41,7 @@ from .models import (
     get_ln_ns_var_res_prt_cy)
 
 from .plotting import (
+    _plot_hbv_kf,
     plot_vars,
     plot_pops,
     plot_kfold_effs,

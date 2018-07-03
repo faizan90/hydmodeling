@@ -8,6 +8,7 @@ Created on %(date)s
 import os
 import timeit
 import shelve
+import shutil
 from functools import partial
 
 import numpy as np
@@ -258,12 +259,14 @@ def solve_cats_sys(
     os.chdir(out_dir)
 
     out_db_dir = os.path.join(out_dir, '01_database')
-    if not os.path.exists(out_db_dir):
-        os.mkdir(out_db_dir)
+    if os.path.exists(out_db_dir):
+        shutil.rmtree(out_db_dir)
+    os.mkdir(out_db_dir)
 
     out_hgs_dir = os.path.join(out_dir, '02_hydrographs')
-    if not os.path.exists(out_hgs_dir):
-        os.mkdir(out_hgs_dir)
+    if os.path.exists(out_hgs_dir):
+        shutil.rmtree(out_hgs_dir)
+    os.mkdir(out_hgs_dir)
 
     dirs_dict = {}
     dirs_dict['main'] = out_dir
@@ -438,8 +441,7 @@ def _solve_k_cats_sys(
         else:
             curr_us_stm = -2
 
-        assert curr_us_stm is not None, (
-            f'Could not find ds for cat {cat}!')
+        assert curr_us_stm is not None, f'Could not find ds for cat: {cat}!'
 
         all_us_cat_stms.append(curr_us_stm)
 
@@ -857,6 +859,11 @@ def _solve_k_cats_sys(
             print('Opt time was: %0.3f seconds\n' %
                   (opt_end_time - opt_strt_time))
 
+            mean_time = (out_db_dict['n_calls'].mean() *
+                         n_cells /
+                         (opt_end_time - opt_strt_time))
+            print(f'{mean_time:0.4f} hbv loops per second!')
+
             # a test of fc and pwp ratio
             _prms = out_db_dict['hbv_prms']
             mean_ratio = _prms[0, pwp_i] / _prms[0, fc_i]
@@ -1084,7 +1091,7 @@ def _solve_k_cats_sys(
 def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
     out_dict = {cat: aux_dict[cat] for cat in cats}
     if lf:
-        out_dict = {cat: np.array([(area_dict[cat] * out_dict[cat]).sum(axis=0)])
+        out_dict = {cat: np.array([((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
                     for cat in cats}
     for cat in cats:
         assert not np.any(np.isnan(out_dict[cat]))
@@ -1102,8 +1109,6 @@ def _get_k_aux_vars_dict(
     area_dict = {cat: in_dict['area_ratios'][cat] for cat in cats}
     out_dict['area_ratios'] = area_dict
 
-    # TODO: this is not final. cats_shape is actually the total shape of the
-    # all catchments on grid. It only matters while plotting
     if run_as_lump_flag:
         n_cats = len(cats)
         loc_rows = max(1, int(0.25 * n_cats))

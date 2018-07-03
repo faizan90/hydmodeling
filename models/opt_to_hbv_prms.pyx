@@ -1,6 +1,6 @@
-# cython: nonecheck=True
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: nonecheck=False
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -80,7 +80,7 @@ cdef void tfm_opt_to_hbv_prms(
                 p1 = bds_dfs[k, 0] + (bds_dfs[k, 1] * opt_prms[k])
                 p2 = bds_dfs[k + 1, 0] + (bds_dfs[k + 1, 1] * opt_prms[k + 1])
                 p3 = bds_dfs[k + 2, 0] + (bds_dfs[k + 2, 1] * opt_prms[k + 2])
-                
+
                 hbv_prms[i, j] += (p1 + ((p2 - p1) * f_vars[m]**p3))
 
             if prms_flags[j, 5]:  # aspect and slope
