@@ -5,6 +5,7 @@ Created on %(date)s
 """
 
 import os
+import sys
 import time
 import timeit
 import pickle
@@ -13,6 +14,8 @@ from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from hydmodeling import (
     solve_cats_sys,
@@ -98,6 +101,11 @@ def main():
         opt_schm_vars_dict['cr_cnst_bds'] = np.array(
             in_opt_schm_vars_dict['cr_cnst_bds'].split(','), dtype=np.float64)
         opt_schm_vars_dict['pop_size_exp'] = in_opt_schm_vars_dict.getfloat('pop_size_exp')
+    elif in_opt_schm_vars_dict['opt_schm'] == 'ROPE':
+        opt_schm_vars_dict['opt_schm'] = 'ROPE'
+        opt_schm_vars_dict['n_par_sets'] = cfp['OPT_HYD_MODEL'].getint('n_par_sets')
+        opt_schm_vars_dict['n_final_sets'] = cfp['OPT_HYD_MODEL'].getint('n_final_sets')
+        opt_schm_vars_dict['n_new_par'] = cfp['OPT_HYD_MODEL'].getint('n_new_par')
     else:
         raise NotImplementedError(
             'Incorrect opt_schm: %s' % in_opt_schm_vars_dict['opt_schm'])

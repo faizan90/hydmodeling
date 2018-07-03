@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from .dtypes import get_fc_pwp_is
-from .hbv_opt import hbv_opt_de
+from .hbv_opt import hbv_opt
 from .py_ftns import hbv_mult_cat_loop_py
 from .misc_ftns import (
     get_aspect_scale_arr_cy,
@@ -778,6 +778,11 @@ def _solve_k_cats_sys(
                 _opt_list.extend([opt_schm_vars_dict['mu_sc_fac_bds'],
                                   opt_schm_vars_dict['cr_cnst_bds'],
                                   pop_size])
+
+            elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
+                _opt_list.extend(opt_schm_vars_dict['n_final_sets'],
+                                 opt_schm_vars_dict['n_new_par'],
+                                  opt_schm_vars_dict['n_par_sets'])
             else:
                 raise Exception
 
@@ -839,16 +844,19 @@ def _solve_k_cats_sys(
         else:
             curr_cat_params.append(cat_area_ratios_arr)
 
+        curr_cat_params.append(opt_schm_vars_dict['opt_schm'])
+
         if calib_run:
             print('\n')
             opt_strt_time = timeit.default_timer()
 
-            if opt_schm_vars_dict['opt_schm'] == 'DE':
-                out_db_dict = hbv_opt_de(curr_cat_params)
+            if opt_schm_vars_dict['opt_schm'] == 'DE' or opt_schm_vars_dict['opt_schm'] == 'ROPE':
+                out_db_dict = hbv_opt(curr_cat_params)
+
             else:
                 raise ValueError(
                     f'opt_schm ({opt_schm_vars_dict["opt_schm"]}) '
-                    'can only be DE!')
+                    'can only be DE or ROPE!')
 
             prms_dict[cat] = (out_db_dict['hbv_prms'],
                               out_db_dict['route_prms'])
