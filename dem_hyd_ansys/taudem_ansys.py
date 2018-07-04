@@ -37,44 +37,6 @@ class TauDEMAnalysis:
 			raise IOError('gage_shp file does not exist at the given '
 						  'location!')
 
-		self.dem_coord_sys = get_ras_props(self.raw_dem_path)[8]
-		self.gage_shp_coord_sys = get_vec_props(self.gage_shp_path, 0)[4]
-
-		assert 'PROJCS' in self.dem_coord_sys, (
-			'DEM coordinate system not projected!')
-
-		assert 'PROJCS' in self.gage_shp_coord_sys, (
-			'Gage shapefile coordinate system not projected!')
-
-		print('\n', 'Raw DEM coord. sys.:\n', self.dem_coord_sys, sep='')
-		print('\n\n',
-			  'Gage shp. coord. sys.:\n',
-			  self.gage_shp_coord_sys,
-			  '\n\n',
-			  sep='')
-
-		try:
-			in_shp_vec = ogr.Open(self.gage_shp_path)
-			in_shp_lyr = in_shp_vec.GetLayer(0)
-			in_lyr_defn = in_shp_lyr.GetLayerDefn()
-			in_field_cnt = in_lyr_defn.GetFieldCount()
-			id_in_fields = False
-
-			for i in range(in_field_cnt):
-				if str(in_lyr_defn.GetFieldDefn(i).name) == str('id'):
-					id_in_fields = True
-					break
-
-			assert id_in_fields
-
-		except AssertionError:
-			print('Field \'id\' does not exist in gage_shp!')
-		finally:
-			in_shp_vec.Destroy()
-
-		if not os_exists(self.outputs_dir):
-			mkdir(self.outputs_dir)
-
 		self.fil = os_join(self.outputs_dir, 'fil.tif')
 		self.fdr = os_join(self.outputs_dir, 'fdr.tif')
 		self.sd8 = os_join(self.outputs_dir, 'sd8.tif')
@@ -129,7 +91,49 @@ class TauDEMAnalysis:
 		self.strm_dist_exe = os_join(self.exes_dir, 'D8HDistToStrm')
 		return
 
+	def _prepare(self):
+		self.dem_coord_sys = get_ras_props(self.raw_dem_path)[8]
+		self.gage_shp_coord_sys = get_vec_props(self.gage_shp_path, 0)[4]
+
+		assert 'PROJCS' in self.dem_coord_sys, (
+			'DEM coordinate system not projected!')
+
+		assert 'PROJCS' in self.gage_shp_coord_sys, (
+			'Gage shapefile coordinate system not projected!')
+
+		print('\n', 'Raw DEM coord. sys.:\n', self.dem_coord_sys, sep='')
+		print('\n\n',
+			  'Gage shp. coord. sys.:\n',
+			  self.gage_shp_coord_sys,
+			  '\n\n',
+			  sep='')
+
+		try:
+			in_shp_vec = ogr.Open(self.gage_shp_path)
+			in_shp_lyr = in_shp_vec.GetLayer(0)
+			in_lyr_defn = in_shp_lyr.GetLayerDefn()
+			in_field_cnt = in_lyr_defn.GetFieldCount()
+			id_in_fields = False
+
+			for i in range(in_field_cnt):
+				if str(in_lyr_defn.GetFieldDefn(i).name) == str('id'):
+					id_in_fields = True
+					break
+
+			assert id_in_fields
+
+		except AssertionError:
+			print('Field \'id\' does not exist in gage_shp!')
+		finally:
+			in_shp_vec.Destroy()
+
+		if not os_exists(self.outputs_dir):
+			mkdir(self.outputs_dir)
+		return
+
 	def __call__(self):
+		self.prepare()
+
 		fil_cmd = '"%s" -z "%s" -fel "%s"' % (self.fil_exe,
 											  self.raw_dem_path,
 											  self.fil)

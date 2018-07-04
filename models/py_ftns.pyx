@@ -35,7 +35,8 @@ from .dtypes cimport (
     n_cells_i,
     n_hbv_prms_i,
     rnof_q_conv_i,
-    err_val_i)
+    err_val_i,
+    min_q_thresh_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -177,7 +178,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
         DT_UL cat, stm, off_idx, n_cells, opt_flag = 0
         DT_UL n_stms, n_hm_prms
 
-        DT_D rnof_q_conv, signal
+        DT_D rnof_q_conv, signal, min_q_thresh
 
         cmap[long, long] cat_to_idx_map, stm_to_idx_map
          
@@ -210,13 +211,13 @@ cpdef dict hbv_mult_cat_loop_py(args):
      use_obs_flow_flag,
      n_hm_prms,
      use_step_flag,
-     use_step_arr) = args[6]
+     use_step_arr,
+     min_q_thresh) = args[6]
 
     area_arr = args[7]
  
     inflow_arr = np.zeros(cats_outflow_arr.shape[0], dtype=DT_D_NP)
     qsim_arr = inflow_arr.copy()
-    print((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols))
     outs_arr = np.zeros((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols), 
                         dtype=DT_D_NP)
 
@@ -242,6 +243,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
     misc_doubles = np.zeros(obj_doubles_ct, dtype=DT_D_NP)
     misc_doubles[rnof_q_conv_i] = rnof_q_conv
     misc_doubles[err_val_i] = err_val
+    misc_doubles[min_q_thresh_i] = min_q_thresh
 
     signal = hbv_mult_cat_loop(
         stm_idxs,
@@ -266,8 +268,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
         stm_to_idx_map)
 
     if signal:
-        print(signal)
-        print('\nWARNING: signal was nan for cat: %d!\n' % cat_no)
+        print('\nWARNING: signal was %f for cat: %d!\n' % (signal, cat_no))
 
         qsim_arr = np.full(cats_outflow_arr.shape[0], 
                            np.nan, 

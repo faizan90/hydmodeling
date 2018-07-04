@@ -85,11 +85,11 @@ cdef DT_D get_ns(
     const DT_D *demr,
     const DT_UL *off_idx,
     ) nogil:
-    
+
     cdef:
         Py_ssize_t i
         DT_D numr = 0.0
-    
+
     for i in range(off_idx[0], x_arr.shape[0]):
         numr += (x_arr[i] - y_arr[i])**2
     return (1.0 - (numr / demr[0]))
@@ -101,7 +101,7 @@ cdef DT_D get_ln_ns(
     const DT_D *demr,
     const DT_UL *off_idx,
     ) nogil:
-    
+
     cdef:
         Py_ssize_t i
         DT_D numr = 0.0
@@ -133,7 +133,7 @@ cdef DT_D get_covariance(
     const DT_D[::1] in_arr_2,
     const DT_UL *off_idx,
     ) nogil: 
-    
+
     cdef:
         Py_ssize_t i
         DT_D _sum = 0.0
@@ -142,14 +142,14 @@ cdef DT_D get_covariance(
         _sum += ((in_arr_1[i] - in_mean_1[0]) * 
                  (in_arr_2[i] - in_mean_2[0]))
     return _sum / (in_arr_1.shape[0] - off_idx[0])
-    
+
 
 cdef DT_D _get_pcorr(
     const DT_D *in_arr_1_std_dev,
     const DT_D *in_arr_2_std_dev,
     const DT_D *arrs_covar
     ) nogil:
-    
+
     return arrs_covar[0] / (in_arr_1_std_dev[0] * in_arr_2_std_dev[0])
 
 
@@ -208,7 +208,7 @@ cdef void del_idx(
     while (i < y_arr.shape[0]):
         if (i != idx[0]):
             y_arr[i] = x_arr[j]
-        
+
         else:
             j += 1
             y_arr[i] = x_arr[j]
@@ -216,8 +216,8 @@ cdef void del_idx(
         i += 1
         j += 1
     return
-    
-    
+
+
 cdef void lin_regsn(
     const DT_D[::1] x_arr,
     const DT_D[::1] y_arr,
@@ -248,8 +248,8 @@ cdef void lin_regsn(
     for i in range(x_arr.shape[0]):
         y_arr_interp[i] = (slope[0] * x_arr[i]) + intercept[0]
     return
-    
-    
+
+
 cdef DT_D get_sum_sq_diff(
     const DT_D[::1] x_arr,
     const DT_D[::1] y_arr,
@@ -263,8 +263,8 @@ cdef DT_D get_sum_sq_diff(
     for i in range(off_idx[0], x_arr.shape[0]):
         sum_sq_diff += (x_arr[i] - y_arr[i])**2
     return sum_sq_diff
-    
-    
+
+
 cdef DT_D get_ln_sum_sq_diff(
     const DT_D[::1] x_arr,
     const DT_D[::1] y_arr,
@@ -355,7 +355,7 @@ cdef void cmpt_tt_from_scale_arr(
 
     cdef:
         Py_ssize_t i
-    
+
     for i in range(n_cells[0]):
         out_tt_arr[i] = cmpt_tt_from_scale(
             &in_scale_arr[i], 
@@ -476,10 +476,10 @@ def get_ns_var_res_cy(
     assert ref_arr.shape[0] == sim_arr.shape[0] == cycle_arr.shape[0], (
         'Inputs have unequal shapes!')
     assert off_idx < ref_arr.shape[0], 'off_idx is too big!'
-    
+
     cdef:
         DT_D numr, demr
-        
+
     numr = get_sum_sq_diff(ref_arr, sim_arr, &off_idx)
     demr = get_sum_sq_diff(ref_arr, cycle_arr, &off_idx)
     return 1 - (numr / demr)
@@ -494,10 +494,10 @@ def get_ln_ns_var_res_cy(
     assert ref_arr.shape[0] == sim_arr.shape[0] == cycle_arr.shape[0], (
         'Inputs have unequal shapes!')
     assert off_idx < ref_arr.shape[0], 'off_idx is too big!'
-    
+
     cdef:
         DT_D numr, demr
-        
+
     numr = get_ln_sum_sq_diff(ref_arr, sim_arr, &off_idx)
     demr = get_ln_sum_sq_diff(ref_arr, cycle_arr, &off_idx)
     return 1 - (numr / demr)
@@ -511,7 +511,7 @@ def lin_regsn_cy(
     cdef:
         DT_D corr, slope, intercept
         DT_D[::1] y_arr_interp
-    
+
     assert x_arr.shape[0] == y_arr.shape[0], 'Inputs have unequal shapes!'
     assert off_idx < x_arr.shape[0], 'off_idx is too big!'
 

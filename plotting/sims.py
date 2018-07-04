@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties as f_props
 
 from ..models import (
-    hbv_c_loop_py,
+    hbv_loop_py,
     get_ns_cy,
     get_ln_ns_cy,
     get_pcorr_cy,
@@ -67,7 +67,8 @@ def _plot_k_pop(
     norm_pop = pop.copy()
     for i in range(pop.shape[0]):
         for j in range(pop.shape[1]):
-            pop[i, j] = (pop[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) + bounds_arr[j, 0]
+            pop[i, j] = ((pop[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) +
+                         bounds_arr[j, 0])
             if not np.isfinite(pop[i, j]):
                 pop[i, j] = bounds_arr[j, 0]
 
@@ -168,7 +169,7 @@ def _plot_k_pop(
     plt.suptitle(title_str, size=tick_font_size + 10)
     plt.subplots_adjust(hspace=0.15)
 
-    plt.savefig(str(Path(out_dir, f'k_{kf_i:02d}_hbv_pop_{cat}.png')),
+    plt.savefig(str(Path(out_dir, f'hbv_pop_{cat}_kf_{kf_i:02d}.png')),
                 bbox_inches='tight')
     plt.close()
 
@@ -189,7 +190,7 @@ def _plot_k_pop(
     ax2.hist(cobj_vals, bins=20)
     ax2.set_xlabel('Obj. ftn. values (-)')
     ax2.set_ylabel('Frequency (-)')
-    plt.savefig(str(Path(out_dir, f'k_{kf_i:02d}_hbv_cobj_cdf_{cat}.png')),
+    plt.savefig(str(Path(out_dir, f'hbv_cobj_cdf_{cat}_kf_{kf_i:02d}.png')),
                 bbox_inches='tight')
 
     # pre_obj_vals
@@ -209,7 +210,7 @@ def _plot_k_pop(
     ax2.hist(pobj_vals, bins=20)
     ax2.set_xlabel('Obj. ftn. values (-)')
     ax2.set_ylabel('Frequency (-)')
-    plt.savefig(str(Path(out_dir, f'k_{kf_i:02d}_hbv_pobj_cdf_{cat}.png')),
+    plt.savefig(str(Path(out_dir, f'hbv_pobj_cdf_{cat}_kf_{kf_i:02d}.png')),
                 bbox_inches='tight')
     return
 
@@ -229,11 +230,12 @@ def plot_pop(cat_db):
         prm_syms = db['data']['all_prms_labs']
 
         calib_db = db['calib']
+
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
             pop = calib_db[kf_str]['pop']
-            bounds_arr = calib_db[kf_str]['bds_arr']
-            prm_syms = calib_db[kf_str]['use_prms_labs']
+            bounds_arr = db['cdata']['bds_arr']
+            prm_syms = db['cdata']['use_prms_labs']
             cobj_vals = calib_db[kf_str]['pop_curr_obj_vals']
             pobj_vals = calib_db[kf_str]['pop_pre_obj_vals']
             _plot_k_pop(
@@ -278,7 +280,7 @@ def _plot_hbv_kf(
     n_recs = temp_dist_arr.shape[1]
     n_cells = temp_dist_arr.shape[0]
 
-    all_outputs_dict = hbv_c_loop_py(
+    all_outputs_dict = hbv_loop_py(
         temp_dist_arr,
         prec_dist_arr,
         pet_dist_arr,
@@ -292,6 +294,8 @@ def _plot_hbv_kf(
     temp_arr = (rarea_arr * temp_dist_arr).sum(axis=0)
     prec_arr = (rarea_arr * prec_dist_arr).sum(axis=0)
     pet_arr = (rarea_arr * pet_dist_arr).sum(axis=0)
+
+    del temp_dist_arr, prec_dist_arr, pet_dist_arr, prms_dist_arr
 
     all_output = all_outputs_dict['outs_arr']
     all_output = (rrarea_arr * all_output).sum(axis=0)
@@ -362,9 +366,9 @@ def _plot_hbv_kf(
                 pass
 
         out_fig_loc = os.path.join(
-            out_dir, f'{kf_i:02d}_HBV_model_plot_{cat}.png')
+            out_dir, f'kf_{kf_i:02d}_HBV_model_plot_{cat}.png')
         out_params_loc = os.path.join(
-            out_dir, f'{kf_i:02d}_HBV_model_params_{cat}.csv')
+            out_dir, f'kf_{kf_i:02d}_HBV_model_params_{cat}.csv')
 
         out_labs = []
         out_labs.extend(prm_syms)
@@ -621,6 +625,8 @@ def _plot_hbv_kf(
                     edgecolor='none',
                     label='Liquid Precipitation')
         sm_ax.plot(sm_arr, lw=0.5, label='Soil Moisture')
+        sm_ax.axhline(fc, color='r', ls='-.', lw=1, label='fc')
+        sm_ax.axhline(pwp, color='b', ls='-.', lw=1, label='pwp')
         tot_run_ax.bar(bar_x,
                        tot_run_arr,
                        width=1.0,
@@ -691,6 +697,7 @@ def _plot_hbv_kf(
             ('P_Corr = %0.4f' % q_correl).rstrip('0'),
             ('TT = %0.4f' % tt).rstrip('0'),
             ('CM = %0.4f' % cm).rstrip('0'),
+            ('P_CM = %0.4f' % p_cm).rstrip('0'),
             ('FC = %0.4f' % fc).rstrip('0'),
             (r'$\beta$ = %0.4f' % beta).rstrip('0'),
             ('PWP = %0.4f' % pwp).rstrip('0'),
@@ -699,7 +706,6 @@ def _plot_hbv_kf(
             ('$K_{ul}$ = %0.4f' % k_ul).rstrip('0'),
             ('$K_d$ = %0.4f' % k_d).rstrip('0'),
             ('$K_{ll}$ = %0.4f' % k_ll).rstrip('0'),
-            ('P_CM = %0.4f' % p_cm).rstrip('0'),
             ''])  #
 
         text = text.reshape(6, 6)
@@ -770,7 +776,7 @@ def _plot_hbv_kf(
                 pass
 
         out_fig_loc = os.path.join(
-            out_dir, f'{kf_i:02d}_HBV_water_bal_{cat}.png')
+            out_dir, f'kf_{kf_i:02d}_HBV_water_bal_{cat}.png')
 
         cum_q = np.cumsum(q_act_arr_diff[off_idx:] / conv_ratio)
 

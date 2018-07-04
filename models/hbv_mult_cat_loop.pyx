@@ -22,7 +22,8 @@ from .dtypes cimport (
     n_cells_i,
     n_hbv_prms_i,
     rnof_q_conv_i,
-    err_val_i)
+    err_val_i,
+    min_q_thresh_i)
 
 cdef DT_UL use_c = 0
 
@@ -77,7 +78,7 @@ cdef DT_D hbv_mult_cat_loop(
     cdef:
         Py_ssize_t i
         DT_UL n_recs = qsim_arr.shape[0], stm_idx, cat_idx
-        DT_D res
+        DT_D res, min_q_thresh = misc_doubles[min_q_thresh_i]
 #         DT_D _beg, end_1, end_f
 
     for i in range(n_recs):
@@ -135,6 +136,10 @@ cdef DT_D hbv_mult_cat_loop(
 #         print('%0.8f seconds in hbv_c_loop' % (_end_1 - _beg))
 
     if res == 0.0:
+        for i in range(n_recs):
+            if qsim_arr[i] < min_q_thresh:
+                qsim_arr[i] = min_q_thresh
+
         if (misc_longs[curr_us_stm_i] != -2):
             stm_idx = stm_to_idx_map[misc_longs[1]]
             for i in range(n_recs):

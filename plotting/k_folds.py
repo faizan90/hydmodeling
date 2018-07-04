@@ -32,6 +32,7 @@ from ..models import (
 
 
 def plot_cat_kfold_effs(args):
+
     cat_db_path, (ann_cyc_flag, hgs_db_path) = args
 
     with shelve.open(cat_db_path.rsplit('.', 1)[0], 'r') as db:
@@ -315,6 +316,7 @@ def plot_cat_kfold_effs(args):
     out_kfold_fig_loc = os.path.join(out_dir, f'kfolds_compare_{cat}.png')
     plt.savefig(out_kfold_fig_loc, bbox_inches='tight', dpi=200)
     plt.close()
+    return
 
 
 def plot_kfolds_best_hbv_prms_2d(dbs_dir):
@@ -331,6 +333,7 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
         kfolds = db['data']['kfolds']
         shape = db['data']['shape']
 
+        bds_dict = db['data']['bds_dict']
         prms_labs = db['data']['all_prms_labs']
         lumped_prms_flag = db['data']['run_as_lump_flag']
 
@@ -378,23 +381,8 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
 
     plot_min_max_lims = (min_row - 1, max_row + 1, min_col - 1, max_col + 1)
 
-    for i in range(1, kfolds + 1):
-        _plot_kf_prms_2d(
-            i,
-            kf_prms_dict[i],
-            out_dir,
-            prms_labs,
-            shape,
-            rows_dict,
-            cols_dict,
-            plot_min_max_lims,
-            lumped_prms_flag)
-
-    return
-
-
-def _plot_kf_prms_2d(
-        kf_i,
+    _plot_kf_prms_2d(
+        kfolds,
         kf_prms_dict,
         out_dir,
         prms_labs,
@@ -402,69 +390,136 @@ def _plot_kf_prms_2d(
         rows_dict,
         cols_dict,
         plot_min_max_lims,
-        lumped_prms_flag):
+        lumped_prms_flag,
+        bds_dict)
+
+    return
+
+
+def _plot_kf_prms_2d(
+        kfolds,
+        kf_prms_dict,
+        out_dir,
+        prms_labs,
+        shape,
+        rows_dict,
+        cols_dict,
+        plot_min_max_lims,
+        lumped_prms_flag,
+        bds_dict):
+
+    loc_rows = max(1, int(0.25 * kfolds))
+    loc_cols = max(1, int(np.ceil(kfolds / loc_rows)))
+
+    sca_fac = 3
+    loc_rows *= sca_fac
+    loc_cols *= sca_fac
+
+    legend_rows = 1
+    legend_cols = loc_cols
+
+    plot_shape = (loc_rows + legend_rows, loc_cols)
 
     for p_i, prm in enumerate(prms_labs):
-        plot_grid = np.full(shape, np.nan)
-        for cat in kf_prms_dict:
-            cell_prms = kf_prms_dict[cat][:, p_i]
-            plot_grid[rows_dict[cat], cols_dict[cat]] = cell_prms
+        curr_row = 0
+        curr_col = 0
+        for kf_i in kf_prms_dict:
+            ax = plt.subplot2grid(
+                plot_shape,
+                loc=(curr_row, curr_col),
+                rowspan=sca_fac,
+                colspan=sca_fac)
 
-        plt.figure()
-        plt.imshow(plot_grid, origin='lower')
+            plot_grid = np.full(shape, np.nan)
+            min_bd, max_bd = bds_dict[prm + '_bds']
+            for cat in kf_prms_dict[kf_i]:
+                cell_prms = kf_prms_dict[kf_i][cat][:, p_i]
+                plot_grid[rows_dict[cat], cols_dict[cat]] = cell_prms
 
-        if lumped_prms_flag:
-            for cat in kf_prms_dict:
-                plt.text(cols_dict[cat][0],
-                         rows_dict[cat][0],
-                         cat,
-                         va='center',
-                         ha='center')
+                if lumped_prms_flag:
+                    _val = str(cell_prms[0])
+                    _bf_pt, _af_pt = _val.split('.')
+                    _af_pt = _af_pt[:(5 - len(_bf_pt))]
+                    _val = f'{_bf_pt}.{_af_pt}'
+                    ax.text(
+                        cols_dict[cat][0],
+                        rows_dict[cat][0],
+                        f'{cat}\n({_val})'.rstrip('0'),
+                        va='center',
+                        ha='center', zorder=2,
+                        rotation=45)
+                else:
+                    ax.text(
+                        int(cols_dict[cat].mean()),
+                        int(rows_dict[cat].mean()),
+                        f'{cat}',
+                        va='center',
+                        ha='center', zorder=2)
 
-        plt.colorbar(orientation='horizontal')
-        plt.title(prm)
-        plt.ylim(plot_min_max_lims[0], plot_min_max_lims[1])
-        plt.xlim(plot_min_max_lims[2], plot_min_max_lims[3])
+            _ps = ax.imshow(
+                plot_grid,
+                origin='lower',
+                cmap=plt.get_cmap('gist_rainbow'),
+                vmin=min_bd,
+                vmax=max_bd,
+                zorder=1)
 
-        plt.xticks([], [])
-        plt.yticks([], [])
-        plt.savefig(os.path.join(out_dir, f'{kf_i:02d}_{prm}.png'),
-                    bbox_inches='tight')
+            ax.set_ylim(plot_min_max_lims[0], plot_min_max_lims[1])
+            ax.set_xlim(plot_min_max_lims[2], plot_min_max_lims[3])
+
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            ax.set_title(f'kfold no: {kf_i}')
+            ax.set_axis_off()
+
+            curr_col += sca_fac
+            if curr_col >= loc_cols:
+                curr_col = 0
+                curr_row += sca_fac
+
+        cb_ax = plt.subplot2grid(
+            plot_shape,
+            loc=(plot_shape[0] - 1, 0),
+            rowspan=1,
+            colspan=legend_cols)
+        cb_ax.set_axis_off()
+        cb = plt.colorbar(_ps,
+                          ax=cb_ax,
+                          fraction=0.4,
+                          aspect=20,
+                          orientation='horizontal')
+        cb.set_label(prm)
+
+        fig = plt.gcf()
+        fig.set_size_inches(
+            (plot_shape[1] * 1.2) + 1, (plot_shape[0] * 1.2) + 1)
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, f'{prm}.png'), bbox_inches='tight')
         plt.close()
     return
 
 
-def plot_kfolds_best_prms(dbs_dir):
+def _kfold_best_prms(cat_db):
 
-    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+    with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
+        cat = db['cat']
+        kfolds = db['data']['kfolds']
+        bds_arr = db['cdata']['bds_arr']
+        best_prms_labs = db['cdata']['use_prms_labs']
 
-    assert cats_dbs
-    for cat_db in cats_dbs:
-        with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
-            cat = db['cat']
-            kfolds = db['data']['kfolds']
-            bds_arr = db['calib']['kf_01']['bds_arr']
-            best_prms_labs = db['calib']['kf_01']['use_prms_labs']
+        out_dir = db['data']['dirs_dict']['main']
+        out_dir = os.path.join(out_dir, r'05_kfolds_perf')
+        if not os.path.exists(out_dir):
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
 
-            out_dir = db['data']['dirs_dict']['main']
-            out_dir = os.path.join(out_dir, r'05_kfolds_perf')
-            if not os.path.exists(out_dir):
-                try:
-                    os.mkdir(out_dir)
-                except:
-                    pass
-
-            best_prms_list = []
-            for i in range(1, kfolds + 1):
-                best_prms_list.append(db['calib'][f'kf_{i:02d}']['opt_prms'])
-
-        _kfold_best_prms(
-            cat, kfolds, best_prms_list, best_prms_labs, bds_arr, out_dir)
-    return
-
-
-def _kfold_best_prms(
-        cat, kfolds, best_prms_list, best_prms_labs, bounds_arr, out_dir):
+        best_prms_list = []
+        for i in range(1, kfolds + 1):
+            best_prms_list.append(db['calib'][f'kf_{i:02d}']['opt_prms'])
 
     plt.figure(figsize=(max(20, best_prms_list[0].shape[0]), 12))
     tick_font_size = 10
@@ -475,16 +530,16 @@ def _kfold_best_prms(
     n_stats_cols = len(stats_cols)
 
     best_params_arr = (
-        (best_params_arr * (bounds_arr[:, 1] - bounds_arr[:, 0])) +
-        bounds_arr[:, 0])
+        (best_params_arr * (bds_arr[:, 1] - bds_arr[:, 0])) +
+        bds_arr[:, 0])
 
-    n_params = bounds_arr.shape[0]
+    n_params = bds_arr.shape[0]
     curr_min = best_params_arr.min(axis=0)
     curr_max = best_params_arr.max(axis=0)
     curr_mean = best_params_arr.mean(axis=0)
     curr_stdev = best_params_arr.std(axis=0)
-    min_opt_bounds = bounds_arr.min(axis=1)
-    max_opt_bounds = bounds_arr.max(axis=1)
+    min_opt_bounds = bds_arr.min(axis=1)
+    max_opt_bounds = bds_arr.max(axis=1)
     xx, yy = np.meshgrid(np.arange(-0.5, n_params, 1),
                          np.arange(-0.5, n_stats_cols, 1))
 
@@ -546,14 +601,14 @@ def _kfold_best_prms(
                                  rowspan=3,
                                  colspan=1,
                                  sharex=stats_ax)
-    plot_range = list(range(0, bounds_arr.shape[0]))
+    plot_range = list(range(0, bds_arr.shape[0]))
     plt_texts = []
     for i in range(kfolds):
         params_ax.plot(plot_range,
                        norm_pop[i],
                        alpha=0.85,
-                       label=f'Fold no: {i}')
-        for j in range(bounds_arr.shape[0]):
+                       label=f'Fold no: {i + 1}')
+        for j in range(bds_arr.shape[0]):
             _ = params_ax.text(
                 plot_range[j],
                 norm_pop[i, j],
@@ -593,6 +648,7 @@ def _kfold_best_prms(
 
 
 def _get_daily_annual_cycle(col_ser):
+
     assert isinstance(col_ser, pd.Series), 'Expected a pd.Series object!'
     col_ser.dropna(inplace=True)
 
@@ -618,6 +674,7 @@ def _get_daily_annual_cycle(col_ser):
 
 
 def get_daily_annual_cycle(in_data_df, n_cpus=1):
+
     annual_cycle_df = pd.DataFrame(index=in_data_df.index,
                                    columns=in_data_df.columns,
                                    dtype=float)

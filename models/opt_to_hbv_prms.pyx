@@ -39,7 +39,6 @@ cdef void tfm_opt_to_hbv_prms(
             # each row in the f_var_infos represents a variable such as soil, 
             # landuse, aspect, slope. Using them to get an hbv parameter is
             # implemented independently
-            # TODO: verify this by prints, something does not look alright
             # TODO: check if the speed gets better if the cells are calculated
             # inside the ifs
             scl_fac = 0.0

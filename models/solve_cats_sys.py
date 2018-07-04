@@ -27,6 +27,20 @@ plt.ioff()
 
 fc_i, pwp_i = get_fc_pwp_is()
 
+all_prms_labs = ['tt',
+                 'cm',
+                 'pcm',
+                 'fc',
+                 'beta',
+                 'pwp',
+                 'ur_thr',
+                 'k_uu',
+                 'k_ul',
+                 'k_d',
+                 'k_ll']
+
+_at_sp_labs = ['min', 'max', 'exp']
+
 
 def solve_cats_sys(
     in_cats_prcssed_df,
@@ -223,6 +237,9 @@ def solve_cats_sys(
                 fin_tem_dfs_dict[cat].shape[1] ==
                 fin_pet_dfs_dict[cat].shape[1])
 
+        assert np.all(fin_ppt_dfs_dict[cat].values >= 0)
+        assert np.all(fin_pet_dfs_dict[cat].values >= 0)
+
         if np.any(np.isnan(fin_ppt_dfs_dict[cat].values)):
             raise RuntimeError('NaNs in precipiation!')
         if np.any(np.isnan(fin_tem_dfs_dict[cat].values)):
@@ -253,7 +270,8 @@ def solve_cats_sys(
 
     kwargs = {'use_obs_flow_flag': use_obs_flow_flag,
               'run_as_lump_flag': run_as_lump_flag,
-              'use_step_flag': use_step_flag}
+              'use_step_flag': use_step_flag,
+              'min_q_thresh': min_q_thresh}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -408,6 +426,7 @@ def _solve_k_cats_sys(
     use_obs_flow_flag = int(kwargs['use_obs_flow_flag'])
     run_as_lump_flag = int(kwargs['run_as_lump_flag'])
     use_step_flag = int(kwargs['use_step_flag'])
+    min_q_thresh = float(kwargs['min_q_thresh'])
 
     assert in_use_step_ser.shape[0] == in_q_df.shape[0]
 
@@ -416,7 +435,21 @@ def _solve_k_cats_sys(
     else:
         use_step_arr = np.array([0], dtype=np.int32)
 
+    print('\n\n')
+    print('#' * 10)
+    print('#' * 10)
+    print(f'Run type: {calib_valid_suff}')
+    print(f'n_cats: {in_cats_prcssed_df.shape[0]}')
+    print(f'kfold no: {kf_i}')
+
+    print(f'n_cpus: {n_cpus}')
+    print(f'n_recs: {cats_outflow_arr.shape[0]}')
+    print(f'min_q_thresh: {min_q_thresh}')
+
     for cat in in_cats_prcssed_df.index:
+        print('\n')
+        print('#' * 10)
+        print(f'Going through cat: {cat}')
         curr_cat_params = []
 
         curr_us_stm = None
@@ -457,9 +490,7 @@ def _solve_k_cats_sys(
                 curr_us_stms_idxs.append(chk_opt_stm_idx)
 
         n_stms = len(curr_us_stms_idxs)
-
-        if calib_run:
-            print('n_stms:', n_stms, ', cat_no:', cat)
+        print(f'n_stms: {n_stms}')
 
         q_arr = in_q_df[cat].values.copy(order='C')
         tem_arr = in_tem_dfs_dict[cat].values.T.copy(order='C')
@@ -487,35 +518,7 @@ def _solve_k_cats_sys(
                     q_arr.shape[0])
 
         n_cells = ini_arr.shape[0]
-        print('n_cells:', n_cells)
-
-        all_prms_labs = ['tt',
-                         'cm',
-                         'pcm',
-                         'fc',
-                         'beta',
-                         'pwp',
-                         'ur_thr',
-                         'k_uu',
-                         'k_ul',
-                         'k_d',
-                         'k_ll']
-
-        _at_sp_labs = ['min', 'max', 'exp']
-
-#         all_prms_flags = np.array([
-#             [0, 0, 0, 1, 0, 0],  # tt
-#             [0, 0, 0, 1, 0, 0],  # cm
-#             [0, 0, 0, 1, 0, 0],  # pcm
-#             [1, 0, 0, 0, 0, 0],  # fc
-#             [1, 0, 0, 0, 0, 0],  # beta
-#             [1, 0, 0, 0, 0, 0],  # pwp
-#             [1, 0, 0, 0, 0, 0],  # ur_thr
-#             [1, 0, 0, 0, 0, 0],  # k_uu
-#             [1, 0, 0, 0, 0, 0],  # k_ul
-#             [1, 0, 0, 0, 0, 0],  # k_d
-#             [1, 0, 0, 0, 0, 0],  # k_ll
-#             ], dtype=np.int32)
+        print(f'n_cells: {n_cells}')
 
         assert np.all(all_prms_flags >= 0) & np.all(all_prms_flags <= 1)
         assert (np.all(all_prms_flags.sum(axis=1) > 0) &
@@ -573,6 +576,7 @@ def _solve_k_cats_sys(
                 n_soil = soil_arr.shape[1]
                 assert soil_arr.shape[0] == n_cells
                 print(f'n_soil: {n_soil}')
+                print('soil class ratios:\n', soil_arr.sum(axis=0) / n_cells)
                 assert np.all((soil_arr >= 0) & (soil_arr <= 1))
 
                 if aux_vars:
@@ -780,6 +784,7 @@ def _solve_k_cats_sys(
                 _opt_list.extend([opt_schm_vars_dict['mu_sc_fac_bds'],
                                   opt_schm_vars_dict['cr_cnst_bds'],
                                   pop_size])
+                print(f'n_pop: {pop_size}')
             else:
                 raise Exception
 
@@ -826,7 +831,8 @@ def _solve_k_cats_sys(
                                 use_obs_flow_flag,
                                 n_hm_params,
                                 use_step_flag,
-                                use_step_arr])
+                                use_step_arr,
+                                min_q_thresh])
 
         assert cat_area_ratios_arr.shape[0] == n_cells
 
@@ -842,7 +848,6 @@ def _solve_k_cats_sys(
             curr_cat_params.append(cat_area_ratios_arr)
 
         if calib_run:
-            print('\n')
             opt_strt_time = timeit.default_timer()
 
             if opt_schm_vars_dict['opt_schm'] == 'DE':
@@ -856,13 +861,12 @@ def _solve_k_cats_sys(
                               out_db_dict['route_prms'])
 
             opt_end_time = timeit.default_timer()
-            print('Opt time was: %0.3f seconds\n' %
-                  (opt_end_time - opt_strt_time))
-
             mean_time = (out_db_dict['n_calls'].mean() *
                          n_cells /
                          (opt_end_time - opt_strt_time))
             print(f'{mean_time:0.4f} hbv loops per second!')
+            print('Opt time was: %0.3f seconds' %
+                  (opt_end_time - opt_strt_time))
 
             # a test of fc and pwp ratio
             _prms = out_db_dict['hbv_prms']
@@ -872,28 +876,6 @@ def _solve_k_cats_sys(
 
         else:
             out_db_dict = hbv_mult_cat_loop_py(curr_cat_params)
-
-        out_db_dict['ini_arr'] = ini_arr
-        out_db_dict['calib_valid_suff'] = calib_valid_suff
-        out_db_dict['opt_schm_vars_dict'] = opt_schm_vars_dict
-
-        out_db_dict['tem_arr'] = tem_arr
-        out_db_dict['ppt_arr'] = ppt_arr
-        out_db_dict['pet_arr'] = pet_arr
-        out_db_dict['qact_arr'] = q_arr
-
-        out_db_dict['use_step_flag'] = use_step_flag
-        out_db_dict['use_step_arr'] = use_step_arr
-
-        if calib_run:
-            out_db_dict['use_prms_labs'] = use_prms_labs
-            out_db_dict['bds_arr'] = bounds_arr
-
-            out_db_dict['use_prms_idxs'] = use_prms_idxs
-            out_db_dict['all_prms_flags'] = all_prms_flags
-            out_db_dict['prms_span_idxs'] = prms_span_idxs
-            out_db_dict['aux_vars'] = aux_vars
-            out_db_dict['aux_var_infos'] = aux_var_infos
 
         if n_stms:
             curr_us_stm_idx = stm_to_idx_dict[curr_us_stm]
@@ -914,6 +896,10 @@ def _solve_k_cats_sys(
             raise NotImplementedError('Implement stuff for this routing '
                                       'type!')
 
+        out_db_dict['calib_valid_suff'] = calib_valid_suff
+        out_db_dict['use_step_flag'] = use_step_flag
+        out_db_dict['use_step_arr'] = use_step_arr
+
         _out_db_file = os.path.join(dirs_dict['db'], f'cat_{cat}')
         with shelve.open(_out_db_file, 'c', writeback=True) as db:
 
@@ -923,6 +909,12 @@ def _solve_k_cats_sys(
             if calib_run:
                 if 'calib' not in db:
                     db['calib'] = {}
+
+                out_db_dict['tem_arr'] = tem_arr
+                out_db_dict['ppt_arr'] = ppt_arr
+                out_db_dict['pet_arr'] = pet_arr
+                out_db_dict['qact_arr'] = q_arr
+                out_db_dict['ini_arr'] = ini_arr
 
                 db['calib'][f'kf_{kf_i:02d}'] = out_db_dict
 
@@ -948,6 +940,7 @@ def _solve_k_cats_sys(
                 db['data']['shape'] = cat_shape
                 db['data']['rows'] = cat_rows_idxs
                 db['data']['cols'] = cat_cols_idxs
+                db['data']['bds_dict'] = bounds_dict
 
             if not calib_run:
                 if 'vdata' not in db:
@@ -973,6 +966,17 @@ def _solve_k_cats_sys(
                     db['cdata']['aspect_slope_scale_arr'] = (
                         aspect_slope_scale_arr)
 
+                db['cdata']['opt_schm_vars_dict'] = opt_schm_vars_dict
+
+                db['cdata']['use_prms_labs'] = use_prms_labs
+                db['cdata']['bds_arr'] = bounds_arr
+
+                db['cdata']['use_prms_idxs'] = use_prms_idxs
+                db['cdata']['all_prms_flags'] = all_prms_flags
+                db['cdata']['prms_span_idxs'] = prms_span_idxs
+                db['cdata']['aux_vars'] = aux_vars
+                db['cdata']['aux_var_infos'] = aux_var_infos
+
         in_cats_prcssed_df.loc[cat, 'prcssed'] = True
         in_cats_prcssed_df.loc[cat, 'optd'] = True
 
@@ -981,9 +985,9 @@ def _solve_k_cats_sys(
                 in_stms_prcssed_df.loc[_, 'optd'] = True
                 in_stms_prcssed_df.loc[_, 'prcssed'] = True
 
-    if True:
+    if False:
         # in case of debugging
-        print('\nPlotting stream inflows\\outflows and catchment outflows...')
+        print('Plotting stream inflows\\outflows and catchment outflows...')
         for stm in in_dem_net_df.index:
             if not stm in in_stms_prcssed_df.index:
                 continue
@@ -1085,6 +1089,9 @@ def _solve_k_cats_sys(
             db[db_str][kf_str] = {}
             for key in hgs_dict:
                 db[db_str][kf_str][key] = hgs_dict[key]
+
+    print('#' * 10)
+    print('#' * 10)
     return prms_dict
 
 

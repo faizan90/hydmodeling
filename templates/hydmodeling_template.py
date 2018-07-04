@@ -9,12 +9,18 @@ import time
 import timeit
 import pickle
 import configparser as cfpm
+from psutil import cpu_count
 from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
 
 from hydmodeling import (
+    TauDEMAnalysis,
+    get_stms,
+    crt_strms_rltn_tree,
+    plot_strm_rltn,
+    get_cumm_cats,
     solve_cats_sys,
     plot_vars,
     plot_pops,
@@ -28,34 +34,165 @@ def load_pickle(in_file, mode='rb'):
         return pickle.load(_pkl_hdl)
     return
 
+# TODO: Plot subset of the data in hi-res, to see events of interest.
+# TODO: Have a lower limit of the obj. val. if optmized obj. val is below this
+# choose observed flow for further downstream cats.
+# TODO: Have a fallback scenario for cats that cant be optimized.
+# TODO: Have an array to record time spent in each ftn during optimization.
+# TODO: Add a scaling factor to ppt (or pet) as an optimization parameter.
+# TODO: Somehow identify flows that might be erroneous.
+# passing flags from infilling?
+# TODO: Have months or year as the axis labels. This can derived from units.
+# TODO: Have units, display them on figs.
+# TODO: Text in the middle of the runoff err plot to show over- and under-
+# estimation.
+# TODO: Try having an upper-upper-upper reservoir outlet. Maybe that captures
+# the peak correctly. Maybe the response is not linear.
+# TODO: Have disaggregation. Maybe that makes getting the peak better rather
+# than having another reservoir.
+# TODO: Plot auxillary parameters as well.
+
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
     cfp.read('config_hydmodeling_template.ini')
 
-    n_cpus = cfp['DEFAULT'].getint('n_cpus')
+    n_cpus = cfp['DEFAULT']['n_cpus']
+    if n_cpus == 'auto':
+        n_cpus = cpu_count() - 1
+    else:
+        n_cpus = int(n_cpus)
 
     main_dir = cfp['DEFAULT']['main_dir']
     os.chdir(main_dir)
 
+    hyd_analysis_flag = False
+    get_stms_flag = False
+    create_stms_rels_flag = False
+    create_cumm_cats_flag = False
     optimize_flag = False
-    plot_opt_results_flag = False
-    plot_kfold_results_flag = False
-    plot_kfold_prms_flag = False
+    plot_hbv_vars_flag = False
+    plot_kfold_perfs_flag = False
+    plot_best_kfold_prms_flag = False
     plot_pop_flag = False
-    plot_2d_prms = False
-    test_model_flag = False
+    plot_2d_kfold_prms_flag = False
 
-    optimize_flag = True
-    plot_opt_results_flag = True
-    plot_kfold_results_flag = True
-    plot_kfold_prms_flag = True
-    plot_pop_flag = True
-    plot_2d_prms = True
-#     test_model_flag = True
+#     hyd_analysis_flag = True
+#     get_stms_flag = True
+#     create_stms_rels_flag = True
+#     create_cumm_cats_flag = True
+#     optimize_flag = True
+#     plot_hbv_vars_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_pop_flag = True
+    plot_2d_kfold_prms_flag = True
+
+    # =============================================================================
+    # This performs the hydrological preprocessing
+    # =============================================================================
+    show_ansys_stdout = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
+    hyd_ansys_runtype = cfp['HYD_ANSYS']['hyd_ansys_runtype']
+    calc_for_cats_only = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
+    max_cell_move = cfp['HYD_ANSYS'].getint('max_cell_move')
+    strm_strt_thresh = cfp['HYD_ANSYS'].getint('strm_strt_thresh')
+
+    out_pre_proc_dir = cfp['HYD_ANSYS']['out_pre_proc_dir']
+    in_dem_loc = cfp['HYD_ANSYS']['in_dem_loc']
+    in_gage_shp_loc = cfp['HYD_ANSYS']['in_gage_shp_loc']
+
+    hyd_ansys = TauDEMAnalysis(
+        in_dem_loc,
+        in_gage_shp_loc,
+        out_pre_proc_dir,
+        n_cpus=n_cpus)
+    hyd_ansys.run_type = hyd_ansys_runtype
+    hyd_ansys.strm_orign_thresh = strm_strt_thresh
+    hyd_ansys.max_cell_move = max_cell_move
+    hyd_ansys.verbose = show_ansys_stdout
+    hyd_ansys.area_flag = calc_for_cats_only
+
+    if hyd_analysis_flag:
+        hyd_ansys()
+
+    #=========================================================================
+    # This extracts the required streams for catchments from the shapefiles
+    # that we get from TauDEM
+    #=========================================================================
+    in_dem_net_shp_file = hyd_ansys.dem_net
+    in_wat_ids_file = hyd_ansys.watersheds_ids
+    out_dem_net_shp_file = cfp['GET_STMS']['out_dem_net_shp_file']
+    in_dem_file = hyd_ansys.fil
+    in_cats_file = hyd_ansys.watersheds_shp
+    in_gauges_coords_file = hyd_ansys.gage_shp_moved
+    gauge_coords_field_name = cfp['GET_STMS']['gauge_coords_field_name']
+    out_df_file = cfp['GET_STMS']['dem_net_file']
+    out_wat_ids_file = cfp['GET_STMS']['out_wat_ids_file']
+    sep = cfp['DEFAULT']['sep']
+
+    if get_stms_flag:
+        get_stms(in_dem_net_shp_file,
+                 in_wat_ids_file,
+                 in_dem_file,
+                 in_cats_file,
+                 in_gauges_coords_file,
+                 out_dem_net_shp_file,
+                 out_df_file,
+                 out_wat_ids_file,
+                 sep,
+                 gauge_coords_field_name)
+
+    #=========================================================================
+    # This creates a stream relationship tree based on their order of
+    # occurrence in the out_df_file
+    #=========================================================================
+    prcss_cats_list = cfp['CREATE_STM_RELS']['prcss_cats_list'].split(sep)
+
+    out_hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
+    out_cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
+    out_stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
+    watershed_field_name = cfp['CREATE_STM_RELS']['watershed_field_name']
+    out_cats_rel_fig_path = cfp['CREATE_STM_RELS']['out_cats_rel_fig_path']
+
+    if not os.path.exists(out_hyd_mod_dir):
+        os.mkdir(out_hyd_mod_dir)
+
+    if create_stms_rels_flag:
+        crt_strms_rltn_tree(
+            prcss_cats_list,
+            out_df_file,
+            in_cats_file,
+            out_cats_prcssed_file,
+            out_stms_prcssed_file,
+            sep,
+            watershed_field_name)
+
+        plot_strm_rltn(
+            hyd_ansys.watersheds_shp,
+            hyd_ansys.gage_shp_moved,
+            out_dem_net_shp_file,
+            out_df_file,
+            out_cats_prcssed_file,
+            out_stms_prcssed_file,
+            prcss_cats_list,
+            out_cats_rel_fig_path,
+            sep=sep)
+
+    out_cumm_cat_shp = cfp['CUMM_CATS']['out_cumm_cat_shp']
+    out_cumm_cat_descrip_file = cfp['CUMM_CATS']['out_cumm_cat_descrip_file']
+
+    if create_cumm_cats_flag:
+        get_cumm_cats(
+            in_cats_file,
+            watershed_field_name,
+            out_wat_ids_file,
+            sep,
+            out_cumm_cat_shp,
+            out_cumm_cat_descrip_file,
+            sep)
 
     #==========================================================================
-    # Optimize distributed model
+    # Optimize hydrologic model
     #==========================================================================
     in_hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
 
@@ -81,7 +218,8 @@ def main():
     water_bal_step_size = cfp['OPT_HYD_MODEL'].getint('water_bal_step_size')
     route_type = cfp['OPT_HYD_MODEL'].getint('route_type')
     kfolds = cfp['OPT_HYD_MODEL'].getint('kfolds')
-    compare_ann_cyc_flag = cfp['OPT_HYD_MODEL'].getboolean('compare_ann_cyc_flag')
+    compare_ann_cyc_flag = cfp['OPT_HYD_MODEL'].getboolean(
+        'compare_ann_cyc_flag')
     use_obs_flow_flag = cfp['OPT_HYD_MODEL'].getboolean('use_obs_flow_flag')
 
     min_q_thresh = cfp['OPT_HYD_MODEL'].getfloat('min_q_thresh')
@@ -97,47 +235,49 @@ def main():
             in_opt_schm_vars_dict['mu_sc_fac_bds'].split(sep), dtype=np.float64)
         opt_schm_vars_dict['cr_cnst_bds'] = np.array(
             in_opt_schm_vars_dict['cr_cnst_bds'].split(sep), dtype=np.float64)
-        opt_schm_vars_dict['pop_size_exp'] = in_opt_schm_vars_dict.getfloat('pop_size_exp')
+        opt_schm_vars_dict['pop_size_exp'] = in_opt_schm_vars_dict.getfloat(
+            'pop_size_exp')
     else:
         raise NotImplementedError(
             'Incorrect opt_schm: %s' % in_opt_schm_vars_dict['opt_schm'])
 
     opt_schm_vars_dict['max_iters'] = in_opt_schm_vars_dict.getint('max_iters')
-    opt_schm_vars_dict['max_cont_iters'] = in_opt_schm_vars_dict.getint('max_cont_iters')
-    opt_schm_vars_dict['obj_ftn_tol'] = in_opt_schm_vars_dict.getfloat('obj_ftn_tol')
-    opt_schm_vars_dict['prm_pcnt_tol'] = in_opt_schm_vars_dict.getfloat('prm_pcnt_tol')
+    opt_schm_vars_dict['max_cont_iters'] = in_opt_schm_vars_dict.getint(
+        'max_cont_iters')
+    opt_schm_vars_dict['obj_ftn_tol'] = in_opt_schm_vars_dict.getfloat(
+        'obj_ftn_tol')
+    opt_schm_vars_dict['prm_pcnt_tol'] = in_opt_schm_vars_dict.getfloat(
+        'prm_pcnt_tol')
 
     bounds_dict = OrderedDict()
-    if test_model_flag:
-        lump_prms_df = pd.read_csv(cfp['TEST_MODEL']['test_params_loc'], index_col=0, sep=sep)
-
-        bounds_dict['tt_bds'] = [float(lump_prms_df.loc['TT', 'value'])] * 2
-        bounds_dict['cm_bds'] = [float(lump_prms_df.loc['cm', 'value'])] * 2
-        bounds_dict['pcm_bds'] = [float(lump_prms_df.loc['p_cm', 'value'])] * 2
-        bounds_dict['fc_bds'] = [float(lump_prms_df.loc['FC', 'value'])] * 2
-        bounds_dict['beta_bds'] = [float(lump_prms_df.loc['Beta', 'value'])] * 2
-        bounds_dict['pwp_bds'] = [float(lump_prms_df.loc['PWP', 'value'])] * 2
-        bounds_dict['ur_thr_bds'] = [float(lump_prms_df.loc['ur_thresh', 'value'])] * 2
-        bounds_dict['k_uu_bds'] = [float(lump_prms_df.loc['K_u', 'value'])] * 2
-        bounds_dict['k_ul_bds'] = [float(lump_prms_df.loc['K_l', 'value'])] * 2
-        bounds_dict['k_d_bds'] = [float(lump_prms_df.loc['K_d', 'value'])] * 2
-        bounds_dict['k_ll_bds'] = [float(lump_prms_df.loc['K_ll', 'value'])] * 2
-
-    else:
-        bounds_dict['tt_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['tt'].split(sep)]
-        bounds_dict['cm_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['cm'].split(sep)]
-        bounds_dict['pcm_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['pcm'].split(sep)]
-        bounds_dict['fc_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['fc'].split(sep)]
-        bounds_dict['beta_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['beta'].split(sep)]
-        bounds_dict['pwp_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['pwp'].split(sep)]
-        bounds_dict['ur_thr_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['ur_thr'].split(sep)]
-        bounds_dict['k_uu_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_uu'].split(sep)]
-        bounds_dict['k_ul_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_ul'].split(sep)]
-        bounds_dict['k_d_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_d'].split(sep)]
-        bounds_dict['k_ll_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['k_ll'].split(sep)]
-        bounds_dict['exp_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['exp'].split(sep)]
-        bounds_dict['musk_lag_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_lag'].split(sep)]
-        bounds_dict['musk_wt_bds'] = [float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(sep)]
+    bounds_dict['tt_bds'] = [float(_)
+                             for _ in cfp['PARAM_BOUNDS']['tt'].split(sep)]
+    bounds_dict['cm_bds'] = [float(_)
+                             for _ in cfp['PARAM_BOUNDS']['cm'].split(sep)]
+    bounds_dict['pcm_bds'] = [float(_)
+                              for _ in cfp['PARAM_BOUNDS']['pcm'].split(sep)]
+    bounds_dict['fc_bds'] = [float(_)
+                             for _ in cfp['PARAM_BOUNDS']['fc'].split(sep)]
+    bounds_dict['beta_bds'] = [float(_)
+                               for _ in cfp['PARAM_BOUNDS']['beta'].split(sep)]
+    bounds_dict['pwp_bds'] = [float(_)
+                              for _ in cfp['PARAM_BOUNDS']['pwp'].split(sep)]
+    bounds_dict['ur_thr_bds'] = [
+        float(_) for _ in cfp['PARAM_BOUNDS']['ur_thr'].split(sep)]
+    bounds_dict['k_uu_bds'] = [float(_)
+                               for _ in cfp['PARAM_BOUNDS']['k_uu'].split(sep)]
+    bounds_dict['k_ul_bds'] = [float(_)
+                               for _ in cfp['PARAM_BOUNDS']['k_ul'].split(sep)]
+    bounds_dict['k_d_bds'] = [float(_)
+                              for _ in cfp['PARAM_BOUNDS']['k_d'].split(sep)]
+    bounds_dict['k_ll_bds'] = [float(_)
+                               for _ in cfp['PARAM_BOUNDS']['k_ll'].split(sep)]
+    bounds_dict['exp_bds'] = [float(_)
+                              for _ in cfp['PARAM_BOUNDS']['exp'].split(sep)]
+    bounds_dict['musk_lag_bds'] = [
+        float(_) for _ in cfp['PARAM_BOUNDS']['musk_lag'].split(sep)]
+    bounds_dict['musk_wt_bds'] = [
+        float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(sep)]
 
     tt_flags = [int(_) for _ in cfp['PRM_FLAGS']['tt'].split(sep)]
     cm_flags = [int(_) for _ in cfp['PRM_FLAGS']['cm'].split(sep)]
@@ -151,17 +291,18 @@ def main():
     k_d_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_d'].split(sep)]
     k_ll_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ll'].split(sep)]
 
-    all_prms_flags = np.array([tt_flags,
-                               cm_flags,
-                               pcm_flags,
-                               fc_flags,
-                               beta_flags,
-                               pwp_flags,
-                               ur_thr_flags,
-                               k_uu_flags,
-                               k_ul_flags,
-                               k_d_flags,
-                               k_ll_flags], dtype=np.int32)
+    all_prms_flags = np.array(
+        [tt_flags,
+         cm_flags,
+         pcm_flags,
+         fc_flags,
+         beta_flags,
+         pwp_flags,
+         ur_thr_flags,
+         k_uu_flags,
+         k_ul_flags,
+         k_d_flags,
+         k_ll_flags], dtype=np.int32)
 
     if optimize_flag:
         in_cats_prcssed_df = pd.read_csv(in_cats_prcssed_file,
@@ -196,13 +337,17 @@ def main():
         aux_cell_vars_dict['rows'] = in_cell_vars_dict['rows']
         aux_cell_vars_dict['cols'] = in_cell_vars_dict['cols']
         if np.any(all_prms_flags[:, 1]):
-            aux_cell_vars_dict['lulc_ratios'] = in_cell_vars_dict['lulc_ratios']
+            aux_cell_vars_dict['lulc_ratios'] = in_cell_vars_dict[
+                'lulc_ratios']
         if np.any(all_prms_flags[:, 2]):
-            aux_cell_vars_dict['soil_ratios'] = in_cell_vars_dict['soil_ratios']
+            aux_cell_vars_dict['soil_ratios'] = in_cell_vars_dict[
+                'soil_ratios']
         if np.any(all_prms_flags[:, 3]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['aspect'] = in_cell_vars_dict['aspect'].reshape(-1, 1)
+            aux_cell_vars_dict['aspect'] = in_cell_vars_dict[
+                'aspect'].reshape(-1, 1)
         if np.any(all_prms_flags[:, 4]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['slope'] = in_cell_vars_dict['slope'].reshape(-1, 1)
+            aux_cell_vars_dict['slope'] = in_cell_vars_dict[
+                'slope'].reshape(-1, 1)
 
         solve_cats_sys(
             in_cats_prcssed_df,
@@ -233,14 +378,20 @@ def main():
             opt_schm_vars_dict)
 
     dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
+
     #=========================================================================
     # plot the hbv variables
     #=========================================================================
-    if plot_opt_results_flag:
+
+    if plot_hbv_vars_flag:
         print('\n\nPlotting hbv variables...')
 
-        plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean('plot_simple_opt_flag')
-        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean('plot_wat_bal_flag')
+        _beg_t = timeit.default_timer()
+
+        plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_simple_opt_flag')
+        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_wat_bal_flag')
 
         plot_vars(
             dbs_dir,
@@ -249,45 +400,73 @@ def main():
             plot_dist_wat_bal_flag,
             n_cpus)
 
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Done. Took {_tot_t:0.4f} seconds!')
+
     #=========================================================================
     # Plot the k-fold results
     #=========================================================================
 
-    if plot_kfold_results_flag:
+    if plot_kfold_perfs_flag:
+        _beg_t = timeit.default_timer()
+
         hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
+
         print('\n\nPlotting kfold results...')
         plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Done. Took {_tot_t:0.4f} seconds!')
 
     #=========================================================================
     # Plot the best k-fold params
     #=========================================================================
 
-    if plot_kfold_prms_flag:
+    if plot_best_kfold_prms_flag:
+        _beg_t = timeit.default_timer()
+
         print('\n\nPlotting best kfold prms...')
-        plot_kfolds_best_prms(dbs_dir)
+        plot_kfolds_best_prms(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Done. Took {_tot_t:0.4f} seconds!')
 
     #==========================================================================
     # Plot hbv prms for all catchments per kfold in 2d
     #==========================================================================
 
-    if plot_2d_prms:
+    if plot_2d_kfold_prms_flag:
+        _beg_t = timeit.default_timer()
+
         print('\n\nPlotting HBV prms in 2D...')
         plot_kfolds_best_hbv_prms_2d(dbs_dir)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Done. Took {_tot_t:0.4f} seconds!')
 
     #============================ ==============================================
     # Plot final parameter population
     #==========================================================================
 
     if plot_pop_flag:
+        _beg_t = timeit.default_timer()
+
         print('\n\nPlotting DE population...')
         plot_pops(dbs_dir, n_cpus)
-    #==========================================================================
 
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Done. Took {_tot_t:0.4f} seconds!')
+    #==========================================================================
     return
 
 
 if __name__ == '__main__':
-    _save_log_ = True
+    _save_log_ = False
     if _save_log_:
         from datetime import datetime
         from std_logger import StdFileLoggerCtrl

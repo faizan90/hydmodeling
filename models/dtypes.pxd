@@ -12,7 +12,7 @@ cdef Py_ssize_t n_stms_i, n_hbv_cols_i, use_obs_flow_flag_i, opt_flag_i
 cdef Py_ssize_t n_cells_i, n_hbv_prms_i, use_step_flag_i
 
 cdef Py_ssize_t rnof_q_conv_i, demr_i, ln_demr_i, mean_ref_i, act_std_dev_i
-cdef Py_ssize_t err_val_i
+cdef Py_ssize_t err_val_i, min_q_thresh_i
 
 cdef DT_UL n_hbv_cols, n_hbv_prms, obj_longs_ct, obj_doubles_ct
 cdef DT_D err_val

@@ -6,7 +6,7 @@ from pathos.multiprocessing import ProcessPool
 from .sims import plot_hbv, plot_pop, _plot_hbv_kf
 from .k_folds import (
     plot_cat_kfold_effs,
-    plot_kfolds_best_prms,
+    _kfold_best_prms,
     plot_kfolds_best_hbv_prms_2d)
 
 
@@ -75,6 +75,32 @@ def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
     else:
         for cat_paths in cats_paths_gen:
             plot_cat_kfold_effs(cat_paths)
+    return
+
+
+def plot_kfolds_best_prms(dbs_dir, n_cpus):
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+
+    assert cats_dbs
+    n_cats = len(cats_dbs)
+    n_cpus = min(n_cats, n_cpus)
+
+    cats_paths_gen = (cat_db for cat_db in cats_dbs)
+
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            print(list(mp_pool.uimap(_kfold_best_prms, cats_paths_gen)))
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in plot_kfolds_best_prms:', msg)
+    else:
+        for cat_paths in cats_paths_gen:
+            _kfold_best_prms(cat_paths)
     return
 
 

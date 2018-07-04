@@ -59,7 +59,8 @@ from .dtypes cimport (
     ln_demr_i,
     mean_ref_i,
     act_std_dev_i,
-    err_val_i)
+    err_val_i,
+    min_q_thresh_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -156,7 +157,7 @@ cpdef dict hbv_opt_de(args):
         #======================================================================
         # All other variables
         DT_UL n_cpus, tid
-        DT_D ddmv # a temporary double
+        DT_D min_q_thresh, ddmv # a temporary double
         DT_D mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
 
         DT_UL[::1] n_calls
@@ -201,7 +202,8 @@ cpdef dict hbv_opt_de(args):
      use_obs_flow_flag,
      n_hm_prms,
      use_step_flag,
-     use_step_arr) = args[6]
+     use_step_arr,
+     min_q_thresh) = args[6]
 
     (area_arr,
      prms_idxs, 
@@ -327,6 +329,7 @@ cpdef dict hbv_opt_de(args):
     obj_doubles[mean_ref_i] = mean_ref
     obj_doubles[act_std_dev_i] = act_std_dev
     obj_doubles[err_val_i] = err_val
+    obj_doubles[min_q_thresh_i] = min_q_thresh
 
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]
@@ -433,6 +436,7 @@ cpdef dict hbv_opt_de(args):
 #         _end = timeit.default_timer()
 #         print('%0.8f seconds in obj_ftn\n' % (_end - _beg))
 
+#         print('%d Ini res:' % i, res)
 #         raise Exception(res)
         if res == err_val:
             pre_obj_vals[i] = (2 + rand_c()) * err_val
@@ -451,8 +455,7 @@ cpdef dict hbv_opt_de(args):
         for k in range(n_prms):
             best_params[k] = pop[i, k]
 
-    print('fval_pre_global:', fval_pre_global)
-    print('Catchment:', cat_no)
+    print('Initial min. obj. value:', fval_pre_global)
 #     raise Exception('Stop!')
 
     while ((iter_curr < max_iters) and
@@ -498,18 +501,11 @@ cpdef dict hbv_opt_de(args):
 
             # mutate
             for k in range(n_prms):
-#                 if prm_opt_stop_arr[k]:
-#                     v_j_g[tid, k] = pop[0, k]
-#                     continue
-
                 v_j_g[tid, k] = (
                     pop[r0, k] + (mu_sc_fac * (pop[r1, k] - pop[r2, k])))
 
             # keep parameters in bounds
             for k in range(n_prms):
-#                 if prm_opt_stop_arr[k]:
-#                     continue
-
                 if ((v_j_g[tid, k] < 0) or (v_j_g[tid, k] > 1)):
                     v_j_g[tid, k] = rand_c_mp(&seeds_arr[tid])
 
@@ -518,11 +514,6 @@ cpdef dict hbv_opt_de(args):
             r_r[tid] = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * n_prms)
 
             for k in range(n_prms):
-#                 if prm_opt_stop_arr[k]:
-#                     curr_opt_prms[tid, k] = pop[0, k]
-#                     u_j_gs[t_i, k] = pop[0, k]
-#                     continue
-
                 if ((rand_c_mp(&seeds_arr[tid]) <= cr_cnst) or
                     (k == r_r[tid])):
 
@@ -535,10 +526,6 @@ cpdef dict hbv_opt_de(args):
 
             # check if pwp is ge than fc and adjust
             for i in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
-#                 if (prm_opt_stop_arr[prms_span_idxs[pwp_i, 0] + i] or
-#                     prm_opt_stop_arr[prms_span_idxs[fc_i, 0] + i]):
-#                     continue  # what if the parameter to change is locked?
- 
                 if (curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i] <
                     curr_opt_prms[tid, prms_span_idxs[fc_i, 0] + i]):
                     continue
@@ -635,49 +622,48 @@ cpdef dict hbv_opt_de(args):
 
 #             print(iter_curr, 'global min: %0.8f' % fval_pre_global)
 
-#         if iter_curr > 20:
-#             ddmv = 0.0
-#             for k in range(n_prms):
-#                 if prm_opt_stop_arr[k]:
-#                     ddmv += 1
-#    
-#             if ddmv == n_prms:
-#                 print('\n***All parameters optimized!***\n', sep='')
-#                 break
-#    
-#             for k in range(n_prms):
-# #             for k in prange(n_prms, 
-# #                             schedule='static',
-# #                             nogil=True, 
-# #                             num_threads=n_cpus):
-#                 if prm_opt_stop_arr[k]:
-#                     continue
-#  
-#                 prms_mean_thrs_arr[k, 0] = 0.0
-#                 for j in range(n_pop):
-#                     prms_mean_thrs_arr[k, 0] += pop[j, k]
-#   
-#                 prms_mean_thrs_arr[k, 0] /= n_pop
-#                 prms_mean_thrs_arr[k, 1] = (
-#                     (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
-#                 prms_mean_thrs_arr[k, 2] = (
-#                     (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
-#    
-#                 prm_opt_stop_arr[k] = 1
-#                 for j in range(n_pop):
-#                     if ((pop[j, k] < prms_mean_thrs_arr[k, 1]) or
-#                         (pop[j, k] > prms_mean_thrs_arr[k, 2])):
-#                         prm_opt_stop_arr[k] = 0
-#                         break
-#  
-#                 if not prm_opt_stop_arr[k]:
-#                     continue
-#    
-# #                 with gil:
-#                 print('\nParameter no. %d optimized at iteration: %d!' %
-#                       (k, iter_curr))
-#                 ddmv += 1
-#                 print('%d out of %d to go!\n' % (n_prms - int(ddmv), n_prms))
+        if (iter_curr >= 300) & ((iter_curr % 20) == 0):
+            ddmv = 0.0
+            for k in range(n_prms):
+                if prm_opt_stop_arr[k]:
+                    continue
+
+                prms_mean_thrs_arr[k, 0] = 0.0
+                for j in range(n_pop):
+                    prms_mean_thrs_arr[k, 0] += pop[j, k]
+
+                prms_mean_thrs_arr[k, 0] /= n_pop
+                prms_mean_thrs_arr[k, 1] = (
+                    (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+                prms_mean_thrs_arr[k, 2] = (
+                    (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+
+                prm_opt_stop_arr[k] = 1
+                for j in range(n_pop):
+                    if ((pop[j, k] < prms_mean_thrs_arr[k, 1]) or
+                        (pop[j, k] > prms_mean_thrs_arr[k, 2])):
+                        prm_opt_stop_arr[k] = 0
+                        break
+
+                if not prm_opt_stop_arr[k]:
+                    continue
+
+                ddmv = 1.0
+
+#                 with gil:
+                print('Parameter no. %d optimized at iteration: %d!' %
+                      (k, iter_curr))
+            if ddmv:
+                ddmv = 0.0
+                for k in range(n_prms):
+                    if prm_opt_stop_arr[k]:
+                        ddmv += 1
+
+                print('%d out of %d to go!' % (n_prms - int(ddmv), n_prms))
+
+            if ddmv == n_prms:
+                print('***All parameters optimized!***', sep='')
+                break
 
         iter_curr += 1
 
@@ -720,7 +706,7 @@ cpdef dict hbv_opt_de(args):
         stm_to_idx_map)
 
     print('Number of iterations:', iter_curr)
-    print('Objective function value:', fval_pre_global)
+    print('Final min. obj. value value:', fval_pre_global)
     print('Successful tries:', n_succ)
     print('Last successful try at:', last_succ_i)
     print('cont_iter:', cont_iter)
