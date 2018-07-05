@@ -42,7 +42,7 @@ def load_pickle(in_file, mode='rb'):
 # TODO: Add a scaling factor to ppt (or pet) as an optimization parameter.
 # TODO: Somehow identify flows that might be erroneous.
 # passing flags from infilling?
-# TODO: Have months or year as the axis labels. This can derived from units.
+# TODO: Have months or year as the axis labels. This can be derived from units.
 # TODO: Have units, display them on figs.
 # TODO: Text in the middle of the runoff err plot to show over- and under-
 # estimation.
@@ -79,13 +79,13 @@ def main():
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
-#     create_stms_rels_flag = True
+    create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
-#     optimize_flag = True
-#     plot_hbv_vars_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_pop_flag = True
+    optimize_flag = True
+    plot_hbv_vars_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_pop_flag = True
     plot_2d_kfold_prms_flag = True
 
     # =============================================================================

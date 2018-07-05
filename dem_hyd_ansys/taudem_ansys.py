@@ -132,7 +132,7 @@ class TauDEMAnalysis:
 		return
 
 	def __call__(self):
-		self.prepare()
+		self._prepare()
 
 		fil_cmd = '"%s" -z "%s" -fel "%s"' % (self.fil_exe,
 											  self.raw_dem_path,
