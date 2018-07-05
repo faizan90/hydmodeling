@@ -550,7 +550,7 @@ cpdef dict hbv_opt_de(args):
                     curr_opt_prms[tid, k] = (0.99 *
                                              rand_c_mp(&seeds_arr[tid]) *
                                              curr_opt_prms[tid, k + 1])
-                    u_j_gs[i, k] = curr_opt_prms[tid, k]
+                    u_j_gs[t_i, k] = curr_opt_prms[tid, k]
 
             res = obj_ftn(
                 &tid,

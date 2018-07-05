@@ -559,6 +559,7 @@ def _solve_k_cats_sys(
 
                 aux_var_infos.append([0, lulc_arr.shape[1]])
                 aux_vars.append(lulc_arr.ravel())
+
             else:
                 aux_var_infos.append([0, 0])
 
