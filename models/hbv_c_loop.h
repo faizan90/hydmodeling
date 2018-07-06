@@ -47,7 +47,7 @@ DT_D hbv_c_loop(
 	 * implementation of hbv_loop in c
 	 */
 
-	size_t i, j, k, m, n, p, cur_i, out_inc_n;
+	size_t i, j, k, m, n, p, cur_p, out_inc_n;
 
 	// var idxs
 	size_t snow_i, lppt_i, somo_i, rnof_i, evtn_i;
@@ -56,7 +56,7 @@ DT_D hbv_c_loop(
 	// vars
 	DT_D temp, prec, petn, pre_snow, snow_melt, lppt, pre_somo;
 	DT_D pre_ur_sto, ur_uo_rnof, ur_lo_rnof, ur_lr_seep, lr_rnof;
-	DT_D rel_fc_beta, cell_area, pre_lr_sto, p_cm;
+	DT_D rel_fc_beta, cell_area, pre_lr_sto, p_cm, avail_somo;
 
 	// prm idxs
 	size_t tt_i, cm_i, pwp_i, fc_i, beta_i, k_uu_i;
@@ -95,13 +95,12 @@ DT_D hbv_c_loop(
 	k_ll_i = 10;
 
 	if (*opt_flag) {
-		out_inc_n =  *n_vars_outs_arr;
+		out_inc_n = *n_vars_outs_arr;
 	}
 
 	else {
 		out_inc_n = ((*n_time_steps) + 1) * *n_vars_outs_arr;
 	}
-
 
 	// assign initial values
 	for (i = 0, j = 0;
@@ -118,10 +117,8 @@ DT_D hbv_c_loop(
 
 	for (i = 0, j = 0, k = 0, m = 0;
 		 j < (*n_cells * *n_time_steps);
-		 i = (i + *n_prms), j = (j + *n_time_steps),
-				 k = (k + out_inc_n), ++m) {
+		 i = (i + *n_prms), j = (j + *n_time_steps), k = (k + out_inc_n), ++m) {
 
-//		printf("i:%d, j:%d, k:%d, m:%d\n", i, j, k, m);
 		temp_j_arr = (DT_D *) &temp_arr[j];
         prec_j_arr = (DT_D *) &prec_arr[j];
         petn_j_arr = (DT_D *) &petn_arr[j];
@@ -139,25 +136,24 @@ DT_D hbv_c_loop(
         k_ul = prms_j_arr[k_ul_i];
         k_d = prms_j_arr[k_d_i];
     	k_ll = prms_j_arr[k_ll_i];
-//        printf("%0.5f,%0.5f,%0.5f,%0.5f,%0.5f,%0.5f,%0.5f,%0.5f,%0.5f,%0.5f,%0.5f\n",
-//        		tt, cm, p_cm, fc, beta, pwp, ur_thr, k_uu, k_ul, k_d, k_ll);
 
         cell_area = area_arr[m];
 
-        pre_snow = outs_j_arr[snow_i];
-        pre_somo = outs_j_arr[somo_i];
-        pre_ur_sto = outs_j_arr[ur_i];
-        pre_lr_sto = outs_j_arr[lr_i];
+		pre_snow = outs_j_arr[snow_i];
+		pre_somo = outs_j_arr[somo_i];
+		pre_ur_sto = outs_j_arr[ur_i];
+		pre_lr_sto = outs_j_arr[lr_i];
+
         for (n = 0, p = *n_vars_outs_arr;
              n < *n_time_steps;
              ++n, p = (p + *n_vars_outs_arr)) {
 
         	if (*opt_flag) {
-        		cur_i = 0;
+        		cur_p = 0;
         	}
 
         	else {
-        		cur_i = p;
+        		cur_p = p;
         	}
 
             temp = temp_j_arr[n];
@@ -166,73 +162,77 @@ DT_D hbv_c_loop(
 
             // snow and liquid ppt
             if (temp < tt) {
-                outs_j_arr[cur_i + snow_i] = pre_snow + prec;
-                outs_j_arr[cur_i + lppt_i] = 0.0;
+                outs_j_arr[cur_p + snow_i] = pre_snow + prec;
+                outs_j_arr[cur_p + lppt_i] = 0.0;
             }
             else {
                 snow_melt = ((cm + (p_cm * prec)) * (temp - tt));
-            	outs_j_arr[cur_i + snow_i] = max(0.0,  pre_snow - snow_melt);
-                outs_j_arr[cur_i + lppt_i] = prec + min(pre_snow, snow_melt);
+            	outs_j_arr[cur_p + snow_i] = max(0.0,  pre_snow - snow_melt);
+                outs_j_arr[cur_p + lppt_i] = prec + min(pre_snow, snow_melt);
             }
-            pre_snow = outs_j_arr[cur_i + snow_i];
-
-            lppt = outs_j_arr[cur_i + lppt_i];
+            pre_snow = outs_j_arr[cur_p + snow_i];
+            lppt = outs_j_arr[cur_p + lppt_i];
 
             // soil moisture and ET
-            if (pre_somo < 0) {
-            	return -(*err_val);
-            }
+			//if rel_fc_beta goes above 1 i.e. pre_somo > fc, that is self-
+			//corrected in the next step by reducing the sm and giving that
+			//water to runoff.
+            rel_fc_beta = pow((pre_somo / fc), beta);
+            avail_somo = pre_somo + (lppt * (1 - rel_fc_beta));
 
     		if (pre_somo > pwp) {
-    			outs_j_arr[cur_i + evtn_i] = petn;
+    			outs_j_arr[cur_p + evtn_i] = min(avail_somo, petn);
     		}
     		else {
-    			outs_j_arr[cur_i + evtn_i] = (pre_somo / fc) * petn;
+    			outs_j_arr[cur_p + evtn_i] = min(
+    					avail_somo, (pre_somo / fc) * petn);
     		}
 
-    		rel_fc_beta = pow((pre_somo / fc), beta);
+			//sometimes somo goes slightly below 0 for certain parameters'
+			//combinations, also this will allow for drought modelling
+			//without causing problems.
+			//comparison with 0.0 for rounding errors in case avail_somo and
+			//outs_j_arr[i, evtn_i] are almost equal
+            outs_j_arr[cur_p + somo_i] =  max(
+                    0.0, avail_somo - outs_j_arr[cur_p + evtn_i]);
 
-            outs_j_arr[cur_i + somo_i] = (pre_somo -
-                                      outs_j_arr[cur_i + evtn_i] +
-                                      (lppt * (1 - rel_fc_beta)));
-            pre_somo = outs_j_arr[cur_i + somo_i];
-            outs_j_arr[cur_i + rnof_i] = lppt * rel_fc_beta;
+            pre_somo = outs_j_arr[cur_p + somo_i];
+
+            // total runoff
+            outs_j_arr[cur_p + rnof_i] = lppt * rel_fc_beta;
 
             // runonff, upper reservoir, upper outlet
-            outs_j_arr[cur_i + ur_uo_i] = (
+            outs_j_arr[cur_p + ur_uo_i] = (
             	max(0.0, (pre_ur_sto - ur_thr) * k_uu));
-            ur_uo_rnof = outs_j_arr[cur_i + ur_uo_i];
-
-            // seepage to groundwater
-            outs_j_arr[cur_i + ur_lr_i] = (
-            	max(0.0, (pre_ur_sto - ur_uo_rnof) * k_d));
-            ur_lr_seep = outs_j_arr[cur_i + ur_lr_i];
+            ur_uo_rnof = outs_j_arr[cur_p + ur_uo_i];
 
             // runoff, upper reservoir, lower outlet
-            outs_j_arr[cur_i + ur_lo_i] = (
-            	max(0.0, (pre_ur_sto -
-						  ur_uo_rnof -
-						  ur_lr_seep) * k_ul));
-            ur_lo_rnof = outs_j_arr[cur_i + ur_lo_i];
+            outs_j_arr[cur_p + ur_lo_i] = (
+            	max(0.0, (pre_ur_sto - ur_uo_rnof) * k_ul));
+            ur_lo_rnof = outs_j_arr[cur_p + ur_lo_i];
+
+            // seepage to groundwater
+            outs_j_arr[cur_p + ur_lr_i] = (
+            	max(0.0, (pre_ur_sto - ur_uo_rnof - ur_lo_rnof) * k_d));
+            ur_lr_seep = outs_j_arr[cur_p + ur_lr_i];
 
             // upper reservoir storage
-            outs_j_arr[cur_i + ur_i] = (
+            outs_j_arr[cur_p + ur_i] = (
             	max(0.0,
             		(pre_ur_sto -
             		 ur_uo_rnof -
 					 ur_lo_rnof -
 					 ur_lr_seep +
-					 outs_j_arr[cur_i + rnof_i])));
-            pre_ur_sto = outs_j_arr[cur_i + ur_i];
+					 outs_j_arr[cur_p + rnof_i])));
+            pre_ur_sto = outs_j_arr[cur_p + ur_i];
 
             // lower reservoir runoff and storage
             lr_rnof = pre_lr_sto * k_ll;
-            outs_j_arr[cur_i + lr_i] = (pre_lr_sto + ur_lr_seep - lr_rnof);
-            pre_lr_sto = outs_j_arr[cur_i + lr_i];
+            outs_j_arr[cur_p + lr_i] = (pre_lr_sto + ur_lr_seep - lr_rnof);
+            pre_lr_sto = outs_j_arr[cur_p + lr_i];
 
             // upper and lower reservoirs combined discharge
-            qsim_arr[n] += (rnof_q_conv[0] *
-                    		cell_area *
+            qsim_arr[n] += (rnof_q_conv[0] * cell_area *
 							(ur_uo_rnof + ur_lo_rnof + lr_rnof));
         }
 	}
