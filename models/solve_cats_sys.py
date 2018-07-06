@@ -780,9 +780,10 @@ def _solve_k_cats_sys(
                                   pop_size])
 
             elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
-                _opt_list.extend(opt_schm_vars_dict['n_final_sets'],
+                _opt_list.extend([opt_schm_vars_dict['n_final_sets'],
                                  opt_schm_vars_dict['n_new_par'],
-                                  opt_schm_vars_dict['n_par_sets'])
+                                  opt_schm_vars_dict['n_par_sets'],
+                                 opt_schm_vars_dict['perc']])
             else:
                 raise Exception
 
@@ -844,7 +845,10 @@ def _solve_k_cats_sys(
         else:
             curr_cat_params.append(cat_area_ratios_arr)
 
-        curr_cat_params.append(opt_schm_vars_dict['opt_schm'])
+        if opt_schm_vars_dict['opt_schm'] == 'DE':
+            curr_cat_params.append(0)
+        if opt_schm_vars_dict['opt_schm'] == 'ROPE':
+            curr_cat_params.append(1)
 
         if calib_run:
             print('\n')

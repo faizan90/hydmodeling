@@ -62,7 +62,7 @@ from .dtypes cimport (
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
-DT_S = np.str
+#DT_S = np.str
 
 
 cdef extern from "rand_gen_mp.h" nogil:
@@ -89,28 +89,34 @@ cdef void initialize_parameter_space(
         DT_UL[:, ::1] prms_flags,
         DT_UL[:, :, ::1] prms_idxs):
 
+    cdef Py_ssize_t k, i, j, m
+
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]
         bds_dfs[k, 1] = bounds[k, 1] - bounds[k, 0]
+
         if np.isclose(bds_dfs[k, 1], 0.0):
             prm_opt_stop_arr[k] = 1
+
             print('Parameter no. %d with a value of %0.6f is a constant!' %
                   (k, bounds[k, 0]))
-    # initiate parameter space (only for first call)
+
+    # initiate parameter space
     for i in range(n_par_sets):
         for k in range(n_prms):
             pop_raw[i, k] = (<DT_D> i) / pop_size_ol
+
     # shuffle the parameters around, in space
     for i in range(n_prms):
         random.shuffle(idxs_shuff_pop)
         for j in range(n_par_sets):
             params_tmp[j] = pop_raw[<DT_UL> idxs_shuff_pop[j], i]
+
         for j in range(n_par_sets):
             if prm_opt_stop_arr[i]:
                 pop[j, i] = 0.0
             else:
                 pop[j, i] = params_tmp[j]
-    # all other calls
 
     for i in range(n_par_sets):
         # bring all pwps below fcs
@@ -118,16 +124,20 @@ cdef void initialize_parameter_space(
             if (pop[i, prms_span_idxs[pwp_i, 0] + j] <
                 pop[i, prms_span_idxs[fc_i, 0] + j]):
                 continue
+
             # arbitrary decrease
             pop[i, prms_span_idxs[pwp_i, 0] + j] = (
                 0.99 * rand_c() * pop[i, prms_span_idxs[fc_i, 0] + j])
+
         for j in range(n_hbv_prms):
             for m in range(3, 6):
                 if not prms_flags[j, m]:
                     continue
+
                 k = prms_idxs[j, m, 0]
                 if pop[i, k + 1] >= pop[i, k]:
                     continue
+
                 pop[i, k] = 0.99 * rand_c() * pop[i, k + 1]
     return
 
@@ -146,6 +156,7 @@ cdef tuple select_best_params(
          DT_UL[::1] depth_arr
          DT_D[:,::1] chull
          DT_D[:, ::1] acc_pars = np.zeros((n_acc_pars, all_pars.shape[1]), dtype=np.float64)
+         Py_ssize_t i, j
 
     sort_idxs = np.argsort(res).copy(order = 'c').astype(np.int32)
     for i in range(n_acc_pars):
@@ -217,7 +228,7 @@ cpdef dict hbv_opt(args):
         DT_D[::1] obj_ftn_wts, obj_doubles
         DT_D[:, ::1] curr_opt_prms, bounds, bds_dfs, prms_mean_thrs_arr
 
-        DT_S opt_schm
+        DT_UL opt_schm
         #======================================================================
 
         #======================================================================
@@ -237,19 +248,19 @@ cpdef dict hbv_opt(args):
         DT_D[::1] mu_sc_fac_bds, cr_cnst_bds
         DT_D[:, ::1] pop, pop_raw, v_j_g, u_j_gs
         
-        # TODO: save populatiopn state at certain iterations to see how they evolve 
+        # TODO: save population state at certain iterations to see how they evolve
         #======================================================================
 
         #======================================================================
         # ROPE related parameters
-        DT_UL n_par_sets, n_final_sets, n_new_par, n_acc_pars
-        DT_D perc, tol_ROPE, conv_thresh
+        DT_UL n_final_sets, n_new_par, n_acc_pars, counter
+        DT_D perc
         DT_D res_new
         #======================================================================
 
         #======================================================================
         # HBV related parameters
-        DT_D rnof_q_conv
+        DT_D rnof_q_conv, ratio, conv_thresh
         DT_D[:, :, ::1] hbv_prms
         #======================================================================
 
@@ -282,13 +293,14 @@ cpdef dict hbv_opt(args):
         DT_ULL[::1] seeds_arr
         #======================================================================
 
+    # opt_schm: 0 = DE, 1 = ROPE
     opt_schm = args[8]
 
     bounds = args[0]
 
     obj_ftn_wts = args[1]
 
-    if opt_schm == 'DE':
+    if opt_schm == 0:
         (mu_sc_fac_bds,
          cr_cnst_bds,
          n_par_sets,
@@ -297,10 +309,11 @@ cpdef dict hbv_opt(args):
          obj_ftn_tol,
          prm_pcnt_tol) = args[2]
 
-    if opt_schm == 'ROPE':
+    if opt_schm == 1:
         (n_final_sets,
          n_new_par,
          n_par_sets,
+         perc,
          max_iters,
          max_cont_iters,
          obj_ftn_tol,
@@ -344,19 +357,23 @@ cpdef dict hbv_opt(args):
     n_prms = bounds.shape[0]
     n_recs = cats_outflow_arr.shape[0]
 
+    pop_size_ol = n_par_sets - 1
+
     # initialization DE
-    if opt_schm == 'DE':
+    if opt_schm == 0:
         idx_rng = np.arange(0, n_par_sets, 1, dtype=DT_UL_NP)
         r_r = np.zeros(n_cpus, dtype=DT_UL_NP)
         del_idx_rng = np.zeros((n_cpus, pop_size_ol), dtype=DT_UL_NP)
         choice_arr = np.zeros((n_cpus, 3), dtype=DT_UL_NP)
 
     # initialization ROPE
-    if opt_schm == 'ROPE':
+    if opt_schm == 1:
+        n_acc_pars = int(np.floor(perc * n_par_sets))
         pars_acc = np.zeros((n_acc_pars, n_prms), dtype=np.float64)
         bounds_new = np.zeros_like(bounds)
+        ratio = 10000
+        conv_thresh = 1 + prm_pcnt_tol
 
-    pop_size_ol = n_par_sets - 1
     n_calls = np.zeros(n_cpus, dtype=DT_UL_NP)
     seeds_arr = np.zeros(n_cpus, dtype=np.uint64)
 
@@ -464,32 +481,7 @@ cpdef dict hbv_opt(args):
     obj_doubles[act_std_dev_i] = act_std_dev
     obj_doubles[err_val_i] = err_val
 
-    if opt_schm == 'DE':
-        initialize_parameter_space(
-            bds_dfs,
-            n_prms,
-            bounds,
-            prm_opt_stop_arr,
-            n_par_sets,
-            pop_raw,
-            pop_size_ol,
-            idxs_shuff_pop,
-            pop,
-            params_tmp,
-            prms_span_idxs,
-            prms_flags,
-            prms_idxs)
-
-    if opt_schm == 'ROPE':
-        #generation of vectors to calculate depth
-        uvecs = gen_usph_vecs_mp(int(1e4), bounds.shape[0], n_cpus)
-        params_temp_arr = pop.copy()
-        cdef:
-            Py_ssize_t i, j
-            DT_UL counter = 0
-            DT_UL[::1] depths
-
-        initialize_parameter_space(
+    initialize_parameter_space(
                 bds_dfs,
                 n_prms,
                 bounds,
@@ -515,6 +507,7 @@ cpdef dict hbv_opt(args):
     # for the selected parameters, get obj vals
 #     tid = 0
 #     for i in range(n_par_sets):
+    #run all initial parameter sets once
     for i in prange(n_par_sets, 
                     schedule='dynamic',
                     nogil=True, 
@@ -525,7 +518,6 @@ cpdef dict hbv_opt(args):
             curr_opt_prms[tid, k] = pop[i, k]
 
 #         print(['%0.5f'  % _ for _ in curr_opt_prms[tid, :]])
-
         res = obj_ftn(
             &tid,
             n_calls,
@@ -571,14 +563,14 @@ cpdef dict hbv_opt(args):
 
         if np.isnan(pre_obj_vals[i]):
             raise RuntimeError('res is Nan!')
-
         fval_pre_global = pre_obj_vals[i]
-##todo: why doing this for all par_sets?
+##todo: Why to call it for each parameter set?
         for k in range(n_prms):
             best_params[k] = pop[i, k]
 
-    if opt_schm == 'ROPE':
+    if opt_schm == 1:
         # chose parameters with best NS
+        uvecs = gen_usph_vecs_mp(int(1e2), bounds.shape[0], n_cpus)
         chull_pts, pars_acc = select_best_params(
                     pre_obj_vals,
                     n_acc_pars,
@@ -593,18 +585,24 @@ cpdef dict hbv_opt(args):
     print('Catchment:', cat_no)
 #     raise Exception('Stop!')
 
-    if opt_schm == 'ROPE':
-        while iter_curr < max_iters and (cont_iter < max_cont_iters):
+    params_temp_arr = pop.copy()
+
+
+    if opt_schm == 1:
+        print(iter_curr, max_iters, cont_iter, max_cont_iters, ratio, conv_thresh)
+        while iter_curr < max_iters and (cont_iter < max_cont_iters) and ratio > conv_thresh:
             cont_iter += 1
+            counter = 0
             set_new_bounds(bds_dfs, bounds, chull_pts)
             #calculate new parameter factors
             while counter < pop.shape[0]:
                 for i in range(params_temp_arr.shape[0]):
+                    #print(seeds_arr[tid])
                     for j in range(params_temp_arr.shape[1]):
-                        params_temp_arr[i, j] = 0.99 * rand_c_mp(seeds_arr[tid])
+                        params_temp_arr[i, j] = 0.99 * rand_c_mp(&seeds_arr[tid])
                     # check if pwp is ge than fc and adjust
                     if params_temp_arr[i,2] < params_temp_arr[i,4]:
-                        params_temp_arr[i, 4] = 0.99 * rand_c_mp(seeds_arr[tid]) * params_temp_arr[i,2]
+                        params_temp_arr[i, 4] = 0.99 * rand_c_mp(&seeds_arr[tid]) * params_temp_arr[i,2]
                 # calculate depth of new points
                 depths = depth_ftn_mp(chull_pts, params_temp_arr, uvecs, n_cpus)
 
@@ -625,6 +623,9 @@ cpdef dict hbv_opt(args):
                         nogil=True,
                         num_threads=n_cpus):
                 tid = threadid()
+
+                for k in range(n_prms):
+                    curr_opt_prms[tid,k] = pop[j, k]
 
                 res = obj_ftn(
                     &tid,
@@ -665,6 +666,8 @@ cpdef dict hbv_opt(args):
 
                 with gil:
                     print('mIter %d, jIter %d:, %0.3f' % (iter_curr, j, res))
+                    print('current residual %d', res)
+
 
             chull_pts, pars_acc = select_best_params(
                 pre_obj_vals,
@@ -673,11 +676,11 @@ cpdef dict hbv_opt(args):
                 uvecs,
                 n_cpus,
                 &res_new)
-
+            print('res_new:', res_new)
             iter_curr += 1
 
 
-    if opt_schm == 'DE':
+    if opt_schm == 0:
         while ((iter_curr < max_iters) and
                (0.5 * (tol_pre + tol_curr) > obj_ftn_tol) and
                (cont_iter < max_cont_iters)):
@@ -837,7 +840,7 @@ cpdef dict hbv_opt(args):
 
             for k in range(n_prms):
                 pop[j, k] = u_j_gs[j, k]
-                         
+
             pre_obj_vals[j] = fval_curr
 #             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
 #             total_vars.append((mu_sc_fac, cr_cnst))
@@ -858,51 +861,55 @@ cpdef dict hbv_opt(args):
 
 #             print(iter_curr, 'global min: %0.8f' % fval_pre_global)
 
-        if iter_curr > 20:
-            ddmv = 0.0
-            for k in range(n_prms):
-                if prm_opt_stop_arr[k]:
-                    ddmv += 1
-   
-            if ddmv == n_prms:
-                print('\n***All parameters optimized!***\n', sep='')
-                break
-   
-            for k in range(n_prms):
-#             for k in prange(n_prms, 
-#                             schedule='static',
-#                             nogil=True, 
-#                             num_threads=n_cpus):
-                if prm_opt_stop_arr[k]:
-                    continue
- 
-                prms_mean_thrs_arr[k, 0] = 0.0
-                for j in range(n_par_sets):
-                    prms_mean_thrs_arr[k, 0] += pop[j, k]
-  
-                prms_mean_thrs_arr[k, 0] /= n_par_sets
-                prms_mean_thrs_arr[k, 1] = (
-                    (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
-                prms_mean_thrs_arr[k, 2] = (
-                    (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
-   
-                prm_opt_stop_arr[k] = 1
-                for j in range(n_par_sets):
-                    if ((pop[j, k] < prms_mean_thrs_arr[k, 1]) or
-                        (pop[j, k] > prms_mean_thrs_arr[k, 2])):
-                        prm_opt_stop_arr[k] = 0
-                        break
- 
-                if not prm_opt_stop_arr[k]:
-                    continue
-   
-#                 with gil:
-                print('\nParameter no. %d optimized at iteration: %d!' %
-                      (k, iter_curr))
-                ddmv += 1
-                print('%d out of %d to go!\n' % (n_prms - int(ddmv), n_prms))
 
-        iter_curr += 1
+            if (iter_curr >= 300) & ((iter_curr % 20) == 0):
+                ddmv = 0.0
+                for k in range(n_prms):
+    #             for k in prange(n_prms,
+    #                             schedule='static',
+    #                             nogil=True,
+    #                             num_threads=n_cpus):
+                    if prm_opt_stop_arr[k]:
+                        continue
+
+                    prms_mean_thrs_arr[k, 0] = 0.0
+                    for j in range(n_par_sets):
+                        prms_mean_thrs_arr[k, 0] += pop[j, k]
+
+                    prms_mean_thrs_arr[k, 0] /= n_par_sets
+                    prms_mean_thrs_arr[k, 1] = (
+                        (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+                    prms_mean_thrs_arr[k, 2] = (
+                        (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+
+                    prm_opt_stop_arr[k] = 1
+                    for j in range(n_par_sets):
+                        if ((pop[j, k] < prms_mean_thrs_arr[k, 1]) or
+                            (pop[j, k] > prms_mean_thrs_arr[k, 2])):
+                            prm_opt_stop_arr[k] = 0
+                            break
+
+                    if not prm_opt_stop_arr[k]:
+                        continue
+
+                    ddmv = 1.0
+
+    #                 with gil:
+                    print('Parameter no. %d optimized at iteration: %d!' %
+                          (k, iter_curr))
+                if ddmv:
+                    ddmv = 0.0
+                    for k in range(n_prms):
+                        if prm_opt_stop_arr[k]:
+                            ddmv += 1
+
+                    print('%d out of %d to go!' % (n_prms - int(ddmv), n_prms))
+
+                if ddmv == n_prms:
+                    #print('***All parameters optimized!***', sep='')
+                    break
+
+            iter_curr += 1
 
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. if you want to use/validate results

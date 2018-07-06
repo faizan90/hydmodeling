@@ -49,13 +49,13 @@ def main():
     plot_2d_prms = False
     test_model_flag = False
 
-#     optimize_flag = True
+    optimize_flag = True
     plot_opt_results_flag = True
     plot_kfold_results_flag = True
     plot_kfold_prms_flag = True
     plot_pop_flag = True
     plot_2d_prms = True
-#     test_model_flag = True
+    # test_model_flag = True
 
     #==========================================================================
     # Optimize distributed model
@@ -103,9 +103,10 @@ def main():
         opt_schm_vars_dict['pop_size_exp'] = in_opt_schm_vars_dict.getfloat('pop_size_exp')
     elif in_opt_schm_vars_dict['opt_schm'] == 'ROPE':
         opt_schm_vars_dict['opt_schm'] = 'ROPE'
-        opt_schm_vars_dict['n_par_sets'] = cfp['OPT_HYD_MODEL'].getint('n_par_sets')
-        opt_schm_vars_dict['n_final_sets'] = cfp['OPT_HYD_MODEL'].getint('n_final_sets')
-        opt_schm_vars_dict['n_new_par'] = cfp['OPT_HYD_MODEL'].getint('n_new_par')
+        opt_schm_vars_dict['n_par_sets'] = in_opt_schm_vars_dict.getint('n_par_sets')
+        opt_schm_vars_dict['n_final_sets'] = in_opt_schm_vars_dict.getint('n_final_sets')
+        opt_schm_vars_dict['n_new_par'] = in_opt_schm_vars_dict.getint('n_new_par')
+        opt_schm_vars_dict['perc']= in_opt_schm_vars_dict.getfloat('perc')
     else:
         raise NotImplementedError(
             'Incorrect opt_schm: %s' % in_opt_schm_vars_dict['opt_schm'])

@@ -4,9 +4,12 @@
 '''
 
 import os
+import sys
 import timeit
 import time
 import configparser as cfpm
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from hydmodeling import (
     TauDEMAnalysis,

@@ -159,4 +159,6 @@ cdef DT_D obj_ftn(
             obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[2]
 
     n_calls[tid[0]] = n_calls[tid[0]] + 1
+    # with gil:
+    #     print(obj_ftn_wts_sum - res)
     return obj_ftn_wts_sum - res
