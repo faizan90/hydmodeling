@@ -34,6 +34,9 @@ def load_pickle(in_file, mode='rb'):
         return pickle.load(_pkl_hdl)
     return
 
+# TODO: Plot Discharge, ppt, snow only. Add it to plot hbv ftn.
+# Have an option in simple_opt ftn that take the vars and plot them in the
+# same order.
 # TODO: Plot subset of the data in hi-res, to see events of interest.
 # TODO: Have a lower limit of the obj. val. if optmized obj. val is below this
 # choose observed flow for further downstream cats.
@@ -51,6 +54,11 @@ def load_pickle(in_file, mode='rb'):
 # TODO: Have disaggregation. Maybe that makes getting the peak better rather
 # than having another reservoir.
 # TODO: Plot auxillary parameters as well.
+# TODO: Have a check on time frequency for all input
+# TODO: create an on-the-fly HBV source compiler based on some catchment
+# characteristics flags.
+# TODO: Have elevation as a auxillary variable
+# TODO: Reverse HBV
 
 
 def main():
@@ -71,22 +79,22 @@ def main():
     create_stms_rels_flag = False
     create_cumm_cats_flag = False
     optimize_flag = False
-    plot_hbv_vars_flag = False
     plot_kfold_perfs_flag = False
     plot_best_kfold_prms_flag = False
     plot_pop_flag = False
     plot_2d_kfold_prms_flag = False
+    plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
     optimize_flag = True
-    plot_hbv_vars_flag = True
     plot_kfold_perfs_flag = True
     plot_best_kfold_prms_flag = True
     plot_pop_flag = True
     plot_2d_kfold_prms_flag = True
+    plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -344,11 +352,12 @@ def main():
                 'soil_ratios']
         if np.any(all_prms_flags[:, 3]) or np.any(all_prms_flags[:, 5]):
             aux_cell_vars_dict['aspect'] = in_cell_vars_dict[
-                'aspect'].reshape(-1, 1)
+                'aspect']
         if np.any(all_prms_flags[:, 4]) or np.any(all_prms_flags[:, 5]):
             aux_cell_vars_dict['slope'] = in_cell_vars_dict[
-                'slope'].reshape(-1, 1)
+                'slope']
 
+        _beg_t = timeit.default_timer()
         solve_cats_sys(
             in_cats_prcssed_df,
             in_stms_prcssed_df,
@@ -377,14 +386,96 @@ def main():
             run_as_lump_flag,
             opt_schm_vars_dict)
 
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print('\n\n')
+        print('#' * 10)
+        print(f'Total calibration time was: {_tot_t:0.4f} secs!')
+        print('#' * 10)
     dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
+
+    #=========================================================================
+    # Plot the k-fold results
+    #=========================================================================
+
+    if plot_kfold_perfs_flag:
+        _beg_t = timeit.default_timer()
+
+        hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting kfold results...')
+
+        plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #=========================================================================
+    # Plot the best k-fold params
+    #=========================================================================
+
+    if plot_best_kfold_prms_flag:
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting best kfold prms...')
+
+        plot_kfolds_best_prms(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #==========================================================================
+    # Plot hbv prms for all catchments per kfold in 2d
+    #==========================================================================
+
+    if plot_2d_kfold_prms_flag:
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting HBV prms in 2D...')
+
+        plot_kfolds_best_hbv_prms_2d(dbs_dir)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #============================ ==============================================
+    # Plot final parameter population
+    #==========================================================================
+
+    if plot_pop_flag:
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting DE population...')
+
+        plot_pops(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
 
     #=========================================================================
     # plot the hbv variables
     #=========================================================================
 
     if plot_hbv_vars_flag:
-        print('\n\nPlotting hbv variables...')
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting hbv variables...')
 
         _beg_t = timeit.default_timer()
 
@@ -402,65 +493,8 @@ def main():
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
-        print(f'Done. Took {_tot_t:0.4f} seconds!')
-
-    #=========================================================================
-    # Plot the k-fold results
-    #=========================================================================
-
-    if plot_kfold_perfs_flag:
-        _beg_t = timeit.default_timer()
-
-        hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
-
-        print('\n\nPlotting kfold results...')
-        plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-        print(f'Done. Took {_tot_t:0.4f} seconds!')
-
-    #=========================================================================
-    # Plot the best k-fold params
-    #=========================================================================
-
-    if plot_best_kfold_prms_flag:
-        _beg_t = timeit.default_timer()
-
-        print('\n\nPlotting best kfold prms...')
-        plot_kfolds_best_prms(dbs_dir, n_cpus)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-        print(f'Done. Took {_tot_t:0.4f} seconds!')
-
-    #==========================================================================
-    # Plot hbv prms for all catchments per kfold in 2d
-    #==========================================================================
-
-    if plot_2d_kfold_prms_flag:
-        _beg_t = timeit.default_timer()
-
-        print('\n\nPlotting HBV prms in 2D...')
-        plot_kfolds_best_hbv_prms_2d(dbs_dir)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-        print(f'Done. Took {_tot_t:0.4f} seconds!')
-
-    #============================ ==============================================
-    # Plot final parameter population
-    #==========================================================================
-
-    if plot_pop_flag:
-        _beg_t = timeit.default_timer()
-
-        print('\n\nPlotting DE population...')
-        plot_pops(dbs_dir, n_cpus)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-        print(f'Done. Took {_tot_t:0.4f} seconds!')
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
     #==========================================================================
     return
 

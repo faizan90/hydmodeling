@@ -10,42 +10,6 @@ from .k_folds import (
     plot_kfolds_best_hbv_prms_2d)
 
 
-def plot_vars(
-        dbs_dir,
-        water_bal_step_size,
-        plot_simple_opt_flag=False,
-        plot_wat_bal_flag=False,
-        n_cpus=1):
-    '''Plot the optimization results
-    '''
-
-    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
-
-    assert cats_dbs
-
-    n_cats = len(cats_dbs)
-    n_cpus = min(n_cats, n_cpus)
-
-    const_args = (water_bal_step_size, plot_simple_opt_flag, plot_wat_bal_flag)
-
-    plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
-
-    if n_cpus > 1:
-        mp_pool = ProcessPool(n_cpus)
-        mp_pool.restart(True)
-        try:
-            print(list(mp_pool.uimap(plot_hbv, plot_gen)))
-            mp_pool.clear()
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_vars:', msg)
-    else:
-        for plot_args in plot_gen:
-            plot_hbv(plot_args)
-    return
-
-
 def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
     '''Plot the k-fold efficiency results
     '''
@@ -133,3 +97,38 @@ def plot_pops(dbs_dir, n_cpus):
             plot_pop(opt_res)
     return
 
+
+def plot_vars(
+        dbs_dir,
+        water_bal_step_size,
+        plot_simple_opt_flag=False,
+        plot_wat_bal_flag=False,
+        n_cpus=1):
+    '''Plot the optimization results
+    '''
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+
+    assert cats_dbs
+
+    n_cats = len(cats_dbs)
+    n_cpus = min(n_cats, n_cpus)
+
+    const_args = (water_bal_step_size, plot_simple_opt_flag, plot_wat_bal_flag)
+
+    plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
+
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            print(list(mp_pool.uimap(plot_hbv, plot_gen)))
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in plot_vars:', msg)
+    else:
+        for plot_args in plot_gen:
+            plot_hbv(plot_args)
+    return

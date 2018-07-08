@@ -56,6 +56,41 @@ def plot_hbv(plot_args):
     return
 
 
+def plot_pop(cat_db):
+    with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
+        out_dir = db['data']['dirs_dict']['main']
+        out_dir = os.path.join(out_dir, r'06_population')
+        if not os.path.exists(out_dir):
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
+
+        kfolds = db['data']['kfolds']
+        cat = db['cat']
+        prm_syms = db['data']['all_prms_labs']
+
+        calib_db = db['calib']
+
+        for i in range(1, kfolds + 1):
+            kf_str = f'kf_{i:02d}'
+            pop = calib_db[kf_str]['pop']
+            bounds_arr = db['cdata']['bds_arr']
+            prm_syms = db['cdata']['use_prms_labs']
+            cobj_vals = calib_db[kf_str]['pop_curr_obj_vals']
+            pobj_vals = calib_db[kf_str]['pop_pre_obj_vals']
+            _plot_k_pop(
+                i,
+                cat,
+                out_dir,
+                bounds_arr,
+                pop,
+                cobj_vals,
+                pobj_vals,
+                prm_syms)
+    return
+
+
 def _plot_k_pop(
         kf_i, cat, out_dir, bounds_arr, pop, cobj_vals, pobj_vals, prm_syms):
     plt.figure(figsize=(max(35, bounds_arr.shape[0]), 13))
@@ -212,41 +247,7 @@ def _plot_k_pop(
     ax2.set_ylabel('Frequency (-)')
     plt.savefig(str(Path(out_dir, f'hbv_pobj_cdf_{cat}_kf_{kf_i:02d}.png')),
                 bbox_inches='tight')
-    return
-
-
-def plot_pop(cat_db):
-    with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
-        out_dir = db['data']['dirs_dict']['main']
-        out_dir = os.path.join(out_dir, r'06_population')
-        if not os.path.exists(out_dir):
-            try:
-                os.mkdir(out_dir)
-            except:
-                pass
-
-        kfolds = db['data']['kfolds']
-        cat = db['cat']
-        prm_syms = db['data']['all_prms_labs']
-
-        calib_db = db['calib']
-
-        for i in range(1, kfolds + 1):
-            kf_str = f'kf_{i:02d}'
-            pop = calib_db[kf_str]['pop']
-            bounds_arr = db['cdata']['bds_arr']
-            prm_syms = db['cdata']['use_prms_labs']
-            cobj_vals = calib_db[kf_str]['pop_curr_obj_vals']
-            pobj_vals = calib_db[kf_str]['pop_pre_obj_vals']
-            _plot_k_pop(
-                i,
-                cat,
-                out_dir,
-                bounds_arr,
-                pop,
-                cobj_vals,
-                pobj_vals,
-                prm_syms)
+    plt.close('all')
     return
 
 
@@ -310,10 +311,10 @@ def _plot_hbv_kf(
     ur_run_ul = all_output[:, 7]
     ur_to_lr_run = all_output[:, 8]
     lr_sto_arr = all_output[:, 9]
-    q_sim_arr = all_outputs_dict['qsim_arr']
     lr_run_arr = lr_sto_arr * prms_arr[10]
-
     comb_run_arr = ur_run_uu + ur_run_ul + lr_run_arr
+
+    q_sim_arr = all_outputs_dict['qsim_arr']
 
     extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
 
@@ -325,15 +326,35 @@ def _plot_hbv_kf(
         q_sim_arr = q_sim_arr + extra_us_inflow
         q_act_arr_diff = q_act_arr - extra_us_inflow
 
-    _cols = ['temp', 'prec', 'pet', 'snow', 'liqu', 'sm', 'tot_run', 'evap',
-             'comb_run', 'q_sim', 'ur_sto', 'ur_run_uu', 'ur_run_ul',
-             'ur_to_lr_run', 'lr_sto', 'lr_run']
+    hbv_figs_dir = os.path.join(out_dir, '03_hbv_figs')
+    if not os.path.exists(hbv_figs_dir):
+        try:
+            os.mkdir(hbv_figs_dir)
+        except:
+            pass
 
-#     input_arr = np.stack((temp_arr, prec_arr, pet_arr), axis=1)
-#     sim_df = pd.DataFrame(data=np.concatenate((input_arr, all_output), axis=1),
-#                           columns=_cols, dtype=float)
-#     sim_df['q_sim'][:] = q_sim_arr
-#     sim_df.to_csv(os.path.join(out_dir, 'hbv_sim_in_out.csv'), sep=';')
+    sim_dict = {
+        'temp': temp_arr,
+        'prec': prec_arr,
+        'pet': pet_arr,
+        'snow': snow_arr,
+        'liqu': liqu_arr,
+        'sm': sm_arr,
+        'tot_run': tot_run_arr,
+        'evap': evap_arr,
+        'ur_sto': ur_sto_arr,
+        'ur_run_uu': ur_run_uu,
+        'ur_run_ul': ur_run_ul,
+        'ur_to_lr_run': ur_to_lr_run,
+        'lr_sto': lr_sto_arr,
+        'lr_run': lr_run_arr,
+        'comb_run': comb_run_arr,
+        'q_sim': q_sim_arr
+        }
+
+    sim_df = pd.DataFrame(sim_dict, dtype=float)
+    sim_df.to_csv(os.path.join(
+        hbv_figs_dir, f'kf_{kf_i:02d}_HBV_sim_{cat}.csv'), sep=';')
 
     ns = get_ns_cy(q_act_arr, q_sim_arr, off_idx)
     ln_ns = get_ln_ns_cy(q_act_arr, q_sim_arr, off_idx)
@@ -560,6 +581,14 @@ def _plot_hbv_kf(
                         label='Cumm. Runoff Error',
                         alpha=0.95)
         vol_err_ax.set_ylim(min_vol_diff_err, max_vol_diff_err)
+        vol_err_ax.text(vol_diff_arr.shape[0] * 0.5,
+                        1.25,
+                        'runoff over-estimation',
+                        fontsize=font_size * 0.9)
+        vol_err_ax.text(vol_diff_arr.shape[0] * 0.5,
+                        0.75,
+                        'runoff under-estimation',
+                        fontsize=font_size * 0.9)
 
         scatt_size = 5
 
@@ -756,7 +785,7 @@ def _plot_hbv_kf(
 
         plt.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
         plt.savefig(out_fig_loc, bbox='tight_layout')
-        plt.close()
+        plt.close('all')
         return
 
     def save_water_bal_opt(out_dir):
@@ -864,6 +893,7 @@ def _plot_hbv_kf(
         q_sim_sum_arr = (
             np.concatenate(([np.nan, np.nan], q_sim_sum_arr), axis=0))
 
+        font_size = 5
         plt.figure(figsize=(11, 6), dpi=150)
         t_rows = 8
         t_cols = 1
@@ -904,6 +934,14 @@ def _plot_hbv_kf(
                         alpha=0.95)
         vol_err_ax.set_ylim(min_vol_diff_err, max_vol_diff_err)
         vol_err_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
+        vol_err_ax.text(vol_diff_arr.shape[0] * 0.5,
+                        1.25,
+                        'runoff over-estimation',
+                        fontsize=font_size * 0.9)
+        vol_err_ax.text(vol_diff_arr.shape[0] * 0.5,
+                        0.75,
+                        'runoff under-estimation',
+                        fontsize=font_size * 0.9)
         vol_err_ax.set_xticklabels([])
 
         discharge_ax.plot(q_act_arr,
@@ -1012,7 +1050,6 @@ def _plot_hbv_kf(
             ('$K_{ll}$ = %0.4f' % k_ll).rstrip('0'),
             'n_cells = %d' % n_cells, ''])
 
-        font_size = 5
         text = text.reshape(3, 9)
         table = params_ax.table(cellText=text,
                                 loc='center',
@@ -1040,11 +1077,11 @@ def _plot_hbv_kf(
 
         plt.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
         plt.savefig(out_fig_loc, bbox_inches='tight')
-        plt.close()
+        plt.close('all')
         return
 
     if plot_simple_flag:
-        save_simple_opt(os.path.join(out_dir, '03_hbv_figs'))
+        save_simple_opt(hbv_figs_dir)
 
     if plot_wat_bal_flag:
         save_water_bal_opt(os.path.join(out_dir, '04_wat_bal_figs'))

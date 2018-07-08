@@ -103,7 +103,7 @@ def solve_cats_sys(
     assert isinstance(time_freq, str)
 
     assert isinstance(warm_up_steps, int)
-    assert warm_up_steps >= 0
+    assert warm_up_steps >= 1
 
     assert isinstance(n_cpus, int)
     assert n_cpus >= 1
@@ -165,6 +165,10 @@ def solve_cats_sys(
     n_steps = date_range.shape[0]
 
     if time_freq == 'D':
+        pass
+    elif time_freq == '12H':
+        pass
+    elif time_freq == '6H':
         pass
     else:
         raise NotImplementedError(f'Invalid time-freq: {time_freq}')
@@ -271,7 +275,8 @@ def solve_cats_sys(
     kwargs = {'use_obs_flow_flag': use_obs_flow_flag,
               'run_as_lump_flag': run_as_lump_flag,
               'use_step_flag': use_step_flag,
-              'min_q_thresh': min_q_thresh}
+              'min_q_thresh': min_q_thresh,
+              'time_freq': time_freq}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -427,6 +432,7 @@ def _solve_k_cats_sys(
     run_as_lump_flag = int(kwargs['run_as_lump_flag'])
     use_step_flag = int(kwargs['use_step_flag'])
     min_q_thresh = float(kwargs['min_q_thresh'])
+    time_freq = str(kwargs['time_freq'])
 
     assert in_use_step_ser.shape[0] == in_q_df.shape[0]
 
@@ -810,7 +816,14 @@ def _solve_k_cats_sys(
         else:
             stms_idxs = np.array([0], dtype=np.int32)
 
-        conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400)
+        if time_freq == 'D':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400)
+        elif time_freq == '12H':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400 * 0.5)
+        elif time_freq == '6H':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400 * 0.25)
+        else:
+            raise ValueError(f'Incorrect time_freq: {time_freq}')
 
         curr_cat_params.append([curr_us_stm,
                                 stms_idxs,

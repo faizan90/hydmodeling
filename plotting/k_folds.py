@@ -239,6 +239,18 @@ def plot_cat_kfold_effs(args):
     bot_xy_ticks = top_xs
     bot_xy_ticklabels = np.arange(1, kfolds + 1, 1)
 
+    if kfolds > 6:
+        over_all_perf_str_arr = np.full(
+            shape=(n_perfs, kfolds), fill_value='', dtype=f'|U{arr_str_len}')
+
+        kfold_perfos_str_arr = np.full(
+            shape=(n_perfs, kfolds, kfolds),
+            fill_value='',
+            dtype=f'|U{arr_str_len}')
+
+        key_str_left = ''
+        key_str_right = ''
+
     if q_cyc_arr is not None:
         assert n_cyc_perfs == 2, (
             'Residual efficiencies\' plot only implemented in case of NS and '
@@ -394,6 +406,35 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
         bds_dict)
 
     return
+
+
+def get_daily_annual_cycle(in_data_df, n_cpus=1):
+
+    annual_cycle_df = pd.DataFrame(index=in_data_df.index,
+                                   columns=in_data_df.columns,
+                                   dtype=float)
+
+    cat_ser_gen = (in_data_df[col] for col in in_data_df.columns)
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            ann_cycs = list(mp_pool.uimap(_get_daily_annual_cycle,
+                                          cat_ser_gen))
+
+            for col_ser in ann_cycs:
+                annual_cycle_df.update(col_ser)
+
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in get_daily_annual_cycle:', msg)
+    else:
+        for col_ser in cat_ser_gen:
+            annual_cycle_df.update(_get_daily_annual_cycle(col_ser))
+
+    return annual_cycle_df
 
 
 def _plot_kf_prms_2d(
@@ -608,6 +649,10 @@ def _kfold_best_prms(cat_db):
                        norm_pop[i],
                        alpha=0.85,
                        label=f'Fold no: {i + 1}')
+
+        if kfolds > 6:
+            continue
+
         for j in range(bds_arr.shape[0]):
             _ = params_ax.text(
                 plot_range[j],
@@ -617,7 +662,8 @@ def _kfold_best_prms(cat_db):
                 ha='left')
             plt_texts.append(_)
 
-    adjust_text(plt_texts, only_move={'points': 'y', 'text': 'y'})
+    if kfolds <= 6:
+        adjust_text(plt_texts, only_move={'points': 'y', 'text': 'y'})
 
     params_ax.set_ylim(0., 1.)
     params_ax.set_xticks(list(range(best_params_arr.shape[1])))
@@ -671,35 +717,6 @@ def _get_daily_annual_cycle(col_ser):
             curr_day_avg_val = curr_day_vals.mean()
             col_ser.loc[idxs_intersect] = curr_day_avg_val
     return col_ser
-
-
-def get_daily_annual_cycle(in_data_df, n_cpus=1):
-
-    annual_cycle_df = pd.DataFrame(index=in_data_df.index,
-                                   columns=in_data_df.columns,
-                                   dtype=float)
-
-    cat_ser_gen = (in_data_df[col] for col in in_data_df.columns)
-    if n_cpus > 1:
-        mp_pool = ProcessPool(n_cpus)
-        mp_pool.restart(True)
-        try:
-            ann_cycs = list(mp_pool.uimap(_get_daily_annual_cycle,
-                                          cat_ser_gen))
-
-            for col_ser in ann_cycs:
-                annual_cycle_df.update(col_ser)
-
-            mp_pool.clear()
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in get_daily_annual_cycle:', msg)
-    else:
-        for col_ser in cat_ser_gen:
-            annual_cycle_df.update(_get_daily_annual_cycle(col_ser))
-
-    return annual_cycle_df
 
 
 if __name__ == '__main__':

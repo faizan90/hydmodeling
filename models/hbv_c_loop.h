@@ -39,7 +39,6 @@ DT_D hbv_c_loop(
 	const DT_UL *n_prms,
 	const DT_UL *n_vars_outs_arr,
 	const DT_D *rnof_q_conv,
-    const DT_D *err_val,
 	const DT_UL *opt_flag
     ) {
 

@@ -31,7 +31,6 @@ cdef DT_D hbv_loop(
           DT_D[::1] qsim_arr,
           DT_D[:, :, ::1] outs_arr,
     const DT_D *rnof_q_conv,
-    const DT_D *err_val,
     const DT_UL *opt_flag,
     ) nogil except +:
 

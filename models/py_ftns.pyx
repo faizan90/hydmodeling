@@ -58,7 +58,6 @@ cdef extern from "hbv_c_loop.h" nogil:
             const DT_UL *n_hbv_prms,
             const DT_UL *n_hbv_cols,
             const DT_D *rnof_q_conv,
-            const DT_D *err_val,
             const DT_UL *opt_flag)
 
  
@@ -101,7 +100,6 @@ cpdef dict hbv_loop_py(
         qsim_arr,
         outs_arr,
         &rnof_q_conv,
-        &err_val,
         &opt_flag)
 #     _sp = timeit.default_timer()
 #     print('%0.6f secs for a loop!' % (_sp - _st))
@@ -156,7 +154,6 @@ cpdef dict hbv_c_loop_py(
         &n_hbv_prms,
         &n_hbv_cols,
         &rnof_q_conv,
-        &err_val,
         &opt_flag)
 #     _sp = timeit.default_timer()
 #     print('%0.6f secs for a loop!' % (_sp - _st))

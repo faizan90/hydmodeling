@@ -44,7 +44,6 @@ cdef extern from "hbv_c_loop.h" nogil:
             const DT_UL *n_prms,
             const DT_UL *n_vars_outs_arr,
             const DT_D *rnof_q_conv,
-            const DT_D *err_val,
             const DT_UL *opt_flag)
 
 
@@ -115,7 +114,6 @@ cdef DT_D hbv_mult_cat_loop(
             &misc_longs[n_hbv_prms_i],
             &misc_longs[n_hbv_cols_i],
             &misc_doubles[rnof_q_conv_i],
-            &misc_doubles[err_val_i],
             &misc_longs[opt_flag_i])
     else:
         res = hbv_loop(
@@ -128,7 +126,6 @@ cdef DT_D hbv_mult_cat_loop(
             qsim_arr,
             outs_arr,
             &misc_doubles[rnof_q_conv_i],
-            &misc_doubles[err_val_i],
             &misc_longs[opt_flag_i])
 
 #     with gil:
