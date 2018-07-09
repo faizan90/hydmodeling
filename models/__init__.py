@@ -23,7 +23,7 @@ from .misc_ftns_partial import (
     get_ns_var_res_prt_cy,
     get_ln_ns_var_res_prt_cy)
 
-from .hbv_opt import hbv_opt_de
+from .hbv_opt import hbv_opt
 
 from .py_ftns import (
     hbv_loop_py,

@@ -44,7 +44,7 @@ DT_D rand_c_mp(DT_ULL *rnd_j) {
 void warm_up_mp(DT_ULL *seeds_arr, DT_UL n_seeds) {
 	DT_UL i, j;
 	for (j=0; j<n_seeds; ++j) {
-		for (i=0; i<50; ++i) {
+		for (i=0; i<1000; ++i) {
 		    //printf("%0.10f\n", rand_c_mp(&seeds_arr[j]));
 		    rand_c_mp(&seeds_arr[j]);
 		}

@@ -90,11 +90,11 @@ def main():
     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
     optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_pop_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_hbv_vars_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_pop_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -243,8 +243,9 @@ def main():
             in_opt_schm_vars_dict['mu_sc_fac_bds'].split(sep), dtype=np.float64)
         opt_schm_vars_dict['cr_cnst_bds'] = np.array(
             in_opt_schm_vars_dict['cr_cnst_bds'].split(sep), dtype=np.float64)
-        opt_schm_vars_dict['pop_size_exp'] = in_opt_schm_vars_dict.getfloat(
-            'pop_size_exp')
+    elif in_opt_schm_vars_dict['opt_schm'] == 'ROPE':
+        opt_schm_vars_dict['acc_rate'] = in_opt_schm_vars_dict.getfloat(
+            'acc_rate')
     else:
         raise NotImplementedError(
             'Incorrect opt_schm: %s' % in_opt_schm_vars_dict['opt_schm'])
@@ -256,6 +257,8 @@ def main():
         'obj_ftn_tol')
     opt_schm_vars_dict['prm_pcnt_tol'] = in_opt_schm_vars_dict.getfloat(
         'prm_pcnt_tol')
+    opt_schm_vars_dict['n_prm_vecs_exp'] = in_opt_schm_vars_dict.getfloat(
+        'n_prm_vecs_exp')
 
     bounds_dict = OrderedDict()
     bounds_dict['tt_bds'] = [float(_)

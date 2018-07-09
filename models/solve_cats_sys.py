@@ -17,7 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from .dtypes import get_fc_pwp_is
-from .hbv_opt import hbv_opt_de
+from .hbv_opt import hbv_opt
 from .py_ftns import hbv_mult_cat_loop_py
 from .misc_ftns import (
     get_aspect_scale_arr_cy,
@@ -785,18 +785,22 @@ def _solve_k_cats_sys(
 
             curr_cat_params.append(obj_ftn_wts)
 
+            n_prm_vecs = int(
+                bounds_arr.shape[0] ** opt_schm_vars_dict['n_prm_vecs_exp'])
+            assert n_prm_vecs >= 3
+
             _opt_list = []
             if opt_schm_vars_dict['opt_schm'] == 'DE':
-                pop_size = int(
-                    bounds_arr.shape[0] ** opt_schm_vars_dict['pop_size_exp'])
                 _opt_list.extend([opt_schm_vars_dict['mu_sc_fac_bds'],
-                                  opt_schm_vars_dict['cr_cnst_bds'],
-                                  pop_size])
-                print(f'n_pop: {pop_size}')
+                                  opt_schm_vars_dict['cr_cnst_bds']])
+            elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
+                _opt_list.extend([opt_schm_vars_dict['acc_rate']])
             else:
                 raise Exception
 
-            _opt_list.extend([opt_schm_vars_dict['max_iters'],
+            print(f'n_prm_vecs: {n_prm_vecs}')
+            _opt_list.extend([n_prm_vecs,
+                              opt_schm_vars_dict['max_iters'],
                               opt_schm_vars_dict['max_cont_iters'],
                               opt_schm_vars_dict['obj_ftn_tol'],
                               opt_schm_vars_dict['prm_pcnt_tol']])
@@ -859,6 +863,13 @@ def _solve_k_cats_sys(
                                     aux_vars,
                                     aux_var_infos])
 
+            if opt_schm_vars_dict['opt_schm'] == 'DE':
+                curr_cat_params.append(1)
+            elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
+                curr_cat_params.append(2)
+            else:
+                raise ValueError(opt_schm_vars_dict['opt_schm'])
+
         else:
             curr_cat_params.append(cat_area_ratios_arr)
 
@@ -866,7 +877,7 @@ def _solve_k_cats_sys(
             opt_strt_time = timeit.default_timer()
 
             if opt_schm_vars_dict['opt_schm'] == 'DE':
-                out_db_dict = hbv_opt_de(curr_cat_params)
+                out_db_dict = hbv_opt(curr_cat_params)
             else:
                 raise ValueError(
                     f'opt_schm ({opt_schm_vars_dict["opt_schm"]}) '

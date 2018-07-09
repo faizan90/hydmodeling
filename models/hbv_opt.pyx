@@ -76,7 +76,7 @@ cdef extern from "rand_gen_mp.h" nogil:
 warm_up()
 
 
-cpdef dict hbv_opt_de(args):
+cpdef dict hbv_opt(args):
 
     '''The differential evolution algorithm for distributed HBV with routing
     '''
@@ -85,6 +85,7 @@ cpdef dict hbv_opt_de(args):
 
         #======================================================================
         # Basic optimization related parameters
+        DT_UL n_prm_vecs
         DT_UL opt_flag = 1, use_obs_flow_flag, use_step_flag
         DT_UL max_iters, max_cont_iters, off_idx, n_prms, n_hm_prms
         DT_UL iter_curr = 0, last_succ_i = 0, n_succ = 0, cont_iter = 0
@@ -108,7 +109,6 @@ cpdef dict hbv_opt_de(args):
 
         #======================================================================
         # Differential Evolution related parameters
-        DT_UL n_pop
         DT_UL r0, r1, r2
         DT_UL del_r_i, del_r_j, ch_r_i, ch_r_j, ch_r_l
         DT_UL pop_size_ol, n_mu_samps = 3
@@ -121,9 +121,12 @@ cpdef dict hbv_opt_de(args):
         DT_UL[:, ::1] del_idx_rng, choice_arr
 
         DT_D[::1] mu_sc_fac_bds, cr_cnst_bds
-        DT_D[:, ::1] pop, pop_raw, v_j_g, u_j_gs
-        
+        DT_D[:, ::1] prm_vecs, prm_vecs_raw, v_j_g, u_j_gs
         # TODO: save populatiopn state at certain iterations to see how they evolve 
+
+        # ROPE related parameters 
+        DT_D acc_rate
+
         #======================================================================
 
         #======================================================================
@@ -137,7 +140,7 @@ cpdef dict hbv_opt_de(args):
         # Hydrological state and topology related parameters
         long curr_us_stm
 
-        DT_UL n_cells, n_recs, cat, stm, n_route_prms
+        DT_UL n_cells, n_recs, cat, stm, n_route_prms, opt_schm
         DT_UL route_type, n_stms, cat_no, stm_idx, cat_idx
 
         DT_UL[::1] stms_idxs
@@ -168,13 +171,22 @@ cpdef dict hbv_opt_de(args):
 
     obj_ftn_wts = args[1]
 
-    (mu_sc_fac_bds, 
-     cr_cnst_bds, 
-     n_pop,
-     max_iters, 
-     max_cont_iters, 
-     obj_ftn_tol,
-     prm_pcnt_tol) = args[2]
+    opt_schm = args[8]
+    if opt_schm == 1:
+        (mu_sc_fac_bds, 
+         cr_cnst_bds, 
+         n_prm_vecs,
+         max_iters, 
+         max_cont_iters, 
+         obj_ftn_tol,
+         prm_pcnt_tol) = args[2]
+    elif opt_schm == 2:
+        (acc_rate, 
+         n_prm_vecs,
+         max_iters, 
+         max_cont_iters, 
+         obj_ftn_tol,
+         prm_pcnt_tol) = args[2]
 
     (inis_arr,
      temp_arr,
@@ -214,56 +226,64 @@ cpdef dict hbv_opt_de(args):
 
     n_prms = bounds.shape[0]
     n_recs = cats_outflow_arr.shape[0]
-    pop_size_ol = n_pop - 1
 
-    idx_rng = np.arange(0, n_pop, 1, dtype=DT_UL_NP)
-    r_r = np.zeros(n_cpus, dtype=DT_UL_NP)
-    n_calls = np.zeros(n_cpus, dtype=DT_UL_NP)
-    seeds_arr = np.zeros(n_cpus, dtype=np.uint64)
-    del_idx_rng = np.zeros((n_cpus, pop_size_ol), dtype=DT_UL_NP)
-    choice_arr = np.zeros((n_cpus, 3), dtype=DT_UL_NP)
+    if opt_schm == 1:
+        pop_size_ol = n_prm_vecs - 1
+        idx_rng = np.arange(0, n_prm_vecs, 1, dtype=DT_UL_NP)
+        r_r = np.zeros(n_cpus, dtype=DT_UL_NP)
+        n_calls = np.zeros(n_cpus, dtype=DT_UL_NP)
+        seeds_arr = np.zeros(n_cpus, dtype=np.uint64)
+        del_idx_rng = np.zeros((n_cpus, pop_size_ol), dtype=DT_UL_NP)
+        choice_arr = np.zeros((n_cpus, 3), dtype=DT_UL_NP)
+        v_j_g = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
+        u_j_gs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
+        idxs_shuff_pop = list(range(0,  n_prm_vecs))
+        accept_vars = []
+        total_vars = []
 
-    pre_obj_vals = np.full(n_pop, np.inf, dtype=DT_D_NP)
-    curr_obj_vals = np.full(n_pop, np.inf, dtype=DT_D_NP)
+        # mean, min thresh, max thresh
+        prms_mean_thrs_arr = np.zeros((n_prms, 3), dtype=DT_D_NP)
+    
+        # for param index with value 1, stop optimizing
+        prm_opt_stop_arr = np.zeros(n_prms, dtype=np.int32)
+
+    elif opt_schm == 2:
+        pass
+
+
+    pre_obj_vals = np.full(n_prm_vecs, np.inf, dtype=DT_D_NP)
+    curr_obj_vals = np.full(n_prm_vecs, np.inf, dtype=DT_D_NP)
     best_params = np.full(n_prms, np.nan, dtype=DT_D_NP)
 
-    params_tmp = np.zeros(n_pop, dtype=DT_D_NP)
+    params_tmp = np.zeros(n_prm_vecs, dtype=DT_D_NP)
 
     curr_opt_prms = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
-    pop = np.zeros((n_pop, n_prms), dtype=DT_D_NP)
-    pop_raw = pop.copy()
-    v_j_g = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
-    u_j_gs = np.zeros((n_pop, n_prms), dtype=DT_D_NP)
+    prm_vecs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
+    prm_vecs_raw = prm_vecs.copy()
 
     hbv_prms = np.zeros((n_cpus, n_cells, n_hbv_prms), dtype=DT_D_NP)
-    
+
     n_route_prms = n_prms - n_hm_prms
     if not n_route_prms:
         n_route_prms = 1
     route_prms = np.full((n_cpus, n_route_prms), np.nan, dtype=DT_D_NP)
-
-    idxs_shuff_pop = list(range(0,  n_pop))
-    accept_vars = []
-    total_vars = []
 
     inflow_arr = np.zeros(n_recs, dtype=DT_D_NP)
 
     qsim_mult_arr = np.zeros((n_cpus, n_recs), dtype=DT_D_NP)
     inflow_mult_arr = qsim_mult_arr.copy()
 
-    cats_outflow_mult_arr = np.zeros((cats_outflow_arr.shape[0],
-                                      cats_outflow_arr.shape[1],
-                                      n_cpus), 
-                                     dtype=DT_D_NP, order='f')
+    cats_outflow_mult_arr = np.zeros(
+        (cats_outflow_arr.shape[0], cats_outflow_arr.shape[1], n_cpus), 
+        dtype=DT_D_NP, order='f')
 
-    stms_inflow_mult_arr = np.zeros((stms_inflow_arr.shape[0],
-                                     stms_inflow_arr.shape[1],
-                                     n_cpus),
-                                    dtype=DT_D_NP, order='f')
-    stms_outflow_mult_arr = np.zeros((stms_inflow_arr.shape[0],
-                                      stms_inflow_arr.shape[1],
-                                      n_cpus),
-                                    dtype=DT_D_NP, order='f')
+    stms_inflow_mult_arr = np.zeros(
+        (stms_inflow_arr.shape[0], stms_inflow_arr.shape[1], n_cpus),
+        dtype=DT_D_NP, order='f')
+
+    stms_outflow_mult_arr = np.zeros(
+        (stms_inflow_arr.shape[0], stms_inflow_arr.shape[1], n_cpus),
+        dtype=DT_D_NP, order='f')
 
     outs_mult_arr = np.zeros((n_cpus, n_cells, 1, n_hbv_cols), dtype=DT_D_NP)
 
@@ -299,12 +319,6 @@ cpdef dict hbv_opt_de(args):
         act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
 
     bds_dfs = np.zeros((n_prms, 2), dtype=DT_D_NP)
-
-    # mean, min thresh, max thresh
-    prms_mean_thrs_arr = np.zeros((n_prms, 3), dtype=DT_D_NP)
-
-    # for param index with value 1, stop optimizing
-    prm_opt_stop_arr = np.zeros(n_prms, dtype=np.int32)
 
     # size and other constants needed in the obj_ftn
     # so that all are in a single variable
@@ -342,32 +356,32 @@ cpdef dict hbv_opt_de(args):
                   (k, bounds[k, 0]))
 
     # initiate parameter space
-    for i in range(n_pop):
+    for i in range(n_prm_vecs):
         for k in range(n_prms):
-            pop_raw[i, k] = (<DT_D> i) / pop_size_ol
+            prm_vecs_raw[i, k] = (<DT_D> i) / pop_size_ol
 
     # shuffle the parameters around, in space
     for i in range(n_prms):
         random.shuffle(idxs_shuff_pop)
-        for j in range(n_pop):
-            params_tmp[j] = pop_raw[<DT_UL> idxs_shuff_pop[j], i]
+        for j in range(n_prm_vecs):
+            params_tmp[j] = prm_vecs_raw[<DT_UL> idxs_shuff_pop[j], i]
 
-        for j in range(n_pop):
+        for j in range(n_prm_vecs):
             if prm_opt_stop_arr[i]:
-                pop[j, i] = 0.0
+                prm_vecs[j, i] = 0.0
             else:
-                pop[j, i] = params_tmp[j]
+                prm_vecs[j, i] = params_tmp[j]
 
-    for i in range(n_pop):
+    for i in range(n_prm_vecs):
         # bring all pwps below fcs
         for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
-            if (pop[i, prms_span_idxs[pwp_i, 0] + j] <
-                pop[i, prms_span_idxs[fc_i, 0] + j]):
+            if (prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] <
+                prm_vecs[i, prms_span_idxs[fc_i, 0] + j]):
                 continue
 
             # arbitrary decrease
-            pop[i, prms_span_idxs[pwp_i, 0] + j] = (
-                0.99 * rand_c() * pop[i, prms_span_idxs[fc_i, 0] + j])
+            prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] = (
+                0.99 * rand_c() * prm_vecs[i, prms_span_idxs[fc_i, 0] + j])
 
         for j in range(n_hbv_prms):
             for m in range(3, 6):
@@ -375,10 +389,10 @@ cpdef dict hbv_opt_de(args):
                     continue
 
                 k = prms_idxs[j, m, 0]
-                if pop[i, k + 1] >= pop[i, k]:
+                if prm_vecs[i, k + 1] >= prm_vecs[i, k]:
                     continue 
 
-                pop[i, k] = 0.99 * rand_c() * pop[i, k + 1]
+                prm_vecs[i, k] = 0.99 * rand_c() * prm_vecs[i, k + 1]
 
     for i in range(n_cpus):
         for j in range(n_recs):
@@ -390,15 +404,15 @@ cpdef dict hbv_opt_de(args):
 
     # for the selected parameters, get obj vals
 #     tid = 0
-#     for i in range(n_pop):
-    for i in prange(n_pop, 
+#     for i in range(n_prm_vecs):
+    for i in prange(n_prm_vecs, 
                     schedule='dynamic',
                     nogil=True, 
                     num_threads=n_cpus):
         tid = threadid()
 
         for k in range(n_prms):
-            curr_opt_prms[tid, k] = pop[i, k]
+            curr_opt_prms[tid, k] = prm_vecs[i, k]
 
 #         print(['%0.5f'  % _ for _ in curr_opt_prms[tid, :]])
 #         _beg = timeit.default_timer()
@@ -443,7 +457,7 @@ cpdef dict hbv_opt_de(args):
         else:
             pre_obj_vals[i] = res
 
-    for i in range(n_pop):
+    for i in range(n_prm_vecs):
 #         print('%d Ini res:' % i, pre_obj_vals[i])
         if pre_obj_vals[i] > fval_pre_global:
             continue
@@ -453,219 +467,226 @@ cpdef dict hbv_opt_de(args):
 
         fval_pre_global = pre_obj_vals[i]
         for k in range(n_prms):
-            best_params[k] = pop[i, k]
+            best_params[k] = prm_vecs[i, k]
 
     print('Initial min. obj. value:', fval_pre_global)
 #     raise Exception('Stop!')
 
-    while ((iter_curr < max_iters) and
-           (0.5 * (tol_pre + tol_curr) > obj_ftn_tol) and
-           (cont_iter < max_cont_iters)):
+    if opt_schm == 1:
+        while ((iter_curr < max_iters) and
+               (0.5 * (tol_pre + tol_curr) > obj_ftn_tol) and
+               (cont_iter < max_cont_iters)):
 
-        cont_iter += 1
-#         print('DE iter no:', iter_curr)
+            cont_iter += 1
+#             print('DE iter no:', iter_curr)
 
-        # randomize the mutation and recombination factors for every
-        # generation
-        mu_sc_fac = (mu_sc_fac_bds[0] +
-                     ((mu_sc_fac_bds[1] - mu_sc_fac_bds[0]) * rand_c()))
-        cr_cnst = (cr_cnst_bds[0] +
-                   ((cr_cnst_bds[1] - cr_cnst_bds[0]) * rand_c()))
+            # randomize the mutation and recombination factors for every
+            # generation
+            mu_sc_fac = (mu_sc_fac_bds[0] +
+                         ((mu_sc_fac_bds[1] - mu_sc_fac_bds[0]) * rand_c()))
+            cr_cnst = (cr_cnst_bds[0] +
+                       ((cr_cnst_bds[1] - cr_cnst_bds[0]) * rand_c()))
 
-        for t_i in prange(n_pop, 
-                        schedule='dynamic',
-                        nogil=True, 
-                        num_threads=n_cpus):
-            tid = threadid()
+            for t_i in prange(n_prm_vecs, 
+                            schedule='dynamic',
+                            nogil=True, 
+                            num_threads=n_cpus):
+                tid = threadid()
 
-            # get inidicies except t_i
-            del_idx(idx_rng, del_idx_rng[tid], &t_i)
+                # get inidicies except t_i
+                del_idx(idx_rng, del_idx_rng[tid], &t_i)
 
-            # select indicies randomly from del_idx_rng
-            ch_r_l = 1
-            while ch_r_l:
-                ch_r_l = 0
-                for ch_r_i in range(n_mu_samps):
-                    k = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * (pop_size_ol))
-                    choice_arr[tid, ch_r_i] = del_idx_rng[tid, k]
+                # select indicies randomly from del_idx_rng
+                ch_r_l = 1
+                while ch_r_l:
+                    ch_r_l = 0
+                    for ch_r_i in range(n_mu_samps):
+                        k = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * pop_size_ol)
+                        choice_arr[tid, ch_r_i] = del_idx_rng[tid, k]
 
-                for ch_r_i in range(n_mu_samps):
-                    for ch_r_j in range(ch_r_i + 1, n_mu_samps):
-                        if (choice_arr[tid, ch_r_i] ==
-                            choice_arr[tid, ch_r_j]):
-                            ch_r_l = 1
+                    for ch_r_i in range(n_mu_samps):
+                        for ch_r_j in range(ch_r_i + 1, n_mu_samps):
+                            if (choice_arr[tid, ch_r_i] ==
+                                choice_arr[tid, ch_r_j]):
+                                ch_r_l = 1
 
-            r0 = choice_arr[tid, 0]
-            r1 = choice_arr[tid, 1]
-            r2 = choice_arr[tid, 2]
+                r0 = choice_arr[tid, 0]
+                r1 = choice_arr[tid, 1]
+                r2 = choice_arr[tid, 2]
 
-            # mutate
-            for k in range(n_prms):
-                v_j_g[tid, k] = (
-                    pop[r0, k] + (mu_sc_fac * (pop[r1, k] - pop[r2, k])))
+                # mutate
+                for k in range(n_prms):
+                    v_j_g[tid, k] = prm_vecs[r0, k] + (
+                            mu_sc_fac * (prm_vecs[r1, k] - prm_vecs[r2, k]))
 
-            # keep parameters in bounds
-            for k in range(n_prms):
-                if ((v_j_g[tid, k] < 0) or (v_j_g[tid, k] > 1)):
-                    v_j_g[tid, k] = rand_c_mp(&seeds_arr[tid])
+                # keep parameters in bounds
+                for k in range(n_prms):
+                    if ((v_j_g[tid, k] < 0) or (v_j_g[tid, k] > 1)):
+                        v_j_g[tid, k] = rand_c_mp(&seeds_arr[tid])
 
-            # get an index randomly to have atleast one parameter from
-            # the mutated vector
-            r_r[tid] = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * n_prms)
+                # get an index randomly to have atleast one parameter from
+                # the mutated vector
+                r_r[tid] = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * n_prms)
 
-            for k in range(n_prms):
-                if ((rand_c_mp(&seeds_arr[tid]) <= cr_cnst) or
-                    (k == r_r[tid])):
+                for k in range(n_prms):
+                    if ((rand_c_mp(&seeds_arr[tid]) <= cr_cnst) or
+                        (k == r_r[tid])):
 
-                    u_j_gs[t_i, k] = v_j_g[tid, k]
+                        u_j_gs[t_i, k] = v_j_g[tid, k]
 
+                    else:
+                        u_j_gs[t_i, k] = prm_vecs[t_i, k]
+
+                    curr_opt_prms[tid, k] = u_j_gs[t_i, k]
+
+                # check if pwp is ge than fc and adjust
+                for i in range(prms_span_idxs[fc_i, 1] - 
+                               prms_span_idxs[fc_i, 0]):
+                    if (curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i] <
+                        curr_opt_prms[tid, prms_span_idxs[fc_i, 0] + i]):
+                        continue
+
+                    curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i] = (
+                        0.99 *
+                        rand_c_mp(&seeds_arr[tid]) * 
+                        curr_opt_prms[tid, prms_span_idxs[fc_i, 0] + i])
+
+                    u_j_gs[t_i, prms_span_idxs[pwp_i, 0] + i] = (
+                        curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i])
+
+                for i in range(n_hbv_prms):
+                    for m in range(3, 6):
+                        if not prms_flags[i, m]:
+                            continue
+
+                        k = prms_idxs[i, m, 0]
+                        if curr_opt_prms[tid, k + 1] >= curr_opt_prms[tid, k]:
+                            continue
+
+                        curr_opt_prms[tid, k] = (
+                            0.99 * 
+                            rand_c_mp(&seeds_arr[tid]) * 
+                            curr_opt_prms[tid, k + 1])
+
+                        u_j_gs[t_i, k] = curr_opt_prms[tid, k]
+
+                res = obj_ftn(
+                    &tid,
+                    n_calls,
+                    stms_idxs,
+                    obj_longs,
+                    use_step_arr,
+                    prms_flags,
+                    f_var_infos,
+                    prms_idxs,
+                    obj_ftn_wts,
+                    curr_opt_prms[tid],
+                    qact_arr,
+                    area_arr,
+                    qsim_mult_arr[tid],
+                    inflow_mult_arr[tid],
+                    f_vars,
+                    obj_doubles,
+                    route_prms[tid],
+                    inis_arr,
+                    temp_arr,
+                    prec_arr,
+                    petn_arr,
+                    cats_outflow_mult_arr[:, :, tid],
+                    stms_inflow_mult_arr[:, :, tid],
+                    stms_outflow_mult_arr[:, :, tid],
+                    dem_net_arr,
+                    hbv_prms[tid],
+                    bds_dfs,
+                    outs_mult_arr[tid],
+                    cat_to_idx_map,
+                    stm_to_idx_map)
+
+                if res == err_val:
+                    curr_obj_vals[t_i] = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
                 else:
-                    u_j_gs[t_i, k] = pop[t_i, k]
+                    curr_obj_vals[t_i] = res
 
-                curr_opt_prms[tid, k] = u_j_gs[t_i, k]
+            for j in range(n_prm_vecs):
+                fval_pre = pre_obj_vals[j]
+                fval_curr = curr_obj_vals[j]
 
-            # check if pwp is ge than fc and adjust
-            for i in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
-                if (curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i] <
-                    curr_opt_prms[tid, prms_span_idxs[fc_i, 0] + i]):
-                    continue
- 
-                curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i] = (
-                    0.99 *
-                    rand_c_mp(&seeds_arr[tid]) * 
-                    curr_opt_prms[tid, prms_span_idxs[fc_i, 0] + i])
- 
-                u_j_gs[t_i, prms_span_idxs[pwp_i, 0] + i] = (
-                    curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i])
+                if np.isnan(fval_curr):
+                    raise RuntimeError('fval_curr is Nan!')
 
-            for i in range(n_hbv_prms):
-                for m in range(3, 6):
-                    if not prms_flags[i, m]:
-                        continue
-
-                    k = prms_idxs[i, m, 0]
-                    if curr_opt_prms[tid, k + 1] >= curr_opt_prms[tid, k]:
-                        continue
-
-                    curr_opt_prms[tid, k] = (0.99 *
-                                             rand_c_mp(&seeds_arr[tid]) *
-                                             curr_opt_prms[tid, k + 1])
-                    u_j_gs[t_i, k] = curr_opt_prms[tid, k]
-
-            res = obj_ftn(
-                &tid,
-                n_calls,
-                stms_idxs,
-                obj_longs,
-                use_step_arr,
-                prms_flags,
-                f_var_infos,
-                prms_idxs,
-                obj_ftn_wts,
-                curr_opt_prms[tid],
-                qact_arr,
-                area_arr,
-                qsim_mult_arr[tid],
-                inflow_mult_arr[tid],
-                f_vars,
-                obj_doubles,
-                route_prms[tid],
-                inis_arr,
-                temp_arr,
-                prec_arr,
-                petn_arr,
-                cats_outflow_mult_arr[:, :, tid],
-                stms_inflow_mult_arr[:, :, tid],
-                stms_outflow_mult_arr[:, :, tid],
-                dem_net_arr,
-                hbv_prms[tid],
-                bds_dfs,
-                outs_mult_arr[tid],
-                cat_to_idx_map,
-                stm_to_idx_map)
-
-            if res == err_val:
-                curr_obj_vals[t_i] = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
-            else:
-                curr_obj_vals[t_i] = res
-
-        for j in range(n_pop):
-            fval_pre = pre_obj_vals[j]
-            fval_curr = curr_obj_vals[j]
-
-            if np.isnan(fval_curr):
-                raise RuntimeError('fval_curr is Nan!')
-
-            if fval_curr >= fval_pre:
-                continue
-
-            for k in range(n_prms):
-                pop[j, k] = u_j_gs[j, k]
-
-            pre_obj_vals[j] = fval_curr
-#             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
-#             total_vars.append((mu_sc_fac, cr_cnst))
-
-            # check for global minimum and best vector
-            if fval_curr >= fval_pre_global:
-                continue
-
-            for k in range(n_prms):
-                best_params[k] = u_j_gs[j, k]
-
-            tol_pre = tol_curr
-            tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
-            fval_pre_global = fval_curr
-            last_succ_i = iter_curr
-            n_succ += 1
-            cont_iter = 0
-
-#             print(iter_curr, 'global min: %0.8f' % fval_pre_global)
-
-        if (iter_curr >= 300) & ((iter_curr % 20) == 0):
-            ddmv = 0.0
-            for k in range(n_prms):
-                if prm_opt_stop_arr[k]:
+                if fval_curr >= fval_pre:
                     continue
 
-                prms_mean_thrs_arr[k, 0] = 0.0
-                for j in range(n_pop):
-                    prms_mean_thrs_arr[k, 0] += pop[j, k]
+                for k in range(n_prms):
+                    prm_vecs[j, k] = u_j_gs[j, k]
 
-                prms_mean_thrs_arr[k, 0] /= n_pop
-                prms_mean_thrs_arr[k, 1] = (
-                    (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
-                prms_mean_thrs_arr[k, 2] = (
-                    (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+                pre_obj_vals[j] = fval_curr
+#                 accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
+#                 total_vars.append((mu_sc_fac, cr_cnst))
 
-                prm_opt_stop_arr[k] = 1
-                for j in range(n_pop):
-                    if ((pop[j, k] < prms_mean_thrs_arr[k, 1]) or
-                        (pop[j, k] > prms_mean_thrs_arr[k, 2])):
-                        prm_opt_stop_arr[k] = 0
-                        break
-
-                if not prm_opt_stop_arr[k]:
+                # check for global minimum and best vector
+                if fval_curr >= fval_pre_global:
                     continue
 
-                ddmv = 1.0
+                for k in range(n_prms):
+                    best_params[k] = u_j_gs[j, k]
 
-#                 with gil:
-                print('Parameter no. %d optimized at iteration: %d!' %
-                      (k, iter_curr))
-            if ddmv:
+                tol_pre = tol_curr
+                tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
+                fval_pre_global = fval_curr
+                last_succ_i = iter_curr
+                n_succ += 1
+                cont_iter = 0
+
+#                 print(iter_curr, 'global min: %0.8f' % fval_pre_global)
+
+            if (iter_curr >= 300) & ((iter_curr % 20) == 0):
                 ddmv = 0.0
                 for k in range(n_prms):
                     if prm_opt_stop_arr[k]:
-                        ddmv += 1
+                        continue
 
-                print('%d out of %d to go!' % (n_prms - int(ddmv), n_prms))
+                    prms_mean_thrs_arr[k, 0] = 0.0
+                    for j in range(n_prm_vecs):
+                        prms_mean_thrs_arr[k, 0] += prm_vecs[j, k]
 
-            if ddmv == n_prms:
-                print('***All parameters optimized!***', sep='')
-                break
+                    prms_mean_thrs_arr[k, 0] /= n_prm_vecs
+                    prms_mean_thrs_arr[k, 1] = (
+                        (1 - prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
+                    prms_mean_thrs_arr[k, 2] = (
+                        (1 + prm_pcnt_tol) * prms_mean_thrs_arr[k, 0])
 
-        iter_curr += 1
+                    prm_opt_stop_arr[k] = 1
+                    for j in range(n_prm_vecs):
+                        if ((prm_vecs[j, k] < prms_mean_thrs_arr[k, 1]) or
+                            (prm_vecs[j, k] > prms_mean_thrs_arr[k, 2])):
+                            prm_opt_stop_arr[k] = 0
+                            break
+
+                    if not prm_opt_stop_arr[k]:
+                        continue
+
+                    ddmv = 1.0
+
+#                     with gil:
+                    print('Parameter no. %d optimized at iteration: %d!' %
+                          (k, iter_curr))
+                if ddmv:
+                    ddmv = 0.0
+                    for k in range(n_prms):
+                        if prm_opt_stop_arr[k]:
+                            ddmv += 1
+
+                    print('%d out of %d to go!' % (n_prms - int(ddmv), n_prms))
+
+                if ddmv == n_prms:
+                    print('***All parameters optimized!***', sep='')
+                    break
+
+            iter_curr += 1
+
+    elif opt_schm == 2:
+        pass
 
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. if you want to use/validate results
@@ -723,11 +744,11 @@ cpdef dict hbv_opt_de(args):
             'n_succ': n_succ,
             'lst_succ_try': last_succ_i,
             'cont_iter': cont_iter,
-            'pop': np.asarray(pop),
+            'prm_vecs': np.asarray(prm_vecs),
             'fin_tol': 0.5 * (tol_pre + tol_curr),
             'accept_vars': accept_vars,
             'total_vars': total_vars,
             'n_calls': np.asarray(n_calls),
-            'pop_pre_obj_vals': np.asarray(pre_obj_vals),
-            'pop_curr_obj_vals': np.asarray(curr_obj_vals),
+            'pre_obj_vals': np.asarray(pre_obj_vals),
+            'curr_obj_vals': np.asarray(curr_obj_vals),
             'qsim_arr': np.asarray(qsim_mult_arr[tid])}

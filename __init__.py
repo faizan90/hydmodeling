@@ -22,7 +22,7 @@ from .models import (
     get_slope_scale_arr_cy,
     get_aspect_and_slope_scale_arr_cy,
 
-    hbv_opt_de,
+    hbv_opt,
 
     hbv_loop_py,
     hbv_c_loop_py,
