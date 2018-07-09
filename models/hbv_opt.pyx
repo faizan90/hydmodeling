@@ -165,7 +165,7 @@ cdef tuple select_best_params(
         if res[sort_idxs[i]]<min_res:
             min_res = res[sort_idxs[i]]
     res_new[0] = min_res
-    print('minimum residual:', min_res)
+#    print('minimum residual:', min_res)
 
     depth_arr = depth_ftn_mp(acc_pars, acc_pars, uvecs, n_cpus)
     for i in range(acc_pars.shape[0]):
@@ -184,17 +184,26 @@ cdef tuple select_best_params(
 cdef void set_new_bounds(
         DT_D[:, ::1] bounds,
         DT_D[:, ::1] acc_pars) except +:
-    cdef Py_ssize_t i, j
+    cdef:
+        Py_ssize_t i, j
+        DT_D[:, ::1] acc_pars_in_bds
 
+    acc_pars_in_bds = acc_pars.copy()
+    for i in range(acc_pars.shape[1]):
+        for j in range(acc_pars.shape[0]):
+            acc_pars_in_bds[j,i] = bounds[i,0] + acc_pars[j,i] * (bounds[i,1]-bounds[i,0])
+
+    #loop over all parameter sets
     for i in range(acc_pars.shape[1]):
         bounds[i,0] = np.inf
         bounds[i,1] = -np.inf
         for j in range(acc_pars.shape[0]):
+            #lower boundary
             if acc_pars[j,i]< bounds[i,0]:
-                bounds[i,0] = acc_pars[j,i]
-
+                bounds[i,0] = acc_pars_in_bds[j,i]
+            #upper boundary
             if acc_pars[j,i]> bounds[i,1]:
-                bounds[i,1] = acc_pars[j,i]
+                bounds[i,1] = acc_pars_in_bds[j,i]
 
     return
 
@@ -553,7 +562,6 @@ cpdef dict hbv_opt(args):
         else:
             pre_obj_vals[i] = res
     for i in range(n_par_sets):
-        # TODO: speicher ich damit nicht den Parametersatz mit kleinstem Nash sutcliffe?
 #         print('%d Ini res:' % i, pre_obj_vals[i])
         if pre_obj_vals[i] > fval_pre_global:
             continue
@@ -585,8 +593,7 @@ cpdef dict hbv_opt(args):
 
 
     if opt_schm == 1:
-        print(iter_curr, max_iters, cont_iter, max_cont_iters, ratio, conv_thresh)
-        while iter_curr < max_iters and (cont_iter < max_cont_iters) and ratio > conv_thresh:
+        while (iter_curr < max_iters) and (cont_iter < max_cont_iters) and (0.5 * (tol_pre + tol_curr) > obj_ftn_tol):
             cont_iter += 1
             counter = 0
             set_new_bounds(bds_dfs, chull_pts)
@@ -595,26 +602,40 @@ cpdef dict hbv_opt(args):
                 for i in range(params_temp_arr.shape[0]):
                     #print(seeds_arr[tid])
                     for j in range(params_temp_arr.shape[1]):
-                        params_temp_arr[i, j] = 0.99 * rand_c_mp(&seeds_arr[tid])
+                        params_temp_arr[i, j] = 0.99 * rand_c_mp(&seeds_arr[0])
                     # check if pwp is ge than fc and adjust
-                    if params_temp_arr[i,2] < params_temp_arr[i,4]:
-                        params_temp_arr[i, 4] = 0.99 * rand_c_mp(&seeds_arr[tid]) * params_temp_arr[i,2]
-                # calculate depth of new points
+                    for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
+
+                        if (params_temp_arr[i, prms_span_idxs[pwp_i, 0] + j] <
+                            params_temp_arr[i, prms_span_idxs[fc_i, 0] + j]):
+                            continue
+
+                        params_temp_arr[i, prms_span_idxs[pwp_i, 0] + j] = (
+                            0.99 *
+                            rand_c_mp(&seeds_arr[0]) *
+                            params_temp_arr[i, prms_span_idxs[fc_i, 0] + j])
+
+                #print(np.asarray(chull_pts))
                 depths = depth_ftn_mp(chull_pts, params_temp_arr, uvecs, n_cpus)
+                #print(np.asarray(depths))
                 for i in range(pop.shape[0]):
                     # skip counting if points are outside convex hull
                     if not depths[i]:
+                        #print('rej')
                         continue
+
                     # break if amount of parameter sets is already reached
                     if counter >= pop.shape[0]:
+                        #print('count')
                         break
+
                     # write it into output if it is in the convex hull
                     for j in range(params_temp_arr.shape[1]):
+                        #print('acc')
                         pop[counter, j] = params_temp_arr[i,j]
                     #print(np.asarray(pop[counter, :]))
                     counter += 1
 
-            #print(np.asarray(pop))
 
             for j in prange(n_par_sets,
                         schedule='dynamic',
@@ -662,9 +683,38 @@ cpdef dict hbv_opt(args):
                 else:
                     pre_obj_vals[j] = res
 
-                with gil:
-                    print('mIter %d, jIter %d:, %0.3f' % (iter_curr, j, res))
-                    #print('current residual ', res)
+            for j in range(n_par_sets):
+                fval_pre = pre_obj_vals[j]
+                fval_curr = curr_obj_vals[j]
+
+                if np.isnan(fval_curr):
+                    raise RuntimeError('fval_curr is Nan!')
+
+                if fval_curr >= fval_pre:
+                    continue
+
+                for k in range(n_prms):
+                    pop[j, k] = u_j_gs[j, k]
+
+                pre_obj_vals[j] = fval_curr
+    #             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
+    #             total_vars.append((mu_sc_fac, cr_cnst))
+
+                # check for global minimum and best vector
+                if fval_curr >= fval_pre_global:
+                    continue
+
+                for k in range(n_prms):
+                    best_params[k] = u_j_gs[j, k]
+
+                tol_pre = tol_curr
+                tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
+                fval_pre_global = fval_curr
+                last_succ_i = iter_curr
+                n_succ += 1
+                cont_iter = 0
+
+                print(iter_curr, 'global min: %0.8f' % fval_pre_global)
 
 
             chull_pts, pars_acc = select_best_params(
@@ -675,6 +725,9 @@ cpdef dict hbv_opt(args):
                 n_cpus,
                 &res_new)
             print('res_new:', res_new)
+            tol_pre = tol_curr
+            tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
+            fval_pre_global = fval_curr
             iter_curr += 1
 
 
@@ -684,7 +737,8 @@ cpdef dict hbv_opt(args):
                (cont_iter < max_cont_iters)):
 
             cont_iter += 1
-    #         print('DE iter no:', iter_curr)
+            # print('DE iter no:', iter_curr)
+            # print('DE cont no:', cont_iter)
 
             # randomize the mutation and recombination factors for every
             # generation
@@ -826,38 +880,38 @@ cpdef dict hbv_opt(args):
                 else:
                     curr_obj_vals[t_i] = res
 
-        for j in range(n_par_sets):
-            fval_pre = pre_obj_vals[j]
-            fval_curr = curr_obj_vals[j]
+            for j in range(n_par_sets):
+                fval_pre = pre_obj_vals[j]
+                fval_curr = curr_obj_vals[j]
 
-            if np.isnan(fval_curr):
-                raise RuntimeError('fval_curr is Nan!')
+                if np.isnan(fval_curr):
+                    raise RuntimeError('fval_curr is Nan!')
 
-            if fval_curr >= fval_pre:
-                continue
+                if fval_curr >= fval_pre:
+                    continue
 
-            for k in range(n_prms):
-                pop[j, k] = u_j_gs[j, k]
+                for k in range(n_prms):
+                    pop[j, k] = u_j_gs[j, k]
 
-            pre_obj_vals[j] = fval_curr
-#             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
-#             total_vars.append((mu_sc_fac, cr_cnst))
+                pre_obj_vals[j] = fval_curr
+    #             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
+    #             total_vars.append((mu_sc_fac, cr_cnst))
 
-            # check for global minimum and best vector
-            if fval_curr >= fval_pre_global:
-                continue
+                # check for global minimum and best vector
+                if fval_curr >= fval_pre_global:
+                    continue
 
-            for k in range(n_prms):
-                best_params[k] = u_j_gs[j, k]
+                for k in range(n_prms):
+                    best_params[k] = u_j_gs[j, k]
 
-            tol_pre = tol_curr
-            tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
-            fval_pre_global = fval_curr
-            last_succ_i = iter_curr
-            n_succ += 1
-            cont_iter = 0
+                tol_pre = tol_curr
+                tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
+                fval_pre_global = fval_curr
+                last_succ_i = iter_curr
+                n_succ += 1
+                cont_iter = 0
 
-#             print(iter_curr, 'global min: %0.8f' % fval_pre_global)
+                print(iter_curr, 'global min: %0.8f' % fval_pre_global)
 
 
             if (iter_curr >= 300) & ((iter_curr % 20) == 0):
