@@ -7,7 +7,7 @@ Created on %(date)s
 """
 
 import os
-import shelve
+import h5py
 from pathlib import Path
 
 import numpy as np
@@ -31,21 +31,23 @@ def plot_hbv(plot_args):
              plot_simple_flag,
              plot_wat_bal_flag) = plot_args
 
-    with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
-        out_dir = db['data']['dirs_dict']['main']
-        kfolds = db['data']['kfolds']
-        cat = db['cat']
+    with h5py.File(cat_db, 'r') as db:
+        out_dir = db['data'].attrs['main']
+        kfolds = db['data'].attrs['kfolds']
+        cat = db.attrs['cat']
 
-        off_idx = db['data']['off_idx']
-        conv_ratio = db['data']['conv_ratio']
-        prm_syms = db['data']['all_prms_labs']
+        off_idx = db['data'].attrs['off_idx']
+        conv_ratio = db['data'].attrs['conv_ratio']
+        prm_syms = db['data/all_prms_labs'][...]
 
         for i in range(1, kfolds + 1):
+            cd_db = db[f'calib/kf_{i:02d}']
+            kf_dict = {key: cd_db[key][...] for key in cd_db}
             _plot_hbv_kf(
                 i,
                 cat,
-                db['calib'][f'kf_{i:02d}'],
-                db['data']['area_arr'],
+                kf_dict,
+                db['data/area_arr'][...],
                 conv_ratio,
                 prm_syms,
                 off_idx,
@@ -57,8 +59,8 @@ def plot_hbv(plot_args):
 
 
 def plot_pop(cat_db):
-    with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
-        out_dir = db['data']['dirs_dict']['main']
+    with h5py.File(cat_db, 'r') as db:
+        out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'06_population')
         if not os.path.exists(out_dir):
             try:
@@ -66,19 +68,19 @@ def plot_pop(cat_db):
             except:
                 pass
 
-        kfolds = db['data']['kfolds']
-        cat = db['cat']
-        prm_syms = db['data']['all_prms_labs']
+        kfolds = db['data'].attrs['kfolds']
+        cat = db.attrs['cat']
+        prm_syms = db['data/all_prms_labs'][...]
 
         calib_db = db['calib']
 
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
-            pop = calib_db[kf_str]['pop']
-            bounds_arr = db['cdata']['bds_arr']
-            prm_syms = db['cdata']['use_prms_labs']
-            cobj_vals = calib_db[kf_str]['pop_curr_obj_vals']
-            pobj_vals = calib_db[kf_str]['pop_pre_obj_vals']
+            pop = calib_db[kf_str + '/pop'][...]
+            bounds_arr = db['cdata/bds_arr'][...]
+            prm_syms = db['cdata/use_prms_labs'][...]
+            cobj_vals = calib_db[kf_str + '/pop_curr_obj_vals'][...]
+            pobj_vals = calib_db[kf_str + '/pop_pre_obj_vals'][...]
             _plot_k_pop(
                 i,
                 cat,

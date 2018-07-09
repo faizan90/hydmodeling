@@ -11,6 +11,7 @@ import shelve
 import shutil
 from functools import partial
 
+import h5py
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -914,82 +915,95 @@ def _solve_k_cats_sys(
         out_db_dict['use_step_flag'] = use_step_flag
         out_db_dict['use_step_arr'] = use_step_arr
 
-        _out_db_file = os.path.join(dirs_dict['db'], f'cat_{cat}')
-        with shelve.open(_out_db_file, 'c', writeback=True) as db:
+        _out_db_file = os.path.join(dirs_dict['db'], f'cat_{cat}.hdf5')
+        with h5py.File(_out_db_file, 'a', driver='core') as db:
 
             if 'cat' not in db:
-                db['cat'] = cat
+                db.attrs['cat'] = cat
 
             if calib_run:
-                if 'calib' not in db:
-                    db['calib'] = {}
-
                 out_db_dict['tem_arr'] = tem_arr
                 out_db_dict['ppt_arr'] = ppt_arr
                 out_db_dict['pet_arr'] = pet_arr
                 out_db_dict['qact_arr'] = q_arr
                 out_db_dict['ini_arr'] = ini_arr
 
-                db['calib'][f'kf_{kf_i:02d}'] = out_db_dict
+                for key in out_db_dict:
+                    db[f'calib/kf_{kf_i:02d}/{key}'] = out_db_dict[key]
 
             else:
-                if 'valid' not in db:
-                    db['valid'] = {}
+                for key in out_db_dict:
+                    if (n_cells > 1) and (key == 'outs_arr'):
+                        continue
 
-                db['valid'][f'kf_{kf_i:02d}'] = out_db_dict
+                    db[f'valid/kf_{kf_i:02d}/{key}'] = out_db_dict[key]
 
             if 'data' not in db:
-                db['data'] = {}
-                db['data']['kfolds'] = kfolds
-                db['data']['conv_ratio'] = conv_ratio
-                db['data']['all_prms_flags'] = all_prms_flags
-                db['data']['use_obs_flow_flag'] = use_obs_flow_flag
-                db['data']['area_arr'] = cat_area_ratios_arr
-                db['data']['dirs_dict'] = dirs_dict
-                db['data']['off_idx'] = warm_up_steps
-                db['data']['run_as_lump_flag'] = run_as_lump_flag
-                db['data']['route_type'] = route_type
-                db['data']['all_prms_labs'] = all_prms_labs
+                data_sb = db.create_group('data')
+                data_sb.attrs['kfolds'] = kfolds
+                data_sb.attrs['conv_ratio'] = conv_ratio
+                data_sb['all_prms_flags'] = all_prms_flags
+                data_sb.attrs['use_obs_flow_flag'] = use_obs_flow_flag
+                data_sb['area_arr'] = cat_area_ratios_arr
+                data_sb.attrs['off_idx'] = warm_up_steps
+                data_sb.attrs['run_as_lump_flag'] = run_as_lump_flag
+                data_sb.attrs['route_type'] = route_type
 
-                db['data']['shape'] = cat_shape
-                db['data']['rows'] = cat_rows_idxs
-                db['data']['cols'] = cat_cols_idxs
-                db['data']['bds_dict'] = bounds_dict
+                dt = h5py.special_dtype(vlen=str)
+                _prms_ds = data_sb.create_dataset(
+                    'all_prms_labs', (len(all_prms_labs),), dtype=dt)
+                _prms_ds[:] = all_prms_labs
+
+                data_sb['shape'] = cat_shape
+                data_sb['rows'] = cat_rows_idxs
+                data_sb['cols'] = cat_cols_idxs
+
+                bds_sb = data_sb.create_group('bds_dict')
+                for key in bounds_dict:
+                    bds_sb[key] = bounds_dict[key]
+
+                for key in dirs_dict:
+                    data_sb.attrs[key] = dirs_dict[key]
 
             if not calib_run:
-                if 'vdata' not in db:
-                    db['vdata'] = {}
+                pass
 
-            if calib_run:
-                if 'cdata' not in db:
-                    db['cdata'] = {}
-
+            if calib_run and ('cdata' not in db):
+                cdata_sb = db.create_group('cdata')
                 if np.any(all_prms_flags[:, 1]):
-                    db['cdata']['lulc_arr'] = lulc_arr
+                    db['cdata/lulc_arr'] = lulc_arr
 
                 if np.any(all_prms_flags[:, 2]):
-                    db['cdata']['soil_arr'] = soil_arr
+                    db['cdata/soil_arr'] = soil_arr
 
                 if np.any(all_prms_flags[:, 3]):
-                    db['cdata']['aspect_scale_arr'] = aspect_scale_arr
+                    db['cdata/aspect_scale_arr'] = aspect_scale_arr
 
                 if np.any(all_prms_flags[:, 4]):
-                    db['cdata']['slope_scale_arr'] = slope_scale_arr
+                    db['cdata/slope_scale_arr'] = slope_scale_arr
 
                 if np.any(all_prms_flags[:, 5]):
-                    db['cdata']['aspect_slope_scale_arr'] = (
+                    db['cdata/aspect_slope_scale_arr'] = (
                         aspect_slope_scale_arr)
 
-                db['cdata']['opt_schm_vars_dict'] = opt_schm_vars_dict
+                opt_sb = cdata_sb.create_group('opt_schm_vars_dict')
+                for key in opt_schm_vars_dict:
+                    opt_sb[key] = opt_schm_vars_dict[key]
 
-                db['cdata']['use_prms_labs'] = use_prms_labs
-                db['cdata']['bds_arr'] = bounds_arr
+#                 db['cdata/use_prms_labs'] = np.array(use_prms_labs, dtype='S10')
 
-                db['cdata']['use_prms_idxs'] = use_prms_idxs
-                db['cdata']['all_prms_flags'] = all_prms_flags
-                db['cdata']['prms_span_idxs'] = prms_span_idxs
-                db['cdata']['aux_vars'] = aux_vars
-                db['cdata']['aux_var_infos'] = aux_var_infos
+                dt = h5py.special_dtype(vlen=str)
+                _prms_ds = cdata_sb.create_dataset(
+                    'use_prms_labs', (len(all_prms_labs),), dtype=dt)
+                _prms_ds[:] = all_prms_labs
+
+                db['cdata/bds_arr'] = bounds_arr
+
+                db['cdata/use_prms_idxs'] = use_prms_idxs
+                db['cdata/all_prms_flags'] = all_prms_flags
+                db['cdata/prms_span_idxs'] = prms_span_idxs
+                db['cdata/aux_vars'] = aux_vars
+                db['cdata/aux_var_infos'] = aux_var_infos
 
         in_cats_prcssed_df.loc[cat, 'prcssed'] = True
         in_cats_prcssed_df.loc[cat, 'optd'] = True

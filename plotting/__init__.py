@@ -14,7 +14,7 @@ def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
     '''Plot the k-fold efficiency results
     '''
 
-    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
     assert cats_dbs
 
@@ -44,7 +44,7 @@ def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
 
 def plot_kfolds_best_prms(dbs_dir, n_cpus):
 
-    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
     assert cats_dbs
     n_cats = len(cats_dbs)
@@ -71,7 +71,7 @@ def plot_kfolds_best_prms(dbs_dir, n_cpus):
 def plot_pops(dbs_dir, n_cpus):
     '''Plot the population
     '''
-    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
     assert cats_dbs
 
@@ -107,7 +107,7 @@ def plot_vars(
     '''Plot the optimization results
     '''
 
-    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
     assert cats_dbs
 

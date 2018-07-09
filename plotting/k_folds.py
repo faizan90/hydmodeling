@@ -8,6 +8,7 @@ Created on Oct 12, 2017
 import os
 import timeit
 import time
+import h5py
 import shelve
 from pathlib import Path
 from glob import glob
@@ -35,8 +36,8 @@ def plot_cat_kfold_effs(args):
 
     cat_db_path, (ann_cyc_flag, hgs_db_path) = args
 
-    with shelve.open(cat_db_path.rsplit('.', 1)[0], 'r') as db:
-        out_dir = db['data']['dirs_dict']['main']
+    with h5py.File(cat_db_path, 'r') as db:
+        out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'05_kfolds_perf')
 
         if not os.path.exists(out_dir):
@@ -45,14 +46,14 @@ def plot_cat_kfold_effs(args):
             except:
                 pass
 
-        kfolds = db['data']['kfolds']
-        cat = db['cat']
+        kfolds = db['data'].attrs['kfolds']
+        cat = db.attrs['cat']
 
-        off_idx = db['data']['off_idx']
+        off_idx = db['data'].attrs['off_idx']
 
-        use_step_flag = db['valid']['kf_01']['use_step_flag']
+        use_step_flag = db['valid/kf_01/use_step_flag'][()]
         if use_step_flag:
-            use_step_arr = db['valid']['kf_01']['use_step_arr']
+            use_step_arr = db['valid/kf_01/use_step_arr'][...]
 
     kfold_q_sers_dict = {}
     with shelve.open(hgs_db_path, 'r') as db:
@@ -333,7 +334,7 @@ def plot_cat_kfold_effs(args):
 
 def plot_kfolds_best_hbv_prms_2d(dbs_dir):
 
-    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.bak'))
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
     assert cats_dbs
 
@@ -341,15 +342,16 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
     rows_dict = {}
     cols_dict = {}
 
-    with shelve.open(cats_dbs[0].rsplit('.', 1)[0], 'r') as db:
-        kfolds = db['data']['kfolds']
-        shape = db['data']['shape']
+    with h5py.File(cats_dbs[0], 'r') as db:
+        kfolds = db['data'].attrs['kfolds']
+        shape = db['data/shape'][...]
 
-        bds_dict = db['data']['bds_dict']
-        prms_labs = db['data']['all_prms_labs']
-        lumped_prms_flag = db['data']['run_as_lump_flag']
+        _bds_db = db['data/bds_dict']
+        bds_dict = {key: _bds_db[key][...] for key in _bds_db}
+        prms_labs = db['data/all_prms_labs'][...]
+        lumped_prms_flag = db['data'].attrs['run_as_lump_flag']
 
-        out_dir = db['data']['dirs_dict']['main']
+        out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'07_2d_kfold_prms')
         if not os.path.exists(out_dir):
             try:
@@ -363,12 +365,12 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
     max_col = -np.inf
 
     for cat_db in cats_dbs:
-        with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
-            cat = db['cat']
-            assert kfolds == db['data']['kfolds']
+        with h5py.File(cat_db, 'r') as db:
+            cat = db.attrs['cat']
+            assert kfolds == db['data'].attrs['kfolds']
 
             if cat not in rows_dict:
-                rows_dict[cat] = db['data']['rows']
+                rows_dict[cat] = db['data/rows'][...]
 
                 if rows_dict[cat].min() < min_row:
                     min_row = rows_dict[cat].min()
@@ -377,7 +379,7 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
                     max_row = rows_dict[cat].max()
 
             if cat not in cols_dict:
-                cols_dict[cat] = db['data']['cols']
+                cols_dict[cat] = db['data/cols'][...]
 
                 if cols_dict[cat].min() < min_col:
                     min_col = cols_dict[cat].min()
@@ -389,7 +391,7 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
                 if i not in kf_prms_dict:
                     kf_prms_dict[i] = {}
 
-                kf_prms_dict[i][cat] = db['calib'][f'kf_{i:02d}']['hbv_prms']
+                kf_prms_dict[i][cat] = db[f'calib/kf_{i:02d}/hbv_prms'][...]
 
     plot_min_max_lims = (min_row - 1, max_row + 1, min_col - 1, max_col + 1)
 
@@ -544,13 +546,13 @@ def _plot_kf_prms_2d(
 
 def _kfold_best_prms(cat_db):
 
-    with shelve.open(cat_db.rsplit('.', 1)[0], 'r') as db:
-        cat = db['cat']
-        kfolds = db['data']['kfolds']
-        bds_arr = db['cdata']['bds_arr']
-        best_prms_labs = db['cdata']['use_prms_labs']
+    with h5py.File(cat_db, 'r') as db:
+        cat = db.attrs['cat']
+        kfolds = db['data'].attrs['kfolds']
+        bds_arr = db['cdata/bds_arr'][...]
+        best_prms_labs = db['cdata/use_prms_labs'][...]
 
-        out_dir = db['data']['dirs_dict']['main']
+        out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'05_kfolds_perf')
         if not os.path.exists(out_dir):
             try:
@@ -560,7 +562,7 @@ def _kfold_best_prms(cat_db):
 
         best_prms_list = []
         for i in range(1, kfolds + 1):
-            best_prms_list.append(db['calib'][f'kf_{i:02d}']['opt_prms'])
+            best_prms_list.append(db[f'calib/kf_{i:02d}/opt_prms'][...])
 
     plt.figure(figsize=(max(20, best_prms_list[0].shape[0]), 12))
     tick_font_size = 10
