@@ -207,6 +207,24 @@ cdef void set_new_bounds(
 
     return
 
+cdef void check_pwp(
+        DT_UL prms_span_idxs_pwp,
+        DT_UL prms_span_idxs_fc,
+        DT_D[::1] params_temp_arr,
+        DT_ULL *seeds_arr):
+    cdef:
+        Py_ssize_t j
+
+    for j in range(prms_span_idxs_fc - prms_span_idxs_fc):
+        if (params_temp_arr[prms_span_idxs_pwp + j] <
+            params_temp_arr[prms_span_idxs_fc + j]):
+            continue
+        params_temp_arr[prms_span_idxs_pwp + j] = (
+            0.99 *
+            rand_c_mp(seeds_arr) *
+            params_temp_arr[prms_span_idxs_fc + j])
+    return
+
 cpdef dict hbv_opt(args):
 
     '''The differential evolution and rope algorithm for distributed HBV with routing
@@ -263,6 +281,7 @@ cpdef dict hbv_opt(args):
         DT_UL n_final_sets, n_new_par, n_acc_pars, counter
         DT_D perc
         DT_D res_new
+        DT_D[:, ::1] params_temp_arr
         #======================================================================
 
         #======================================================================
@@ -561,6 +580,7 @@ cpdef dict hbv_opt(args):
             pre_obj_vals[i] = (2 + rand_c()) * err_val
         else:
             pre_obj_vals[i] = res
+
     for i in range(n_par_sets):
 #         print('%d Ini res:' % i, pre_obj_vals[i])
         if pre_obj_vals[i] > fval_pre_global:
@@ -589,12 +609,16 @@ cpdef dict hbv_opt(args):
     print('Catchment:', cat_no)
 #     raise Exception('Stop!')
 
-    params_temp_arr = pop.copy()
-
-
+    #ROPE
     if opt_schm == 1:
-        while (iter_curr < max_iters) and (cont_iter < max_cont_iters) and (0.5 * (tol_pre + tol_curr) > obj_ftn_tol):
-            cont_iter += 1
+        params_temp_arr = pop.copy()
+
+
+
+    while (iter_curr < max_iters) and (cont_iter < max_cont_iters) and (0.5 * (tol_pre + tol_curr) > obj_ftn_tol):
+        cont_iter += 1
+        #ROPE
+        if opt_schm == 1:
             counter = 0
             set_new_bounds(bds_dfs, chull_pts)
             #calculate new parameter factors
@@ -604,18 +628,12 @@ cpdef dict hbv_opt(args):
                     for j in range(params_temp_arr.shape[1]):
                         params_temp_arr[i, j] = 0.99 * rand_c_mp(&seeds_arr[0])
                     # check if pwp is ge than fc and adjust
-                    for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
+                    #print('field capacity', np.asarray(fc_i))
+                    check_pwp(prms_span_idxs[pwp_i, 0],
+                            prms_span_idxs[fc_i, 0],
+                            params_temp_arr[i],
+                            &seeds_arr[0])
 
-                        if (params_temp_arr[i, prms_span_idxs[pwp_i, 0] + j] <
-                            params_temp_arr[i, prms_span_idxs[fc_i, 0] + j]):
-                            continue
-
-                        params_temp_arr[i, prms_span_idxs[pwp_i, 0] + j] = (
-                            0.99 *
-                            rand_c_mp(&seeds_arr[0]) *
-                            params_temp_arr[i, prms_span_idxs[fc_i, 0] + j])
-
-                #print(np.asarray(chull_pts))
                 depths = depth_ftn_mp(chull_pts, params_temp_arr, uvecs, n_cpus)
                 #print(np.asarray(depths))
                 for i in range(pop.shape[0]):
@@ -623,123 +641,17 @@ cpdef dict hbv_opt(args):
                     if not depths[i]:
                         #print('rej')
                         continue
-
                     # break if amount of parameter sets is already reached
                     if counter >= pop.shape[0]:
                         #print('count')
                         break
-
                     # write it into output if it is in the convex hull
                     for j in range(params_temp_arr.shape[1]):
                         #print('acc')
                         pop[counter, j] = params_temp_arr[i,j]
                     #print(np.asarray(pop[counter, :]))
                     counter += 1
-
-
-            for j in prange(n_par_sets,
-                        schedule='dynamic',
-                        nogil=True,
-                        num_threads=n_cpus):
-                tid = threadid()
-
-                for k in range(n_prms):
-                    curr_opt_prms[tid,k] = pop[j, k]
-
-                res = obj_ftn(
-                    &tid,
-                    n_calls,
-                    stms_idxs,
-                    obj_longs,
-                    use_step_arr,
-                    prms_flags,
-                    f_var_infos,
-                    prms_idxs,
-                    obj_ftn_wts,
-                    curr_opt_prms[tid],
-                    qact_arr,
-                    area_arr,
-                    qsim_mult_arr[tid],
-                    inflow_mult_arr[tid],
-                    f_vars,
-                    obj_doubles,
-                    route_prms[tid],
-                    inis_arr,
-                    temp_arr,
-                    prec_arr,
-                    petn_arr,
-                    cats_outflow_mult_arr[tid],
-                    stms_inflow_mult_arr[tid],
-                    stms_outflow_mult_arr[tid],
-                    dem_net_arr,
-                    hbv_prms[tid],
-                    bds_dfs,
-                    outs_mult_arr[tid],
-                    cat_to_idx_map,
-                    stm_to_idx_map)
-
-                if res == err_val:
-                    pre_obj_vals[j] = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
-                else:
-                    pre_obj_vals[j] = res
-
-            for j in range(n_par_sets):
-                fval_pre = pre_obj_vals[j]
-                fval_curr = curr_obj_vals[j]
-
-                if np.isnan(fval_curr):
-                    raise RuntimeError('fval_curr is Nan!')
-
-                if fval_curr >= fval_pre:
-                    continue
-
-                for k in range(n_prms):
-                    pop[j, k] = u_j_gs[j, k]
-
-                pre_obj_vals[j] = fval_curr
-    #             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
-    #             total_vars.append((mu_sc_fac, cr_cnst))
-
-                # check for global minimum and best vector
-                if fval_curr >= fval_pre_global:
-                    continue
-
-                for k in range(n_prms):
-                    best_params[k] = u_j_gs[j, k]
-
-                tol_pre = tol_curr
-                tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
-                fval_pre_global = fval_curr
-                last_succ_i = iter_curr
-                n_succ += 1
-                cont_iter = 0
-
-                print(iter_curr, 'global min: %0.8f' % fval_pre_global)
-
-
-            chull_pts, pars_acc = select_best_params(
-                pre_obj_vals,
-                n_acc_pars,
-                pop,
-                uvecs,
-                n_cpus,
-                &res_new)
-            print('res_new:', res_new)
-            tol_pre = tol_curr
-            tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
-            fval_pre_global = fval_curr
-            iter_curr += 1
-
-
-    if opt_schm == 0:
-        while ((iter_curr < max_iters) and
-               (0.5 * (tol_pre + tol_curr) > obj_ftn_tol) and
-               (cont_iter < max_cont_iters)):
-
-            cont_iter += 1
-            # print('DE iter no:', iter_curr)
-            # print('DE cont no:', cont_iter)
-
+        if opt_schm == 0:
             # randomize the mutation and recombination factors for every
             # generation
             mu_sc_fac = (mu_sc_fac_bds[0] +
@@ -812,22 +724,12 @@ cpdef dict hbv_opt(args):
                     curr_opt_prms[tid, k] = u_j_gs[t_i, k]
 
                 # check if pwp is ge than fc and adjust
-                for i in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
-    #                 if (prm_opt_stop_arr[prms_span_idxs[pwp_i, 0] + i] or
-    #                     prm_opt_stop_arr[prms_span_idxs[fc_i, 0] + i]):
-    #                     continue  # what if the parameter to change is locked?
-
-                    if (curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i] <
-                        curr_opt_prms[tid, prms_span_idxs[fc_i, 0] + i]):
-                        continue
-
-                    curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i] = (
-                        0.99 *
-                        rand_c_mp(&seeds_arr[tid]) *
-                        curr_opt_prms[tid, prms_span_idxs[fc_i, 0] + i])
-
-                    u_j_gs[t_i, prms_span_idxs[pwp_i, 0] + i] = (
-                        curr_opt_prms[tid, prms_span_idxs[pwp_i, 0] + i])
+                with gil:
+                    check_pwp(
+                        prms_span_idxs[pwp_i, 0],
+                        prms_span_idxs[fc_i, 0],
+                        curr_opt_prms[tid],
+                        &seeds_arr[tid])
 
                 for i in range(n_hbv_prms):
                     for m in range(3, 6):
@@ -843,77 +745,108 @@ cpdef dict hbv_opt(args):
                                                  curr_opt_prms[tid, k + 1])
                         u_j_gs[i, k] = curr_opt_prms[tid, k]
 
-                res = obj_ftn(
-                    &tid,
-                    n_calls,
-                    stms_idxs,
-                    obj_longs,
-                    use_step_arr,
-                    prms_flags,
-                    f_var_infos,
-                    prms_idxs,
-                    obj_ftn_wts,
-                    curr_opt_prms[tid],
-                    qact_arr,
-                    area_arr,
-                    qsim_mult_arr[tid],
-                    inflow_mult_arr[tid],
-                    f_vars,
-                    obj_doubles,
-                    route_prms[tid],
-                    inis_arr,
-                    temp_arr,
-                    prec_arr,
-                    petn_arr,
-                    cats_outflow_mult_arr[tid],
-                    stms_inflow_mult_arr[tid],
-                    stms_outflow_mult_arr[tid],
-                    dem_net_arr,
-                    hbv_prms[tid],
-                    bds_dfs,
-                    outs_mult_arr[tid],
-                    cat_to_idx_map,
-                    stm_to_idx_map)
+        for j in prange(n_par_sets,
+                    schedule='dynamic',
+                    nogil=True,
+                    num_threads=n_cpus):
+            tid = threadid()
 
-                if res == err_val:
-                    curr_obj_vals[t_i] = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
-                else:
-                    curr_obj_vals[t_i] = res
-
-            for j in range(n_par_sets):
-                fval_pre = pre_obj_vals[j]
-                fval_curr = curr_obj_vals[j]
-
-                if np.isnan(fval_curr):
-                    raise RuntimeError('fval_curr is Nan!')
-
-                if fval_curr >= fval_pre:
-                    continue
-
+            if opt_schm == 1:
                 for k in range(n_prms):
-                    pop[j, k] = u_j_gs[j, k]
+                    curr_opt_prms[tid,k] = pop[j, k]
+            res = obj_ftn(
+                &tid,
+                n_calls,
+                stms_idxs,
+                obj_longs,
+                use_step_arr,
+                prms_flags,
+                f_var_infos,
+                prms_idxs,
+                obj_ftn_wts,
+                curr_opt_prms[tid],
+                qact_arr,
+                area_arr,
+                qsim_mult_arr[tid],
+                inflow_mult_arr[tid],
+                f_vars,
+                obj_doubles,
+                route_prms[tid],
+                inis_arr,
+                temp_arr,
+                prec_arr,
+                petn_arr,
+                cats_outflow_mult_arr[tid],
+                stms_inflow_mult_arr[tid],
+                stms_outflow_mult_arr[tid],
+                dem_net_arr,
+                hbv_prms[tid],
+                bds_dfs,
+                outs_mult_arr[tid],
+                cat_to_idx_map,
+                stm_to_idx_map)
 
-                pre_obj_vals[j] = fval_curr
-    #             accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
-    #             total_vars.append((mu_sc_fac, cr_cnst))
+            if res == err_val:
+                curr_obj_vals[j] = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
+            else:
+                curr_obj_vals[j] = res
 
-                # check for global minimum and best vector
-                if fval_curr >= fval_pre_global:
-                    continue
+            # with gil:
+            #     print('mIter %d, jIter %d:, %0.3f' % (iter_curr, j, res))
 
+        for j in range(n_par_sets):
+            fval_pre = pre_obj_vals[j]
+            fval_curr = curr_obj_vals[j]
+
+            if np.isnan(fval_curr):
+                raise RuntimeError('fval_curr is Nan!')
+
+            if fval_curr >= fval_pre:
+                continue
+
+            pre_obj_vals[j] = fval_curr
+    #            accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
+    #            total_vars.append((mu_sc_fac, cr_cnst))
+            # check for global minimum and best vector
+            if fval_curr >= fval_pre_global:
+                continue
+
+            #DE
+            if opt_schm == 0:
                 for k in range(n_prms):
                     best_params[k] = u_j_gs[j, k]
 
-                tol_pre = tol_curr
-                tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
-                fval_pre_global = fval_curr
-                last_succ_i = iter_curr
-                n_succ += 1
-                cont_iter = 0
+            #ROPE
+            if opt_schm == 1:
+                for k in range(n_prms):
+                    best_params[k] = pop[0, k]
 
-                print(iter_curr, 'global min: %0.8f' % fval_pre_global)
+            tol_pre = tol_curr
+            tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
+            print('tol curr', tol_curr)
+            fval_pre_global = fval_curr
+            last_succ_i = iter_curr
+            n_succ += 1
+            cont_iter = 0
+            print(iter_curr, 'global min: %0.8f' % fval_pre_global)
 
+        #ROPE
+        if opt_schm == 1:
+            chull_pts, pars_acc = select_best_params(
+                pre_obj_vals,
+                n_acc_pars,
+                pop,
+                uvecs,
+                n_cpus,
+                &res_new)
+            print('res_new:', res_new)
+            tol_pre = tol_curr
+            tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
+            fval_pre_global = fval_curr
+            iter_curr += 1
 
+        #DE
+        if opt_schm == 0:
             if (iter_curr >= 300) & ((iter_curr % 20) == 0):
                 ddmv = 0.0
                 for k in range(n_prms):
@@ -963,6 +896,7 @@ cpdef dict hbv_opt(args):
 
             iter_curr += 1
 
+
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. if you want to use/validate results
     tid = 0
@@ -1001,18 +935,6 @@ cpdef dict hbv_opt(args):
         cat_to_idx_map,
         stm_to_idx_map)
 
-#     cat_idx = cat_to_idx_map[cat_no]
-#     for j in range(n_recs):
-#         for k in range(n_stms):
-#             stm = stms_idxs[k]
-#             stm_idx = stm_to_idx_map[stm]
-# 
-#             stms_inflow_arr[j, stm_idx] = stms_inflow_mult_arr[tid, j, stm_idx]
-# 
-#             stms_outflow_arr[j, stm_idx] = (
-#                 stms_outflow_mult_arr[tid, j, stm_idx])
-# 
-#         cats_outflow_arr[j, cat_idx] = cats_outflow_mult_arr[tid, j, cat_idx]
 
     print('Number of iterations:', iter_curr)
     print('Objective function value:', fval_pre_global)
