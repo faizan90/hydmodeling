@@ -15,11 +15,11 @@ double rand_c_mp(unsigned long long &seed);
 
 void quick_sort(
 		double *arr,
-		long long first_index,
-		long long last_index) {
+		long first_index,
+		long last_index) {
 
 	// declaring index variables
-	long long pivotIndex, index_a, index_b;
+	long pivotIndex, index_a, index_b;
 	double temp;
 
 	if (first_index < last_index) {
@@ -58,13 +58,13 @@ void quick_sort(
 }
 
 
-long long searchsorted(
+long searchsorted(
 		const double *arr,
 		const double value,
-		const long long arr_size) {
+		const long arr_size) {
 
 	// arr must be sorted
-	long long first = 0, last = arr_size - 1, curr_idx;
+	long first = 0, last = arr_size - 1, curr_idx;
 
 	if (value <= arr[0]) {
 		return 0;
@@ -75,7 +75,7 @@ long long searchsorted(
 	}
 
 	while (first <= last) {
-		curr_idx = (long long) (0.5 * (first + last));
+		curr_idx = (long) (0.5 * (first + last));
 		if ((value > arr[curr_idx]) && (value <= arr[curr_idx + 1])) {
 			return curr_idx + 1;
 		}

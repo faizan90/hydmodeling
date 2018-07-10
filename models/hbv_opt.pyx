@@ -11,7 +11,6 @@ import timeit
 import random
 from libcpp.map cimport map as cmap
 from cython.parallel import prange, threadid
-from cython cimport view
 
 
 import numpy as np
@@ -31,6 +30,10 @@ from .misc_ftns_partial cimport (
     get_mean_prt,
     get_ln_mean_prt,
     get_variance_prt)
+from .rope_ftns cimport (
+    get_new_chull_vecs,
+    set_rope_bds,
+    gen_vecs_in_chull)
 from .dtypes cimport (
     DT_D,
     DT_UL,
@@ -75,6 +78,16 @@ cdef extern from "rand_gen_mp.h" nogil:
 
 warm_up()
 
+cdef extern from "data_depths.h" nogil:
+    cdef:
+        void gen_usph_vecs_norm_dist_c(
+                unsigned long long *seeds_arr,
+                double *rn_ct_arr,
+                double *ndim_usph_vecs,
+                long n_vecs,
+                long n_dims,
+                long n_cpus)
+
 
 cpdef dict hbv_opt(args):
 
@@ -97,14 +110,16 @@ cpdef dict hbv_opt(args):
 
         list accept_vars
         list total_vars
+        list idxs_shuff_list
 
         DT_UL[::1] prm_opt_stop_arr, obj_longs, use_step_arr
         DT_UL[:, ::1] prms_flags, prms_span_idxs, f_var_infos
         DT_UL[:, :, ::1] prms_idxs
 
-        DT_D[::1] pre_obj_vals, curr_obj_vals, best_params, params_tmp
+        DT_D[::1] pre_obj_vals, best_params, params_tmp
         DT_D[::1] obj_ftn_wts, obj_doubles
         DT_D[:, ::1] curr_opt_prms, bounds, bds_dfs, prms_mean_thrs_arr
+        DT_D[:, ::1] prm_vecs, temp_prm_vecs
         #======================================================================
 
         #======================================================================
@@ -115,17 +130,22 @@ cpdef dict hbv_opt(args):
 
         DT_D mu_sc_fac, cr_cnst
 
-        list idxs_shuff_pop
-
         DT_UL[::1] idx_rng, r_r
         DT_UL[:, ::1] del_idx_rng, choice_arr
 
-        DT_D[::1] mu_sc_fac_bds, cr_cnst_bds
-        DT_D[:, ::1] prm_vecs, prm_vecs_raw, v_j_g, u_j_gs
+        DT_D[::1] mu_sc_fac_bds, cr_cnst_bds, curr_obj_vals
+        DT_D[:, ::1] v_j_g, u_j_gs
         # TODO: save populatiopn state at certain iterations to see how they evolve 
 
-        # ROPE related parameters 
+        # ROPE related parameters
+        DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs
         DT_D acc_rate
+
+        DT_UL[:, ::1] temp_mins, mins
+
+        DT_D[::1] depths_arr, sort_obj_vals, rn_ct_arr
+        DT_D[:, ::1] acc_vecs, chull_vecs, rope_bds_dfs, uvecs
+        DT_D[:, ::1] dot_ref, dot_test, dot_test_sort, temp_rope_prm_vecs
 
         #======================================================================
 
@@ -181,7 +201,9 @@ cpdef dict hbv_opt(args):
          obj_ftn_tol,
          prm_pcnt_tol) = args[2]
     elif opt_schm == 2:
-        (acc_rate, 
+        (acc_rate,
+         n_temp_rope_prm_vecs,
+         n_acc_prm_vecs,
          n_prm_vecs,
          max_iters, 
          max_cont_iters, 
@@ -226,6 +248,13 @@ cpdef dict hbv_opt(args):
 
     n_prms = bounds.shape[0]
     n_recs = cats_outflow_arr.shape[0]
+    idxs_shuff_list = list(range(0,  n_prm_vecs))
+
+    # prep the MP RNG
+    for i in range(n_cpus):
+        seeds_arr[i] = <DT_ULL> (time.time() * 10000)
+        time.sleep(0.001)
+    warm_up_mp(&seeds_arr[0], n_cpus)
 
     if opt_schm == 1:
         pop_size_ol = n_prm_vecs - 1
@@ -237,19 +266,46 @@ cpdef dict hbv_opt(args):
         choice_arr = np.zeros((n_cpus, 3), dtype=DT_UL_NP)
         v_j_g = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
         u_j_gs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
-        idxs_shuff_pop = list(range(0,  n_prm_vecs))
         accept_vars = []
         total_vars = []
 
         # mean, min thresh, max thresh
         prms_mean_thrs_arr = np.zeros((n_prms, 3), dtype=DT_D_NP)
-    
-        # for param index with value 1, stop optimizing
-        prm_opt_stop_arr = np.zeros(n_prms, dtype=np.int32)
+
+        # for all with value 1, stop optimizing
+        prm_opt_stop_arr = np.zeros(n_prms, dtype=DT_UL_NP)
 
     elif opt_schm == 2:
-        pass
+        # donot use shape of these six in any ftn
+        mins = np.full((n_cpus, n_temp_rope_prm_vecs), 
+                       n_temp_rope_prm_vecs,
+                       dtype=DT_UL_NP)
+        temp_mins = mins.copy()
+        depths_arr = np.zeros(n_temp_rope_prm_vecs, dtype=DT_UL_NP)
+        dot_ref = np.empty((n_cpus, n_temp_rope_prm_vecs), dtype=DT_D_NP)
+        dot_test = np.empty((n_cpus, n_temp_rope_prm_vecs), dtype=DT_D_NP)
+        dot_test_sort = np.empty((n_cpus, n_temp_rope_prm_vecs), dtype=DT_D_NP)
+        
+        temp_rope_prm_vecs = np.empty((n_temp_rope_prm_vecs, n_prms),
+                                      dtype=DT_D_NP)
 
+        sort_obj_vals = np.empty(n_prm_vecs, dtype=DT_D_NP)
+
+        acc_vecs = np.full((n_acc_prm_vecs, n_prms),
+                           np.nan, 
+                           dtype=DT_D_NP)
+        chull_vecs = acc_vecs.copy()
+        rope_bds_dfs = np.empty((n_prms, 2), dtype=DT_D_NP)
+        uvecs = np.empty((n_uvecs, n_prms), dtype=DT_D_NP)
+        rn_ct_arr = np.zeros(n_cpus, dtype=DT_D_NP)
+
+        gen_usph_vecs_norm_dist_c(
+                &seeds_arr[0],
+                &rn_ct_arr[0],
+                &uvecs[0, 0],
+                n_uvecs,
+                n_prms,
+                n_cpus)
 
     pre_obj_vals = np.full(n_prm_vecs, np.inf, dtype=DT_D_NP)
     curr_obj_vals = np.full(n_prm_vecs, np.inf, dtype=DT_D_NP)
@@ -259,7 +315,7 @@ cpdef dict hbv_opt(args):
 
     curr_opt_prms = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
     prm_vecs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
-    prm_vecs_raw = prm_vecs.copy()
+    temp_prm_vecs = prm_vecs.copy()
 
     hbv_prms = np.zeros((n_cpus, n_cells, n_hbv_prms), dtype=DT_D_NP)
 
@@ -292,12 +348,6 @@ cpdef dict hbv_opt(args):
 
     for stm in stm_to_idx_dict:
         stm_to_idx_map[stm] = stm_to_idx_dict[stm]
-
-    # prep the MP RNG
-    for i in range(n_cpus):
-        seeds_arr[i] = <DT_ULL> (time.time() * 10000)
-        time.sleep(0.001)
-    warm_up_mp(&seeds_arr[0], n_cpus)
 
     if use_step_flag:
         mean_ref = get_mean_prt(qact_arr, use_step_arr, &off_idx)
@@ -348,6 +398,10 @@ cpdef dict hbv_opt(args):
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]
         bds_dfs[k, 1] = bounds[k, 1] - bounds[k, 0]
+        
+        if opt_schm == 2:
+            rope_bds_dfs[k, 0] = bds_dfs[k, 0]
+            rope_bds_dfs[k, 1] = bds_dfs[k, 1]
 
         if np.isclose(bds_dfs[k, 1], 0.0):
             prm_opt_stop_arr[k] = 1
@@ -358,13 +412,13 @@ cpdef dict hbv_opt(args):
     # initiate parameter space
     for i in range(n_prm_vecs):
         for k in range(n_prms):
-            prm_vecs_raw[i, k] = (<DT_D> i) / pop_size_ol
+            temp_prm_vecs[i, k] = (<DT_D> i) / pop_size_ol
 
     # shuffle the parameters around, in space
     for i in range(n_prms):
-        random.shuffle(idxs_shuff_pop)
+        random.shuffle(idxs_shuff_list)
         for j in range(n_prm_vecs):
-            params_tmp[j] = prm_vecs_raw[<DT_UL> idxs_shuff_pop[j], i]
+            params_tmp[j] = temp_prm_vecs[<DT_UL> idxs_shuff_list[j], i]
 
         for j in range(n_prm_vecs):
             if prm_opt_stop_arr[i]:
@@ -487,10 +541,12 @@ cpdef dict hbv_opt(args):
             cr_cnst = (cr_cnst_bds[0] +
                        ((cr_cnst_bds[1] - cr_cnst_bds[0]) * rand_c()))
 
-            for t_i in prange(n_prm_vecs, 
-                            schedule='dynamic',
-                            nogil=True, 
-                            num_threads=n_cpus):
+            for t_i in prange(
+                n_prm_vecs, 
+                schedule='dynamic', 
+                nogil=True, 
+                num_threads=n_cpus):
+
                 tid = threadid()
 
                 # get inidicies except t_i
@@ -686,7 +742,159 @@ cpdef dict hbv_opt(args):
             iter_curr += 1
 
     elif opt_schm == 2:
-        pass
+        get_new_chull_vecs(
+            depths_arr,
+            temp_mins,
+            mins,
+            pre_obj_vals,
+            sort_obj_vals,
+            acc_vecs,
+            prm_vecs,
+            uvecs,
+            dot_ref,
+            dot_test,
+            dot_test_sort,
+            chull_vecs,
+            n_cpus,
+            &chull_vecs_ctr)
+
+        assert chull_vecs_ctr >= 3
+
+        while (iter_curr < max_iters) and (cont_iter < max_cont_iters):
+            set_rope_bds(
+                chull_vecs,
+                rope_bds_dfs,
+                chull_vecs_ctr)
+
+            gen_vecs_in_chull(
+                depths_arr,
+                prms_flags,
+                prms_span_idxs,
+                temp_mins,
+                mins,
+                prms_idxs,
+                rope_bds_dfs,
+                chull_vecs,
+                uvecs,
+                temp_rope_prm_vecs,
+                prm_vecs,
+                dot_ref,
+                dot_test,
+                dot_test_sort,
+                n_hbv_prms,
+                chull_vecs_ctr,
+                n_cpus)
+
+            for t_i in prange(
+                n_prm_vecs,
+                schedule='dynamic',
+                nogil=True,
+                num_threads=n_cpus):
+
+                tid = threadid()
+                for k in range(n_prms):
+                    # curr_opt_prms is not important to be used in ROPE.
+                    # just to have consistency.
+                    curr_opt_prms[tid, k] = prm_vecs[t_i, k]
+
+                res = obj_ftn(
+                    &tid,
+                    n_calls,
+                    stms_idxs,
+                    obj_longs,
+                    use_step_arr,
+                    prms_flags,
+                    f_var_infos,
+                    prms_idxs,
+                    obj_ftn_wts,
+                    curr_opt_prms[tid],
+                    qact_arr,
+                    area_arr,
+                    qsim_mult_arr[tid],
+                    inflow_mult_arr[tid],
+                    f_vars,
+                    obj_doubles,
+                    route_prms[tid],
+                    inis_arr,
+                    temp_arr,
+                    prec_arr,
+                    petn_arr,
+                    cats_outflow_mult_arr[:, :, tid],
+                    stms_inflow_mult_arr[:, :, tid],
+                    stms_outflow_mult_arr[:, :, tid],
+                    dem_net_arr,
+                    hbv_prms[tid],
+                    bds_dfs,
+                    outs_mult_arr[tid],
+                    cat_to_idx_map,
+                    stm_to_idx_map)
+
+                if res == err_val:
+                    pre_obj_vals[t_i] = (
+                        (2 + rand_c_mp(&seeds_arr[tid])) * err_val)
+                else:
+                    pre_obj_vals[t_i] = res
+
+            for j in range(n_prm_vecs):
+                fval_pre = pre_obj_vals[j]
+
+#                 accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
+#                 total_vars.append((mu_sc_fac, cr_cnst))
+
+                # check for global minimum and best vector
+                if fval_pre >= fval_pre_global:
+                    continue
+
+                for k in range(n_prms):
+                    best_params[k] = prm_vecs[j, k]
+
+                fval_pre_global = fval_pre
+                last_succ_i = iter_curr
+                n_succ += 1
+                cont_iter = 0
+
+            iter_curr += 1
+
+        get_new_chull_vecs(
+            depths_arr,
+            temp_mins,
+            mins,
+            pre_obj_vals,
+            sort_obj_vals,
+            acc_vecs,
+            prm_vecs,
+            uvecs,
+            dot_ref,
+            dot_test,
+            dot_test_sort,
+            chull_vecs,
+            n_cpus,
+            &chull_vecs_ctr)
+
+gen_vecs_in_chull(
+          DT_UL[::1] depths_arr,
+
+    const DT_UL[:, ::1] prms_flags,
+    const DT_UL[:, ::1] prms_span_idxs,
+          DT_UL[:, ::1] temp_mins,
+          DT_UL[:, ::1] mins,
+    
+    const DT_UL[:, :, ::1] prms_idxs,
+
+    const DT_D[:, ::1] rope_bds_dfs,
+    const DT_D[:, ::1] chull_vecs,
+    const DT_D[:, ::1] uvecs,
+
+          DT_D[:, ::1] temp_prm_vecs,
+          DT_D[:, ::1] prm_vecs,
+          DT_D[:, ::1] dot_ref,
+          DT_D[:, ::1] dot_test,
+          DT_D[:, ::1] dot_test_sort,
+
+    const DT_UL n_hbv_prms,
+    const DT_UL chull_vecs_ctr,
+    const DT_UL n_cpus,
+    )
 
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. if you want to use/validate results

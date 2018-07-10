@@ -85,7 +85,7 @@ def main():
     plot_2d_kfold_prms_flag = False
     plot_hbv_vars_flag = False
 
-#     hyd_analysis_flag = True
+    hyd_analysis_flag = True
 #     get_stms_flag = True
     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True

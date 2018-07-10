@@ -76,11 +76,11 @@ def plot_pop(cat_db):
 
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
-            pop = calib_db[kf_str + '/pop'][...]
+            pop = calib_db[kf_str + '/prm_vecs'][...]
             bounds_arr = db['cdata/bds_arr'][...]
             prm_syms = db['cdata/use_prms_labs'][...]
-            cobj_vals = calib_db[kf_str + '/pop_curr_obj_vals'][...]
-            pobj_vals = calib_db[kf_str + '/pop_pre_obj_vals'][...]
+            cobj_vals = calib_db[kf_str + '/curr_obj_vals'][...]
+            pobj_vals = calib_db[kf_str + '/pre_obj_vals'][...]
             _plot_k_pop(
                 i,
                 cat,
