@@ -87,9 +87,9 @@ def main():
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
-    create_stms_rels_flag = True
+#     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
-    optimize_flag = True
+#     optimize_flag = True
 #     plot_kfold_perfs_flag = True
 #     plot_best_kfold_prms_flag = True
 #     plot_pop_flag = True
