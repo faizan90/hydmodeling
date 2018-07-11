@@ -32,7 +32,7 @@ from .misc_ftns_partial cimport (
     get_variance_prt)
 from .rope_ftns cimport (
     get_new_chull_vecs,
-    set_rope_bds,
+    adjust_rope_bds,
     gen_vecs_in_chull)
 from .dtypes cimport (
     DT_D,
@@ -98,7 +98,7 @@ cpdef dict hbv_opt(args):
 
         #======================================================================
         # Basic optimization related parameters
-        DT_UL n_prm_vecs
+        DT_UL n_prm_vecs, n_prm_vecs_ol
         DT_UL opt_flag = 1, use_obs_flow_flag, use_step_flag
         DT_UL max_iters, max_cont_iters, off_idx, n_prms, n_hm_prms
         DT_UL iter_curr = 0, last_succ_i = 0, n_succ = 0, cont_iter = 0
@@ -116,7 +116,7 @@ cpdef dict hbv_opt(args):
         DT_UL[:, ::1] prms_flags, prms_span_idxs, f_var_infos
         DT_UL[:, :, ::1] prms_idxs
 
-        DT_D[::1] pre_obj_vals, best_params, params_tmp
+        DT_D[::1] pre_obj_vals, best_prm_vec, prms_tmp
         DT_D[::1] obj_ftn_wts, obj_doubles
         DT_D[:, ::1] curr_opt_prms, bounds, bds_dfs, prms_mean_thrs_arr
         DT_D[:, ::1] prm_vecs, temp_prm_vecs
@@ -126,7 +126,7 @@ cpdef dict hbv_opt(args):
         # Differential Evolution related parameters
         DT_UL r0, r1, r2
         DT_UL del_r_i, del_r_j, ch_r_i, ch_r_j, ch_r_l
-        DT_UL pop_size_ol, n_mu_samps = 3
+        DT_UL n_mu_samps = 3
 
         DT_D mu_sc_fac, cr_cnst
 
@@ -138,12 +138,12 @@ cpdef dict hbv_opt(args):
         # TODO: save populatiopn state at certain iterations to see how they evolve 
 
         # ROPE related parameters
-        DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs
-        DT_D acc_rate
+        DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs, n_uvecs
 
+        DT_UL[::1] depths_arr
         DT_UL[:, ::1] temp_mins, mins
 
-        DT_D[::1] depths_arr, sort_obj_vals, rn_ct_arr
+        DT_D[::1] sort_obj_vals, rn_ct_arr
         DT_D[:, ::1] acc_vecs, chull_vecs, rope_bds_dfs, uvecs
         DT_D[:, ::1] dot_ref, dot_test, dot_test_sort, temp_rope_prm_vecs
 
@@ -201,9 +201,9 @@ cpdef dict hbv_opt(args):
          obj_ftn_tol,
          prm_pcnt_tol) = args[2]
     elif opt_schm == 2:
-        (acc_rate,
-         n_temp_rope_prm_vecs,
+        (n_temp_rope_prm_vecs,
          n_acc_prm_vecs,
+         n_uvecs,
          n_prm_vecs,
          max_iters, 
          max_cont_iters, 
@@ -248,7 +248,13 @@ cpdef dict hbv_opt(args):
 
     n_prms = bounds.shape[0]
     n_recs = cats_outflow_arr.shape[0]
+    n_prm_vecs_ol = n_prm_vecs - 1
     idxs_shuff_list = list(range(0,  n_prm_vecs))
+
+    n_calls = np.zeros(n_cpus, dtype=DT_UL_NP)
+    seeds_arr = np.zeros(n_cpus, dtype=np.uint64)
+    accept_vars = []
+    total_vars = []
 
     # prep the MP RNG
     for i in range(n_cpus):
@@ -257,17 +263,12 @@ cpdef dict hbv_opt(args):
     warm_up_mp(&seeds_arr[0], n_cpus)
 
     if opt_schm == 1:
-        pop_size_ol = n_prm_vecs - 1
         idx_rng = np.arange(0, n_prm_vecs, 1, dtype=DT_UL_NP)
         r_r = np.zeros(n_cpus, dtype=DT_UL_NP)
-        n_calls = np.zeros(n_cpus, dtype=DT_UL_NP)
-        seeds_arr = np.zeros(n_cpus, dtype=np.uint64)
-        del_idx_rng = np.zeros((n_cpus, pop_size_ol), dtype=DT_UL_NP)
+        del_idx_rng = np.zeros((n_cpus, n_prm_vecs_ol), dtype=DT_UL_NP)
         choice_arr = np.zeros((n_cpus, 3), dtype=DT_UL_NP)
         v_j_g = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
         u_j_gs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
-        accept_vars = []
-        total_vars = []
 
         # mean, min thresh, max thresh
         prms_mean_thrs_arr = np.zeros((n_prms, 3), dtype=DT_D_NP)
@@ -295,7 +296,11 @@ cpdef dict hbv_opt(args):
                            np.nan, 
                            dtype=DT_D_NP)
         chull_vecs = acc_vecs.copy()
+
         rope_bds_dfs = np.empty((n_prms, 2), dtype=DT_D_NP)
+        rope_bds_dfs[:, 0] = 0.0
+        rope_bds_dfs[:, 1] = 1.0
+
         uvecs = np.empty((n_uvecs, n_prms), dtype=DT_D_NP)
         rn_ct_arr = np.zeros(n_cpus, dtype=DT_D_NP)
 
@@ -309,9 +314,9 @@ cpdef dict hbv_opt(args):
 
     pre_obj_vals = np.full(n_prm_vecs, np.inf, dtype=DT_D_NP)
     curr_obj_vals = np.full(n_prm_vecs, np.inf, dtype=DT_D_NP)
-    best_params = np.full(n_prms, np.nan, dtype=DT_D_NP)
+    best_prm_vec = np.full(n_prms, np.nan, dtype=DT_D_NP)
 
-    params_tmp = np.zeros(n_prm_vecs, dtype=DT_D_NP)
+    prms_tmp = np.zeros(n_prm_vecs, dtype=DT_D_NP)
 
     curr_opt_prms = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
     prm_vecs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
@@ -386,7 +391,7 @@ cpdef dict hbv_opt(args):
     obj_longs[n_hbv_prms_i] = n_hbv_prms
     obj_longs[use_step_flag_i] = use_step_flag
 
-    obj_doubles = np.zeros(obj_doubles_ct, dtype=DT_D_NP)
+    obj_doubles = np.full(obj_doubles_ct, np.nan, dtype=DT_D_NP)
     obj_doubles[rnof_q_conv_i] = rnof_q_conv
     obj_doubles[demr_i] = demr
     obj_doubles[ln_demr_i] = ln_demr
@@ -399,32 +404,28 @@ cpdef dict hbv_opt(args):
         bds_dfs[k, 0] = bounds[k, 0]
         bds_dfs[k, 1] = bounds[k, 1] - bounds[k, 0]
         
-        if opt_schm == 2:
-            rope_bds_dfs[k, 0] = bds_dfs[k, 0]
-            rope_bds_dfs[k, 1] = bds_dfs[k, 1]
-
-        if np.isclose(bds_dfs[k, 1], 0.0):
-            prm_opt_stop_arr[k] = 1
-
-            print('Parameter no. %d with a value of %0.6f is a constant!' % 
-                  (k, bounds[k, 0]))
+#         if np.isclose(bds_dfs[k, 1], 0.0):
+#             prm_opt_stop_arr[k] = 1
+# 
+#             print('Parameter no. %d with a value of %0.6f is a constant!' % 
+#                   (k, bounds[k, 0]))
 
     # initiate parameter space
     for i in range(n_prm_vecs):
         for k in range(n_prms):
-            temp_prm_vecs[i, k] = (<DT_D> i) / pop_size_ol
+            temp_prm_vecs[i, k] = (<DT_D> i) / n_prm_vecs_ol
 
     # shuffle the parameters around, in space
     for i in range(n_prms):
         random.shuffle(idxs_shuff_list)
         for j in range(n_prm_vecs):
-            params_tmp[j] = temp_prm_vecs[<DT_UL> idxs_shuff_list[j], i]
+            prms_tmp[j] = temp_prm_vecs[<DT_UL> idxs_shuff_list[j], i]
 
         for j in range(n_prm_vecs):
-            if prm_opt_stop_arr[i]:
-                prm_vecs[j, i] = 0.0
-            else:
-                prm_vecs[j, i] = params_tmp[j]
+#             if prm_opt_stop_arr[i]:
+#                 prm_vecs[j, i] = 0.0
+#             else:
+            prm_vecs[j, i] = prms_tmp[j]
 
     for i in range(n_prm_vecs):
         # bring all pwps below fcs
@@ -521,7 +522,7 @@ cpdef dict hbv_opt(args):
 
         fval_pre_global = pre_obj_vals[i]
         for k in range(n_prms):
-            best_params[k] = prm_vecs[i, k]
+            best_prm_vec[k] = prm_vecs[i, k]
 
     print('Initial min. obj. value:', fval_pre_global)
 #     raise Exception('Stop!')
@@ -557,7 +558,7 @@ cpdef dict hbv_opt(args):
                 while ch_r_l:
                     ch_r_l = 0
                     for ch_r_i in range(n_mu_samps):
-                        k = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * pop_size_ol)
+                        k = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * n_prm_vecs_ol)
                         choice_arr[tid, ch_r_i] = del_idx_rng[tid, k]
 
                     for ch_r_i in range(n_mu_samps):
@@ -685,7 +686,7 @@ cpdef dict hbv_opt(args):
                     continue
 
                 for k in range(n_prms):
-                    best_params[k] = u_j_gs[j, k]
+                    best_prm_vec[k] = u_j_gs[j, k]
 
                 tol_pre = tol_curr
                 tol_curr = (fval_pre_global - fval_curr) / fval_pre_global
@@ -742,6 +743,7 @@ cpdef dict hbv_opt(args):
             iter_curr += 1
 
     elif opt_schm == 2:
+        print('ROPE start!')
         get_new_chull_vecs(
             depths_arr,
             temp_mins,
@@ -757,14 +759,26 @@ cpdef dict hbv_opt(args):
             chull_vecs,
             n_cpus,
             &chull_vecs_ctr)
+        print(f'chull_vecs_ctr: {chull_vecs_ctr}')
+        print('Done get_new_chull_vecs!')
 
-        assert chull_vecs_ctr >= 3
+        assert chull_vecs_ctr >= 3, chull_vecs_ctr
+
+        print('old rope_bds_dfs')
+        for i in range(n_prms):
+            print(rope_bds_dfs[i, 0], rope_bds_dfs[i, 1])
 
         while (iter_curr < max_iters) and (cont_iter < max_cont_iters):
-            set_rope_bds(
+            print(f'\n\nROPE iter: {iter_curr}')
+            
+
+            adjust_rope_bds(
                 chull_vecs,
                 rope_bds_dfs,
                 chull_vecs_ctr)
+            print('New rope_bds_dfs')
+            for i in range(n_prms):
+                print(rope_bds_dfs[i, 0], rope_bds_dfs[i, 1])
 
             gen_vecs_in_chull(
                 depths_arr,
@@ -838,6 +852,9 @@ cpdef dict hbv_opt(args):
             for j in range(n_prm_vecs):
                 fval_pre = pre_obj_vals[j]
 
+                if np.isnan(fval_pre):
+                    raise RuntimeError('fval_pre is Nan!')
+                
 #                 accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
 #                 total_vars.append((mu_sc_fac, cr_cnst))
 
@@ -846,61 +863,38 @@ cpdef dict hbv_opt(args):
                     continue
 
                 for k in range(n_prms):
-                    best_params[k] = prm_vecs[j, k]
+                    best_prm_vec[k] = prm_vecs[j, k]
+
+                print(f'New global min at iter {iter_curr}: {fval_pre}!')
 
                 fval_pre_global = fval_pre
                 last_succ_i = iter_curr
                 n_succ += 1
                 cont_iter = 0
 
+            get_new_chull_vecs(
+                depths_arr,
+                temp_mins,
+                mins,
+                pre_obj_vals,
+                sort_obj_vals,
+                acc_vecs,
+                prm_vecs,
+                uvecs,
+                dot_ref,
+                dot_test,
+                dot_test_sort,
+                chull_vecs,
+                n_cpus,
+                &chull_vecs_ctr)
+
             iter_curr += 1
-
-        get_new_chull_vecs(
-            depths_arr,
-            temp_mins,
-            mins,
-            pre_obj_vals,
-            sort_obj_vals,
-            acc_vecs,
-            prm_vecs,
-            uvecs,
-            dot_ref,
-            dot_test,
-            dot_test_sort,
-            chull_vecs,
-            n_cpus,
-            &chull_vecs_ctr)
-
-gen_vecs_in_chull(
-          DT_UL[::1] depths_arr,
-
-    const DT_UL[:, ::1] prms_flags,
-    const DT_UL[:, ::1] prms_span_idxs,
-          DT_UL[:, ::1] temp_mins,
-          DT_UL[:, ::1] mins,
-    
-    const DT_UL[:, :, ::1] prms_idxs,
-
-    const DT_D[:, ::1] rope_bds_dfs,
-    const DT_D[:, ::1] chull_vecs,
-    const DT_D[:, ::1] uvecs,
-
-          DT_D[:, ::1] temp_prm_vecs,
-          DT_D[:, ::1] prm_vecs,
-          DT_D[:, ::1] dot_ref,
-          DT_D[:, ::1] dot_test,
-          DT_D[:, ::1] dot_test_sort,
-
-    const DT_UL n_hbv_prms,
-    const DT_UL chull_vecs_ctr,
-    const DT_UL n_cpus,
-    )
 
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. if you want to use/validate results
     tid = 0
     for k in range(n_prms):
-        curr_opt_prms[tid, k] = best_params[k]
+        curr_opt_prms[tid, k] = best_prm_vec[k]
 
     res = obj_ftn(
         &tid,
@@ -940,23 +934,44 @@ gen_vecs_in_chull(
     print('Last successful try at:', last_succ_i)
     print('cont_iter:', cont_iter)
     print('n_calls:', np.array(n_calls))
-    print('Final tolerance:', 0.5 * (tol_pre + tol_curr))
+    if opt_schm == 1:
+        print('Final tolerance:', 0.5 * (tol_pre + tol_curr))
     print('Best parameters:')
-    print(['%0.3f' % prm for prm in np.array(best_params).ravel()])
+    print(['%0.3f' % prm for prm in np.array(best_prm_vec).ravel()])
 
-    return {'hbv_prms': np.asarray(hbv_prms[tid]),
-            'route_prms': np.asarray(route_prms[tid]),
-            'opt_prms': np.asarray(best_params),
-            'fmin': fval_pre_global,
-            'n_gens': iter_curr,
-            'n_succ': n_succ,
-            'lst_succ_try': last_succ_i,
-            'cont_iter': cont_iter,
-            'prm_vecs': np.asarray(prm_vecs),
-            'fin_tol': 0.5 * (tol_pre + tol_curr),
-            'accept_vars': accept_vars,
-            'total_vars': total_vars,
-            'n_calls': np.asarray(n_calls),
-            'pre_obj_vals': np.asarray(pre_obj_vals),
-            'curr_obj_vals': np.asarray(curr_obj_vals),
-            'qsim_arr': np.asarray(qsim_mult_arr[tid])}
+    if opt_schm == 1:
+        return {'hbv_prms': np.asarray(hbv_prms[tid]),
+                'route_prms': np.asarray(route_prms[tid]),
+                'opt_prms': np.asarray(best_prm_vec),
+                'fmin': fval_pre_global,
+                'n_gens': iter_curr,
+                'n_succ': n_succ,
+                'lst_succ_try': last_succ_i,
+                'cont_iter': cont_iter,
+                'prm_vecs': np.asarray(prm_vecs),
+                'fin_tol': 0.5 * (tol_pre + tol_curr),
+                'accept_vars': accept_vars,
+                'total_vars': total_vars,
+                'n_calls': np.asarray(n_calls),
+                'pre_obj_vals': np.asarray(pre_obj_vals),
+                'curr_obj_vals': np.asarray(curr_obj_vals),
+                'qsim_arr': np.asarray(qsim_mult_arr[tid])}
+    elif opt_schm == 2:
+        return {'hbv_prms': np.asarray(hbv_prms[tid]),
+                'route_prms': np.asarray(route_prms[tid]),
+                'opt_prms': np.asarray(best_prm_vec),
+                'fmin': fval_pre_global,
+                'n_gens': iter_curr,
+                'n_succ': n_succ,
+                'lst_succ_try': last_succ_i,
+                'cont_iter': cont_iter,
+                'prm_vecs': np.asarray(acc_vecs),
+                'fin_tol': 0.5 * (tol_pre + tol_curr),
+                'accept_vars': accept_vars,
+                'total_vars': total_vars,
+                'n_calls': np.asarray(n_calls),
+                'pre_obj_vals': np.asarray(pre_obj_vals),
+                'curr_obj_vals': np.asarray(sort_obj_vals),
+                'qsim_arr': np.asarray(qsim_mult_arr[tid])}
+    else:
+        return {}

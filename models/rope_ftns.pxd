@@ -25,7 +25,7 @@ cdef void get_new_chull_vecs(
     ) nogil except +
 
 
-cdef void set_rope_bds(
+cdef void adjust_rope_bds(
     const DT_D[:, ::1] chull_vecs,
           DT_D[:, ::1] rope_bds_dfs,
     const DT_UL chull_vecs_ctr,

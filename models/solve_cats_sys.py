@@ -790,11 +790,29 @@ def _solve_k_cats_sys(
             assert n_prm_vecs >= 3
 
             _opt_list = []
+            # TODO: Add minimum value constraints
             if opt_schm_vars_dict['opt_schm'] == 'DE':
                 _opt_list.extend([opt_schm_vars_dict['mu_sc_fac_bds'],
                                   opt_schm_vars_dict['cr_cnst_bds']])
             elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
-                _opt_list.extend([opt_schm_vars_dict['acc_rate']])
+                acc_rate = opt_schm_vars_dict['acc_rate']
+
+                n_temp_rope_prm_vecs = int(
+                    bounds_arr.shape[0] **
+                    opt_schm_vars_dict['n_rope_prm_vecs_exp'])
+
+                n_acc_prm_vecs = int(n_prm_vecs * acc_rate)
+                assert n_acc_prm_vecs >= 3
+
+                n_uvecs = int(
+                    bounds_arr.shape[0] ** opt_schm_vars_dict['n_uvecs_exp'])
+
+                _opt_list.extend([n_temp_rope_prm_vecs,
+                                  n_acc_prm_vecs,
+                                  n_uvecs])
+                print(f'n_temp_rope_prm_vecs: {n_temp_rope_prm_vecs}')
+                print(f'n_acc_prm_vecs: {n_acc_prm_vecs}')
+                print(f'n_uvecs: {n_uvecs}')
             else:
                 raise Exception
 
@@ -876,7 +894,9 @@ def _solve_k_cats_sys(
         if calib_run:
             opt_strt_time = timeit.default_timer()
 
-            if opt_schm_vars_dict['opt_schm'] == 'DE':
+            if ((opt_schm_vars_dict['opt_schm'] == 'DE') or
+                (opt_schm_vars_dict['opt_schm'] == 'ROPE')):
+
                 out_db_dict = hbv_opt(curr_cat_params)
             else:
                 raise ValueError(

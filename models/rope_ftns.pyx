@@ -1,10 +1,13 @@
 # cython: nonecheck=False
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
 # cython: embedsignature=True
+
+import numpy as np
+cimport numpy as np
 
 from .dtypes cimport fc_i, pwp_i
 
@@ -75,9 +78,13 @@ cdef void get_new_chull_vecs(
         DT_UL n_uvecs = uvecs.shape[0]
         DT_UL n_acc_vecs = acc_vecs.shape[0]
 
+    with gil:
+        print('In get_new_chull_vecs...')
+
     for i in range(n_prm_vecs):
         sort_obj_vals[i] = pre_obj_vals[i]
     quick_sort(&sort_obj_vals[0], 0, n_prm_vecs - 1)
+    with gil: print(f'min_obj_val: {sort_obj_vals[0]}')
 
     for i in range(n_prm_vecs):
         prm_vec_rank = searchsorted(
@@ -88,6 +95,11 @@ cdef void get_new_chull_vecs(
 
         for j in range(n_prms):
             acc_vecs[prm_vec_rank, j] = prm_vecs[i, j]
+
+    for j in range(n_cpus):
+        for i in range(n_acc_vecs):
+            temp_mins[j, i] = n_acc_vecs
+            mins[j, i] = n_acc_vecs
 
     depth_ftn_c(
         &acc_vecs[0, 0],
@@ -106,12 +118,12 @@ cdef void get_new_chull_vecs(
 
     ctr = 0
     for i in range(n_acc_vecs):
-        depths_arr[i] = mins[i, 0]
+        depths_arr[i] = mins[0, i]
         for j in range(1, n_cpus):
-            if mins[i, j] >= depths_arr[i]:
+            if mins[j, i] >= depths_arr[i]:
                 continue
 
-            depths_arr[i] = mins[i, j]
+            depths_arr[i] = mins[j, i]
 
         if depths_arr[i] != 1:
             continue
@@ -120,15 +132,19 @@ cdef void get_new_chull_vecs(
             chull_vecs[ctr, j] = acc_vecs[i, j]
         ctr += 1
     chull_vecs_ctr[0] = ctr
+    with gil: print(f'chull_vecs_ctr: {chull_vecs_ctr[0]}')
 
     # just to be sure
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
         for j in range(n_prms):
             chull_vecs[i, j] = NaN
+
+    with gil:
+        print('Out get_new_chull_vecs...')
     return
 
 
-cdef void set_rope_bds(
+cdef void adjust_rope_bds(
     const DT_D[:, ::1] chull_vecs,
           DT_D[:, ::1] rope_bds_dfs,
     const DT_UL chull_vecs_ctr,
@@ -186,8 +202,12 @@ cdef void gen_vecs_in_chull(
         DT_UL n_temp_rope_prm_vecs = temp_rope_prm_vecs.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
 
+    with gil:
+        print('In gen_vecs_in_chull...')
+
     ctr = 0
     while ctr < n_prm_vecs:
+#         with gil: print(0)
         for i in range(n_temp_rope_prm_vecs):
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = (
@@ -216,9 +236,16 @@ cdef void gen_vecs_in_chull(
                     # TODO: guarantee that it will break eventually
                     while (temp_rope_prm_vecs[i, k + 1] <
                            temp_rope_prm_vecs[i, k]):
-                        temp_rope_prm_vecs[i, k] = rope_bds_dfs[k, 0] + ( 
+
+                        temp_rope_prm_vecs[i, k] = rope_bds_dfs[k, 0] + (
                             rand_c() * rope_bds_dfs[k, 1])
 
+        for j in range(n_cpus):
+            for i in range(n_temp_rope_prm_vecs):
+                temp_mins[j, i] = n_temp_rope_prm_vecs
+                mins[j, i] = n_temp_rope_prm_vecs
+
+#         with gil: print(1)
         depth_ftn_c(
             &chull_vecs[0, 0],
             &temp_rope_prm_vecs[0, 0],
@@ -234,21 +261,27 @@ cdef void gen_vecs_in_chull(
             n_prms,
             n_cpus)
 
+#         with gil: print(2)
         for i in range(n_temp_rope_prm_vecs):
-            depths_arr[i] = mins[i, 0]
+            depths_arr[i] = mins[0, i]
             for j in range(1, n_cpus):
-                if mins[i, j] >= depths_arr[i]:
+                if mins[j, i] >= depths_arr[i]:
                     continue
 
-                depths_arr[i] = mins[i, j]
+                depths_arr[i] = mins[j, i]
 
             if not depths_arr[i]:
                 continue
 
+#             with gil: print(f'depths {i}: {depths_arr[i]}')
             if ctr >= n_prm_vecs:
                 break
 
             for j in range(n_prms):
                 prm_vecs[ctr, j] = temp_rope_prm_vecs[i, j]
             ctr += 1
+#         with gil: print(f'ctr: {ctr}')
+
+    with gil:
+        print('Out gen_vecs_in_chull...')
     return

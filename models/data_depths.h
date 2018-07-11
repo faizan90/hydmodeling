@@ -228,6 +228,7 @@ void depth_ftn_c(
 	long long i;
 	double _inc_mult = (double) (1 - (double) (1e-7));
 
+	omp_set_dynamic(0);
 	omp_set_num_threads(n_cpus);
 
 	#pragma omp parallel for schedule(dynamic)

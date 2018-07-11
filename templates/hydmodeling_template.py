@@ -85,16 +85,16 @@ def main():
     plot_2d_kfold_prms_flag = False
     plot_hbv_vars_flag = False
 
-    hyd_analysis_flag = True
+#     hyd_analysis_flag = True
 #     get_stms_flag = True
     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_pop_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_hbv_vars_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_pop_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -244,8 +244,13 @@ def main():
         opt_schm_vars_dict['cr_cnst_bds'] = np.array(
             in_opt_schm_vars_dict['cr_cnst_bds'].split(sep), dtype=np.float64)
     elif in_opt_schm_vars_dict['opt_schm'] == 'ROPE':
+        opt_schm_vars_dict['opt_schm'] = 'ROPE'
         opt_schm_vars_dict['acc_rate'] = in_opt_schm_vars_dict.getfloat(
             'acc_rate')
+        opt_schm_vars_dict['n_uvecs_exp'] = in_opt_schm_vars_dict.getfloat(
+            'n_uvecs_exp')
+        opt_schm_vars_dict['n_rope_prm_vecs_exp'] = (
+            in_opt_schm_vars_dict.getfloat('n_rope_prm_vecs_exp'))
     else:
         raise NotImplementedError(
             'Incorrect opt_schm: %s' % in_opt_schm_vars_dict['opt_schm'])
@@ -268,11 +273,11 @@ def main():
     bounds_dict['pcm_bds'] = [float(_)
                               for _ in cfp['PARAM_BOUNDS']['pcm'].split(sep)]
     bounds_dict['fc_bds'] = [float(_)
-                             for _ in cfp['PARAM_BOUNDS']['fc'].split(sep)]
+                             for _ in cfp['PARAM_BOUNDS']['fc_pwp'].split(sep)]
     bounds_dict['beta_bds'] = [float(_)
                                for _ in cfp['PARAM_BOUNDS']['beta'].split(sep)]
     bounds_dict['pwp_bds'] = [float(_)
-                              for _ in cfp['PARAM_BOUNDS']['pwp'].split(sep)]
+                              for _ in cfp['PARAM_BOUNDS']['fc_pwp'].split(sep)]
     bounds_dict['ur_thr_bds'] = [
         float(_) for _ in cfp['PARAM_BOUNDS']['ur_thr'].split(sep)]
     bounds_dict['k_uu_bds'] = [float(_)
@@ -293,9 +298,9 @@ def main():
     tt_flags = [int(_) for _ in cfp['PRM_FLAGS']['tt'].split(sep)]
     cm_flags = [int(_) for _ in cfp['PRM_FLAGS']['cm'].split(sep)]
     pcm_flags = [int(_) for _ in cfp['PRM_FLAGS']['pcm'].split(sep)]
-    fc_flags = [int(_) for _ in cfp['PRM_FLAGS']['fc'].split(sep)]
+    fc_flags = [int(_) for _ in cfp['PRM_FLAGS']['fc_pwp'].split(sep)]
     beta_flags = [int(_) for _ in cfp['PRM_FLAGS']['beta'].split(sep)]
-    pwp_flags = [int(_) for _ in cfp['PRM_FLAGS']['pwp'].split(sep)]
+    pwp_flags = [int(_) for _ in cfp['PRM_FLAGS']['fc_pwp'].split(sep)]
     ur_thr_flags = [int(_) for _ in cfp['PRM_FLAGS']['ur_thr'].split(sep)]
     k_uu_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_uu'].split(sep)]
     k_ul_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ul'].split(sep)]
