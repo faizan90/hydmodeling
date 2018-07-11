@@ -23,6 +23,7 @@ cdef void pre_de(
 
     const DT_UL n_hbv_prms,
     const DT_UL n_cpus,
+          DT_UL *cont_iter,
     ) nogil except +
 
 

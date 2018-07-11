@@ -83,13 +83,9 @@ cdef void get_new_chull_vecs(
         DT_UL n_uvecs = uvecs.shape[0]
         DT_UL n_acc_vecs = acc_vecs.shape[0]
 
-    with gil:
-        print('In get_new_chull_vecs...')
-
     for i in range(n_prm_vecs):
         sort_obj_vals[i] = pre_obj_vals[i]
     quick_sort(&sort_obj_vals[0], 0, n_prm_vecs - 1)
-    with gil: print(f'min_obj_val: {sort_obj_vals[0]}')
 
     for i in range(n_prm_vecs):
         prm_vec_rank = searchsorted(
@@ -137,15 +133,11 @@ cdef void get_new_chull_vecs(
             chull_vecs[ctr, j] = acc_vecs[i, j]
         ctr += 1
     chull_vecs_ctr[0] = ctr
-    with gil: print(f'chull_vecs_ctr: {chull_vecs_ctr[0]}')
 
     # just to be sure
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
         for j in range(n_prms):
             chull_vecs[i, j] = NaN
-
-    with gil:
-        print('Out get_new_chull_vecs...')
     return
 
 
@@ -207,12 +199,8 @@ cdef void gen_vecs_in_chull(
         DT_UL n_temp_rope_prm_vecs = temp_rope_prm_vecs.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
 
-    with gil:
-        print('In gen_vecs_in_chull...')
-
     ctr = 0
     while ctr < n_prm_vecs:
-#         with gil: print(0)
         for i in range(n_temp_rope_prm_vecs):
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = (
@@ -250,7 +238,6 @@ cdef void gen_vecs_in_chull(
                 temp_mins[j, i] = n_temp_rope_prm_vecs
                 mins[j, i] = n_temp_rope_prm_vecs
 
-#         with gil: print(1)
         depth_ftn_c(
             &chull_vecs[0, 0],
             &temp_rope_prm_vecs[0, 0],
@@ -266,7 +253,6 @@ cdef void gen_vecs_in_chull(
             n_prms,
             n_cpus)
 
-#         with gil: print(2)
         for i in range(n_temp_rope_prm_vecs):
             depths_arr[i] = mins[0, i]
             for j in range(1, n_cpus):
@@ -278,17 +264,12 @@ cdef void gen_vecs_in_chull(
             if not depths_arr[i]:
                 continue
 
-#             with gil: print(f'depths {i}: {depths_arr[i]}')
             if ctr >= n_prm_vecs:
                 break
 
             for j in range(n_prms):
                 prm_vecs[ctr, j] = temp_rope_prm_vecs[i, j]
             ctr += 1
-#         with gil: print(f'ctr: {ctr}')
-
-    with gil:
-        print('Out gen_vecs_in_chull...')
     return
 
 
@@ -304,7 +285,6 @@ cdef void pre_rope(
     const DT_D[::1] pre_obj_vals,
           DT_D[::1] sort_obj_vals,
 
-
           DT_D[:, ::1] prm_vecs,
     const DT_D[:, ::1] uvecs,
           DT_D[:, ::1] temp_rope_prm_vecs,
@@ -318,6 +298,7 @@ cdef void pre_rope(
     const DT_UL n_hbv_prms,
     const DT_UL n_cpus,
           DT_UL *chull_vecs_ctr,
+          DT_UL *cont_iter,
     ) nogil except +:
 
     get_new_chull_vecs(
@@ -342,9 +323,6 @@ cdef void pre_rope(
         chull_vecs,
         rope_bds_dfs,
         chull_vecs_ctr[0])
-#     print('New rope_bds_dfs')
-#     for i in range(n_prms):
-#         print(rope_bds_dfs[i, 0], rope_bds_dfs[i, 1])
 
     gen_vecs_in_chull(
         depths_arr,
@@ -364,6 +342,8 @@ cdef void pre_rope(
         n_hbv_prms,
         chull_vecs_ctr[0],
         n_cpus)
+
+    cont_iter[0] += 1
     return
 
 
@@ -397,9 +377,6 @@ cdef void post_rope(
 
         if isnan(fval_pre):
             with gil: raise RuntimeError('fval_pre is Nan!')
-        
-#                 accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
-#                 total_vars.append((mu_sc_fac, cr_cnst))
 
         # check for global minimum and best vector
         if fval_pre >= fval_pre_global[0]:
@@ -407,8 +384,6 @@ cdef void post_rope(
 
         for k in range(n_prms):
             best_prm_vec[k] = prm_vecs[j, k]
-
-        with gil: print(f'New global min at iter {iter_curr[0]}: {fval_pre}!')
 
         fval_pre_global[0] = fval_pre
         last_succ_i[0] = iter_curr[0]
@@ -424,5 +399,4 @@ cdef void post_rope(
     if cont_opt_flag[0] and (cont_iter[0] > max_cont_iters):
         with gil: print('***max_cont_iters reached!***')
         cont_opt_flag[0] = 0
-
     return

@@ -18,17 +18,14 @@ void quick_sort(
 		long first_index,
 		long last_index) {
 
-	// declaring index variables
 	long pivotIndex, index_a, index_b;
 	double temp;
 
 	if (first_index < last_index) {
-		// assigning first element index as pivot element
 		pivotIndex = first_index;
 		index_a = first_index;
 		index_b = last_index;
 
-		// Sorting in Ascending order with quick sort
 		while (index_a < index_b) {
 			while (arr[index_a] <= arr[pivotIndex] && index_a < last_index) {
 				index_a++;
@@ -38,19 +35,16 @@ void quick_sort(
 			}
 
 			if (index_a < index_b) {
-			// Swapping operation
 				temp = arr[index_a];
 				arr[index_a] = arr[index_b];
 				arr[index_b] = temp;
 			}
 		}
 
-		// At the end of first iteration, swap pivot element with index_b element
 		temp = arr[pivotIndex];
 		arr[pivotIndex] = arr[index_b];
 		arr[index_b] = temp;
 
-		// Recursive call for quick sort, with partitioning
 		quick_sort(arr, first_index, index_b - 1);
 		quick_sort(arr, index_b + 1, last_index);
 	}
@@ -98,10 +92,6 @@ long searchsorted(
 
 int gettimeofday(struct timeval *tp)
 {
-	// from https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
-    // Note: some broken versions only have 8 trailing zero's, the correct epoch has 9 trailing zero's
-    // This magic number is the number of 100 nanosecond intervals since January 1, 1601 (UTC)
-    // until 00:00:00 January 1, 1970
     static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
 
     SYSTEMTIME  system_time;
@@ -165,13 +155,11 @@ void gen_usph_vecs_norm_dist_c(
 
 	for (tid = 0; tid < n_cpus; ++tid) {
 		gettimeofday(&t0);
-//		printf("t0: %d, before: %llu, ", t0.tv_usec, seeds_arr[tid]);
 		seeds_arr[tid] = (unsigned long long) (t0.tv_usec * (long) 324234543);
 
 		for (j = 0; j < 1000; ++j) {
 			rand_c_mp(&seeds_arr[tid]);
 		}
-//		printf("after: %llu\n", seeds_arr[tid]);
 		Sleep(45);
 	}
 

@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=True
+# cython: boundscheck=False
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -47,6 +47,7 @@ cdef void pre_de(
 
     const DT_UL n_hbv_prms,
     const DT_UL n_cpus,
+          DT_UL *cont_iter,
     ) nogil except +:
     
     cdef:
@@ -149,6 +150,7 @@ cdef void pre_de(
                     rand_c_mp(&seeds_arr[tid]) * 
                     u_j_gs[t_i, k + 1])
 
+    cont_iter[0] += 1
     return
 
 
@@ -200,8 +202,6 @@ cdef void post_de(
             prm_vecs[j, k] = u_j_gs[j, k]
 
         pre_obj_vals[j] = fval_curr
-#                 accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
-#                 total_vars.append((mu_sc_fac, cr_cnst))
 
         # check for global minimum and best vector
         if fval_curr >= fval_pre_global[0]:
@@ -216,8 +216,6 @@ cdef void post_de(
         last_succ_i[0] = iter_curr[0]
         n_succ[0] += 1
         cont_iter[0] = 0
-
-#                 print(iter_curr, 'global min: %0.8f' % fval_pre_global)
 
     if (iter_curr[0] >= 300) & ((iter_curr[0] % 20) == 0):
         ddmv = 0.0

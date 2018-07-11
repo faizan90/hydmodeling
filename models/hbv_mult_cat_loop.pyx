@@ -6,8 +6,6 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
-# from timeit import default_timer
-
 from .hbv_loop cimport hbv_loop
 from .routing cimport route_strms
 
@@ -78,7 +76,6 @@ cdef DT_D hbv_mult_cat_loop(
         Py_ssize_t i
         DT_UL n_recs = qsim_arr.shape[0], stm_idx, cat_idx
         DT_D res, min_q_thresh = misc_doubles[min_q_thresh_i]
-#         DT_D _beg, end_1, end_f
 
     for i in range(n_recs):
         qsim_arr[i] = 0.0
@@ -97,8 +94,6 @@ cdef DT_D hbv_mult_cat_loop(
             &misc_longs[n_stms_i],
             &misc_longs[route_type_i])
 
-#     with gil: _beg = default_timer()
-        
     if use_c == 1:
         res = hbv_c_loop(
             &temp_arr[0, 0],
@@ -128,10 +123,6 @@ cdef DT_D hbv_mult_cat_loop(
             &misc_doubles[rnof_q_conv_i],
             &misc_longs[opt_flag_i])
 
-#     with gil:
-#         _end_1 = default_timer()
-#         print('%0.8f seconds in hbv_c_loop' % (_end_1 - _beg))
-
     if res == 0.0:
         for i in range(n_recs):
             if qsim_arr[i] < min_q_thresh:
@@ -153,9 +144,5 @@ cdef DT_D hbv_mult_cat_loop(
             with gil: print(
                 ('Incorrect use_obs_flow_flag: %d' % 
                  misc_longs[use_obs_flow_flag_i]))
-
-#     with gil:
-#         _end_f = default_timer()
-#         print('%0.8f seconds in qsim add' % (_end_f - _end_1))
 
     return res
