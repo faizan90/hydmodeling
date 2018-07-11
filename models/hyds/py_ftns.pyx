@@ -10,9 +10,9 @@ import numpy as np
 cimport numpy as np
 from libcpp.map cimport map as cmap
 
-from .hbv_loop cimport hbv_loop
-from .hbv_mult_cat_loop cimport hbv_mult_cat_loop
-from .dtypes cimport (
+from ..hbvs.hbv_loop cimport hbv_loop
+from ..hbvs.hbv_mult_cat_loop cimport hbv_mult_cat_loop
+from ..miscs.dtypes cimport (
     DT_D,
     DT_UL,
     DT_ULL,
@@ -40,7 +40,7 @@ DT_D_NP = np.float64
 DT_UL_NP = np.int32
 
 
-cdef extern from "hbv_c_loop.h" nogil:
+cdef extern from "../hbvs/hbv_c_loop.h" nogil:
     cdef:
         DT_D hbv_c_loop(
             const DT_D *temp_arr,

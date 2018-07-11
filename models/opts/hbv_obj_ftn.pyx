@@ -6,13 +6,13 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
-from .routing cimport tfm_opt_to_route_prms
-from .opt_to_hbv_prms cimport tfm_opt_to_hbv_prms
-from .misc_ftns cimport get_ns, get_ln_ns, get_kge
-from .misc_ftns_partial cimport get_ns_prt, get_ln_ns_prt, get_kge_prt
+from ..hyds.routing cimport tfm_opt_to_route_prms
+from ..hyds.opt_to_hbv_prms cimport tfm_opt_to_hbv_prms
+from ..miscs.misc_ftns cimport get_ns, get_ln_ns, get_kge
+from ..miscs.misc_ftns_partial cimport get_ns_prt, get_ln_ns_prt, get_kge_prt
 
-from .hbv_mult_cat_loop cimport hbv_mult_cat_loop
-from .dtypes cimport (
+from ..hbvs.hbv_mult_cat_loop cimport hbv_mult_cat_loop
+from ..miscs.dtypes cimport (
     n_stms_i,
     n_hm_prms_i,
     off_idx_i,

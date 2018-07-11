@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from .dtypes import get_fc_pwp_is
-from .hbv_opt import hbv_opt
-from .py_ftns import hbv_mult_cat_loop_py
-from .misc_ftns import (
+from .miscs.dtypes import get_fc_pwp_is
+from .opts.hbv_opt import hbv_opt
+from .hyds.py_ftns import hbv_mult_cat_loop_py
+from .miscs.misc_ftns import (
     get_aspect_scale_arr_cy,
     get_slope_scale_arr_cy,
     get_aspect_and_slope_scale_arr_cy)

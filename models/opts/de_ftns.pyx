@@ -8,15 +8,15 @@
 
 from cython.parallel import prange, threadid
 
-from .dtypes cimport fc_i, pwp_i
-from .misc_ftns cimport del_idx
+from ..miscs.dtypes cimport fc_i, pwp_i
+from ..miscs.misc_ftns cimport del_idx
 
 
 cdef extern from "cmath":
     bint isnan(DT_D x) nogil
 
 
-cdef extern from "rand_gen_mp.h" nogil:
+cdef extern from "../miscs/rand_gen_mp.h" nogil:
     cdef:
         DT_D rand_c()
         void warm_up()  # call this everytime

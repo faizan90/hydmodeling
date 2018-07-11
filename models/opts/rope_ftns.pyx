@@ -9,7 +9,7 @@
 import numpy as np
 cimport numpy as np
 
-from .dtypes cimport fc_i, pwp_i
+from ..miscs.dtypes cimport fc_i, pwp_i
 
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
@@ -19,7 +19,7 @@ cdef extern from "cmath":
     bint isnan(DT_D x) nogil
 
 
-cdef extern from "rand_gen_mp.h" nogil:
+cdef extern from "../miscs/rand_gen_mp.h" nogil:
     cdef:
         DT_D rand_c()
         void warm_up()  # call this everytime

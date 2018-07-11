@@ -7,9 +7,9 @@
 # cython: embedsignature=True
 
 from .hbv_loop cimport hbv_loop
-from .routing cimport route_strms
+from ..hyds.routing cimport route_strms
 
-from .dtypes cimport (
+from ..miscs.dtypes cimport (
     curr_us_stm_i,
     route_type_i,
     cat_no_i,

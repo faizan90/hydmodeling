@@ -5,7 +5,7 @@
 # cython: language_level=3
 # cython: infer_types(None)
 
-from .dtypes cimport DT_D, DT_UL
+from ..miscs.dtypes cimport DT_D, DT_UL
 
 
 cdef DT_D get_mean(

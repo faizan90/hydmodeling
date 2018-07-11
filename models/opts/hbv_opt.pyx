@@ -17,21 +17,21 @@ import numpy as np
 cimport numpy as np
 
 from .hbv_obj_ftn cimport obj_ftn
-from .misc_ftns cimport (
+from ..miscs.misc_ftns cimport (
     get_demr, 
     get_ln_demr,
     get_mean,
     get_ln_mean,
     get_variance,
     del_idx)
-from .misc_ftns_partial cimport (
+from ..miscs.misc_ftns_partial cimport (
     get_demr_prt, 
     get_ln_demr_prt,
     get_mean_prt,
     get_ln_mean_prt,
     get_variance_prt)
-from .rope_ftns cimport pre_rope, post_rope
-from .dtypes cimport (
+from .rope_ftns cimport get_new_chull_vecs, pre_rope, post_rope
+from ..miscs.dtypes cimport (
     DT_D,
     DT_UL,
     DT_ULL,
@@ -67,7 +67,7 @@ DT_D_NP = np.float64
 DT_UL_NP = np.int32
 
 
-cdef extern from "rand_gen_mp.h" nogil:
+cdef extern from "../miscs/rand_gen_mp.h" nogil:
     cdef:
         DT_D rand_c()
         void warm_up()  # call this everytime
@@ -77,7 +77,7 @@ cdef extern from "rand_gen_mp.h" nogil:
 warm_up()
 
 
-cdef extern from "data_depths.h" nogil:
+cdef extern from "./data_depths.h" nogil:
     cdef:
         void gen_usph_vecs_norm_dist_c(
                 unsigned long long *seeds_arr,
@@ -645,6 +645,23 @@ cpdef dict hbv_opt(args):
                 &cont_iter,
                 &cont_opt_flag,
                 &fval_pre_global)
+
+    if opt_schm == 2:
+        get_new_chull_vecs(
+            depths_arr,
+            temp_mins,
+            mins,
+            pre_obj_vals,
+            sort_obj_vals,
+            acc_vecs,
+            prm_vecs,
+            uvecs,
+            dot_ref,
+            dot_test,
+            dot_test_sort,
+            chull_vecs,
+            n_cpus,
+            &chull_vecs_ctr)
 
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. fill arrays with the best parameters

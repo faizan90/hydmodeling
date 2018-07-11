@@ -1,7 +1,7 @@
 import pyximport
 pyximport.install()
 
-from .misc_ftns import (
+from .miscs.misc_ftns import (
     get_ns_cy,
     get_ln_ns_cy,
     get_pcorr_cy,
@@ -15,7 +15,7 @@ from .misc_ftns import (
     get_ns_var_res_cy,
     get_ln_ns_var_res_cy)
 
-from .misc_ftns_partial import (
+from .miscs.misc_ftns_partial import (
     get_ns_prt_cy,
     get_ln_ns_prt_cy,
     get_pcorr_prt_cy,
@@ -23,9 +23,9 @@ from .misc_ftns_partial import (
     get_ns_var_res_prt_cy,
     get_ln_ns_var_res_prt_cy)
 
-from .hbv_opt import hbv_opt
+from .opts.hbv_opt import hbv_opt
 
-from .py_ftns import (
+from .hyds.py_ftns import (
     hbv_loop_py,
     hbv_c_loop_py,
     hbv_mult_cat_loop_py)

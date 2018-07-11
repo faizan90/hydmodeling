@@ -6,7 +6,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <stdint.h>
 
-#include "rand_gen_mp.h"
+#include "../miscs/rand_gen_mp.h"
 
 double log(double x);
 double pow(double x, double y);

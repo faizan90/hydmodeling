@@ -1,4 +1,4 @@
-from .dtypes cimport DT_D, DT_UL
+from ..miscs.dtypes cimport DT_D, DT_UL
 
 
 cdef DT_D hbv_loop(

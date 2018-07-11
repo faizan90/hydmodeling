@@ -1,4 +1,4 @@
-from .dtypes cimport DT_D, DT_UL
+from ..miscs.dtypes cimport DT_D, DT_UL
 
 
 cdef void tfm_opt_to_hbv_prms(
