@@ -14,6 +14,11 @@ from .dtypes cimport fc_i, pwp_i
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
 
+
+cdef extern from "cmath":
+    bint isnan(DT_D x) nogil
+
+
 cdef extern from "rand_gen_mp.h" nogil:
     cdef:
         DT_D rand_c()
@@ -284,4 +289,140 @@ cdef void gen_vecs_in_chull(
 
     with gil:
         print('Out gen_vecs_in_chull...')
+    return
+
+
+cdef void pre_rope(
+    const DT_UL[:, ::1] prms_flags,
+    const DT_UL[:, ::1] prms_span_idxs,
+          DT_UL[::1] depths_arr,
+          DT_UL[:, ::1] temp_mins,
+          DT_UL[:, ::1] mins,
+
+    const DT_UL[:, :, ::1] prms_idxs,
+
+    const DT_D[::1] pre_obj_vals,
+          DT_D[::1] sort_obj_vals,
+
+
+          DT_D[:, ::1] prm_vecs,
+    const DT_D[:, ::1] uvecs,
+          DT_D[:, ::1] temp_rope_prm_vecs,
+          DT_D[:, ::1] acc_vecs,
+          DT_D[:, ::1] rope_bds_dfs,
+          DT_D[:, ::1] dot_ref,
+          DT_D[:, ::1] dot_test,
+          DT_D[:, ::1] dot_test_sort,
+          DT_D[:, ::1] chull_vecs,
+
+    const DT_UL n_hbv_prms,
+    const DT_UL n_cpus,
+          DT_UL *chull_vecs_ctr,
+    ) nogil except +:
+
+    get_new_chull_vecs(
+        depths_arr,
+        temp_mins,
+        mins,
+        pre_obj_vals,
+        sort_obj_vals,
+        acc_vecs,
+        prm_vecs,
+        uvecs,
+        dot_ref,
+        dot_test,
+        dot_test_sort,
+        chull_vecs,
+        n_cpus,
+        chull_vecs_ctr)
+
+    with gil: assert chull_vecs_ctr[0] >= 3, chull_vecs_ctr[0]
+
+    adjust_rope_bds(
+        chull_vecs,
+        rope_bds_dfs,
+        chull_vecs_ctr[0])
+#     print('New rope_bds_dfs')
+#     for i in range(n_prms):
+#         print(rope_bds_dfs[i, 0], rope_bds_dfs[i, 1])
+
+    gen_vecs_in_chull(
+        depths_arr,
+        prms_flags,
+        prms_span_idxs,
+        temp_mins,
+        mins,
+        prms_idxs,
+        rope_bds_dfs,
+        chull_vecs,
+        uvecs,
+        temp_rope_prm_vecs,
+        prm_vecs,
+        dot_ref,
+        dot_test,
+        dot_test_sort,
+        n_hbv_prms,
+        chull_vecs_ctr[0],
+        n_cpus)
+    return
+
+
+cdef void post_rope(
+    const DT_D[::1] pre_obj_vals,
+          DT_D[::1] best_prm_vec,
+
+    const DT_D[:, ::1] prm_vecs,
+
+    const DT_UL max_iters,
+    const DT_UL max_cont_iters,
+          DT_UL *iter_curr,
+          DT_UL *last_succ_i,
+          DT_UL *n_succ,
+          DT_UL *cont_iter,
+          DT_UL *cont_opt_flag,
+
+          DT_D *fval_pre_global,
+    ) nogil except +:
+
+    cdef:
+        Py_ssize_t j, k
+
+        DT_D fval_pre
+
+        DT_UL n_prms = prm_vecs.shape[1]
+        DT_UL n_prm_vecs = prm_vecs.shape[0]
+
+    for j in range(n_prm_vecs):
+        fval_pre = pre_obj_vals[j]
+
+        if isnan(fval_pre):
+            with gil: raise RuntimeError('fval_pre is Nan!')
+        
+#                 accept_vars.append((mu_sc_fac, cr_cnst, fval_curr, iter_curr))
+#                 total_vars.append((mu_sc_fac, cr_cnst))
+
+        # check for global minimum and best vector
+        if fval_pre >= fval_pre_global[0]:
+            continue
+
+        for k in range(n_prms):
+            best_prm_vec[k] = prm_vecs[j, k]
+
+        with gil: print(f'New global min at iter {iter_curr[0]}: {fval_pre}!')
+
+        fval_pre_global[0] = fval_pre
+        last_succ_i[0] = iter_curr[0]
+        n_succ[0] += 1
+        cont_iter[0] = 0
+
+    iter_curr[0] += 1
+
+    if cont_opt_flag[0] and (iter_curr[0] >= max_iters):
+        with gil: print('***Max iterations reached!***')
+        cont_opt_flag[0] = 0
+
+    if cont_opt_flag[0] and (cont_iter[0] > max_cont_iters):
+        with gil: print('***max_cont_iters reached!***')
+        cont_opt_flag[0] = 0
+
     return
