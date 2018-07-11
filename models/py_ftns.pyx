@@ -6,8 +6,6 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
-import timeit
-
 import numpy as np
 cimport numpy as np
 from libcpp.map cimport map as cmap
@@ -60,7 +58,7 @@ cdef extern from "hbv_c_loop.h" nogil:
             const DT_D *rnof_q_conv,
             const DT_UL *opt_flag)
 
- 
+
 cpdef dict hbv_loop_py(
           DT_D[:, ::1] temp_arr,
           DT_D[:, ::1] prec_arr,
@@ -69,27 +67,26 @@ cpdef dict hbv_loop_py(
     const DT_D[:, ::1] inis_arr,
     const DT_D[::1] area_arr,
     const DT_D rnof_q_conv):
- 
+
     cdef:
         DT_UL n_time_steps = temp_arr.shape[1], opt_flag = 0
         DT_UL n_cells = temp_arr.shape[0]
- 
-        DT_D loop_ret#, _st, _sp
- 
+
+        DT_D loop_ret
+
         DT_D[::1] qsim_arr
         DT_D[:, :, ::1] outs_arr
-         
+
         dict out_dict
-         
+
     assert temp_arr.shape[0] == prec_arr.shape[0] == petn_arr.shape[0]
     assert temp_arr.shape[1] == prec_arr.shape[1] == petn_arr.shape[1]
     assert temp_arr.shape[0] == prms_arr.shape[0] == area_arr.shape[0]
     assert prms_arr.shape[1] == n_hbv_prms
- 
+
     outs_arr = np.zeros((n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
     qsim_arr = np.zeros(n_time_steps, dtype=DT_D_NP)
- 
-#     _st = timeit.default_timer()
+
     loop_ret = hbv_loop(
         temp_arr,
         prec_arr,
@@ -101,9 +98,7 @@ cpdef dict hbv_loop_py(
         outs_arr,
         &rnof_q_conv,
         &opt_flag)
-#     _sp = timeit.default_timer()
-#     print('%0.6f secs for a loop!' % (_sp - _st))
- 
+
     out_dict = {}
     out_dict['loop_ret'] = loop_ret
     out_dict['outs_arr'] = np.asarray(outs_arr[:, 1:, :])
@@ -124,13 +119,13 @@ cpdef dict hbv_c_loop_py(
         DT_UL n_time_steps = temp_arr.shape[1], opt_flag = 0
         DT_UL n_cells = temp_arr.shape[0]
 
-        DT_D loop_ret#, _st, _sp
+        DT_D loop_ret
 
         DT_D[::1] qsim_arr
         DT_D[:, :, ::1] outs_arr
-        
+
         dict out_dict
-        
+
     assert temp_arr.shape[0] == prec_arr.shape[0] == petn_arr.shape[0]
     assert temp_arr.shape[1] == prec_arr.shape[1] == petn_arr.shape[1]
     assert temp_arr.shape[0] == prms_arr.shape[0] == area_arr.shape[0]
@@ -139,7 +134,6 @@ cpdef dict hbv_c_loop_py(
     outs_arr = np.zeros((n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
     qsim_arr = np.zeros(n_time_steps, dtype=DT_D_NP)
 
-#     _st = timeit.default_timer()
     loop_ret = hbv_c_loop(
         &temp_arr[0, 0],
         &prec_arr[0, 0],
@@ -155,8 +149,6 @@ cpdef dict hbv_c_loop_py(
         &n_hbv_cols,
         &rnof_q_conv,
         &opt_flag)
-#     _sp = timeit.default_timer()
-#     print('%0.6f secs for a loop!' % (_sp - _st))
 
     out_dict = {}
     out_dict['loop_ret'] = loop_ret
@@ -178,7 +170,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
         DT_D rnof_q_conv, signal, min_q_thresh
 
         cmap[long, long] cat_to_idx_map, stm_to_idx_map
-         
+
         DT_UL[::1] stm_idxs, use_step_arr
 
         DT_D[::1] qact_arr, obj_ftn_wts, qsim_arr
@@ -198,11 +190,11 @@ cpdef dict hbv_mult_cat_loop_py(args):
 
     dem_net_arr, cats_outflow_arr, stms_inflow_arr, stms_outflow_arr = args[5]
 
-    (off_idx, 
-     rnof_q_conv, 
-     route_type, 
-     cat_no, 
-     n_cpus, 
+    (off_idx,
+     rnof_q_conv,
+     route_type,
+     cat_no,
+     n_cpus,
      n_stms,
      n_cells,
      use_obs_flow_flag,
@@ -212,10 +204,10 @@ cpdef dict hbv_mult_cat_loop_py(args):
      min_q_thresh) = args[6]
 
     area_arr = args[7]
- 
+
     inflow_arr = np.zeros(cats_outflow_arr.shape[0], dtype=DT_D_NP)
     qsim_arr = inflow_arr.copy()
-    outs_arr = np.zeros((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols), 
+    outs_arr = np.zeros((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols),
                         dtype=DT_D_NP)
 
     for cat in cat_to_idx_dict:
