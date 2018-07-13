@@ -725,8 +725,8 @@ cpdef dict hbv_opt(args):
         'accept_vars': accept_vars,
         'total_vars': total_vars,
         'n_calls': np.asarray(n_calls),
-        'pre_obj_vals': np.asarray(pre_obj_vals),
-        'qsim_arr': np.asarray(qsim_mult_arr[tid])}
+        'qsim_arr': np.asarray(qsim_mult_arr[tid]),
+        'pre_obj_vals' : np.asarray(pre_obj_vals)}
 
     if opt_schm == 1:
         out_dict['prm_vecs'] = np.asarray(prm_vecs)
@@ -734,6 +734,6 @@ cpdef dict hbv_opt(args):
         out_dict['curr_obj_vals'] = np.asarray(curr_obj_vals)
     elif opt_schm == 2:
         out_dict['prm_vecs'] = np.asarray(acc_vecs)
-        out_dict['curr_obj_vals'] = np.asarray(sort_obj_vals)
-
+        out_dict['curr_obj_vals'] = np.asarray(
+            sort_obj_vals[:acc_vecs.shape[0]])
     return out_dict

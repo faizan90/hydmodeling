@@ -59,6 +59,8 @@ def load_pickle(in_file, mode='rb'):
 # characteristics flags.
 # TODO: Have elevation as a auxillary variable
 # TODO: Reverse HBV
+# TODO: make snowmelt more physical.
+# These parameters vary the most among kfolds
 
 
 def main():
