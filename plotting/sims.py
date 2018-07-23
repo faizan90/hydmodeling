@@ -39,15 +39,54 @@ def plot_hbv(plot_args):
         off_idx = db['data'].attrs['off_idx']
         conv_ratio = db['data'].attrs['conv_ratio']
         prm_syms = db['data/all_prms_labs'][...]
+        use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
+        area_arr = db['data/area_arr'][...]
 
+        all_kfs_dict = {}
         for i in range(1, kfolds + 1):
             cd_db = db[f'calib/kf_{i:02d}']
             kf_dict = {key: cd_db[key][...] for key in cd_db}
+            kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
+
+            all_kfs_dict[i] = kf_dict
+
+        all_tem_arr = np.concatenate([all_kfs_dict[i]['tem_arr']
+                                      for i in all_kfs_dict], axis=1)
+        all_ppt_arr = np.concatenate([all_kfs_dict[i]['ppt_arr']
+                                      for i in all_kfs_dict], axis=1)
+        all_pet_arr = np.concatenate([all_kfs_dict[i]['pet_arr']
+                                      for i in all_kfs_dict], axis=1)
+        all_qact_arr = np.concatenate([all_kfs_dict[i]['qact_arr']
+                                      for i in all_kfs_dict], axis=0)
+
+        for i in range(1, kfolds + 1):
+            kf_dict = all_kfs_dict[i]
+            kf_i = f'{i:02d}'
+
             _plot_hbv_kf(
-                i,
+                kf_i,
                 cat,
                 kf_dict,
-                db['data/area_arr'][...],
+                area_arr,
+                conv_ratio,
+                prm_syms,
+                off_idx,
+                out_dir,
+                wat_bal_stps,
+                plot_simple_flag,
+                plot_wat_bal_flag)
+
+            kf_dict['tem_arr'] = all_tem_arr
+            kf_dict['ppt_arr'] = all_ppt_arr
+            kf_dict['pet_arr'] = all_pet_arr
+            kf_dict['qact_arr'] = all_qact_arr
+
+            kf_i = f'{kf_i}_all'
+            _plot_hbv_kf(
+                kf_i,
+                cat,
+                kf_dict,
+                area_arr,
                 conv_ratio,
                 prm_syms,
                 off_idx,
@@ -58,10 +97,10 @@ def plot_hbv(plot_args):
     return
 
 
-def plot_pop(cat_db):
+def _plot_prm_vecs(cat_db):
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
-        out_dir = os.path.join(out_dir, r'06_population')
+        out_dir = os.path.join(out_dir, r'06_prm_vecs')
         if not os.path.exists(out_dir):
             try:
                 os.mkdir(out_dir)
@@ -71,50 +110,61 @@ def plot_pop(cat_db):
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
         prm_syms = db['data/all_prms_labs'][...]
+        opt_schm = db['cdata/opt_schm_vars_dict/opt_schm'].value
 
         calib_db = db['calib']
 
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
-            pop = calib_db[kf_str + '/prm_vecs'][...]
+            prm_vecs = calib_db[kf_str + '/prm_vecs'][...]
             bounds_arr = db['cdata/bds_arr'][...]
             prm_syms = db['cdata/use_prms_labs'][...]
             cobj_vals = calib_db[kf_str + '/curr_obj_vals'][...]
             pobj_vals = calib_db[kf_str + '/pre_obj_vals'][...]
-            _plot_k_pop(
+            _plot_k_prm_vecs(
                 i,
                 cat,
                 out_dir,
                 bounds_arr,
-                pop,
+                prm_vecs,
                 cobj_vals,
                 pobj_vals,
-                prm_syms)
+                prm_syms,
+                opt_schm)
     return
 
 
-def _plot_k_pop(
-        kf_i, cat, out_dir, bounds_arr, pop, cobj_vals, pobj_vals, prm_syms):
+def _plot_k_prm_vecs(
+        kf_i,
+        cat,
+        out_dir,
+        bounds_arr,
+        prm_vecs,
+        cobj_vals,
+        pobj_vals,
+        prm_syms,
+        opt_schm):
+
     plt.figure(figsize=(max(35, bounds_arr.shape[0]), 13))
     tick_font_size = 10
 
     stats_cols = ['min', 'max', 'mean', 'stdev', 'min_bd', 'max_bd']
     n_stats_cols = len(stats_cols)
 
-    norm_pop = pop.copy()
-    for i in range(pop.shape[0]):
-        for j in range(pop.shape[1]):
-            pop[i, j] = ((pop[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) +
+    norm_prm_vecs = prm_vecs.copy()
+    for i in range(prm_vecs.shape[0]):
+        for j in range(prm_vecs.shape[1]):
+            prm_vecs[i, j] = ((prm_vecs[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) +
                          bounds_arr[j, 0])
-            if not np.isfinite(pop[i, j]):
-                pop[i, j] = bounds_arr[j, 0]
+            if not np.isfinite(prm_vecs[i, j]):
+                prm_vecs[i, j] = bounds_arr[j, 0]
 
     n_params = bounds_arr.shape[0]
 
-    curr_min = pop.min(axis=0)
-    curr_max = pop.max(axis=0)
-    curr_mean = pop.mean(axis=0)
-    curr_stdev = pop.std(axis=0)
+    curr_min = prm_vecs.min(axis=0)
+    curr_max = prm_vecs.max(axis=0)
+    curr_mean = prm_vecs.mean(axis=0)
+    curr_stdev = prm_vecs.std(axis=0)
     min_opt_bounds = bounds_arr.min(axis=1)
     max_opt_bounds = bounds_arr.max(axis=1)
     xx, yy = np.meshgrid(np.arange(-0.5, n_params, 1),
@@ -179,9 +229,9 @@ def _plot_k_pop(
                                  colspan=1,
                                  sharex=stats_ax)
     plot_range = list(range(n_params))
-    for i in range(pop.shape[0]):
+    for i in range(prm_vecs.shape[0]):
         params_ax.plot(plot_range,
-                       norm_pop[i],
+                       norm_prm_vecs[i],
                        alpha=0.1,
                        color='k')
 
@@ -202,11 +252,11 @@ def _plot_k_pop(
         _tick.set_rotation(60)
 
     title_str = ('Distributed HBV parameters - '
-                 f'DE final population (n={pop.shape[0]})')
+                 f'{opt_schm} final prm_vecs (n={prm_vecs.shape[0]})')
     plt.suptitle(title_str, size=tick_font_size + 10)
     plt.subplots_adjust(hspace=0.15)
 
-    plt.savefig(str(Path(out_dir, f'hbv_pop_{cat}_kf_{kf_i:02d}.png')),
+    plt.savefig(str(Path(out_dir, f'hbv_prm_vecs_{cat}_kf_{kf_i:02d}.png')),
                 bbox_inches='tight')
     plt.close()
 
@@ -216,7 +266,7 @@ def _plot_k_pop(
 
     probs = 1 - (np.arange(1.0, n_vals + 1) / (n_vals + 1))
 
-    ax1.set_title(('Final population objective function distribution\n'
+    ax1.set_title(('Final objective function distribution\n'
                    f'Min. obj.: {cobj_vals.min():0.4f}, '
                    f'max. obj.: {cobj_vals.max():0.4f}'))
     ax1.plot(np.sort(cobj_vals), probs, marker='o', alpha=0.8)
@@ -236,7 +286,7 @@ def _plot_k_pop(
 
     probs = 1 - (np.arange(1.0, n_vals + 1) / (n_vals + 1))
 
-    ax1.set_title(('2nd last population objective function distribution\n'
+    ax1.set_title(('2nd last objective function distribution\n'
                    f'Min. obj.: {pobj_vals.min():0.4f}, '
                    f'max. obj.: {pobj_vals.max():0.4f}'))
     ax1.plot(np.sort(pobj_vals), probs, marker='o', alpha=0.8)
@@ -254,7 +304,7 @@ def _plot_k_pop(
 
 
 def _plot_hbv_kf(
-        kf_i,
+        kf_str,
         cat,
         kf_dict,
         area_arr,
@@ -356,7 +406,7 @@ def _plot_hbv_kf(
 
     sim_df = pd.DataFrame(sim_dict, dtype=float)
     sim_df.to_csv(os.path.join(
-        hbv_figs_dir, f'kf_{kf_i:02d}_HBV_sim_{cat}.csv'), sep=';')
+        hbv_figs_dir, f'kf_{kf_str}_HBV_sim_{cat}.csv'), sep=';')
 
     ns = get_ns_cy(q_act_arr, q_sim_arr, off_idx)
     ln_ns = get_ln_ns_cy(q_act_arr, q_sim_arr, off_idx)
@@ -389,9 +439,9 @@ def _plot_hbv_kf(
                 pass
 
         out_fig_loc = os.path.join(
-            out_dir, f'kf_{kf_i:02d}_HBV_model_plot_{cat}.png')
+            out_dir, f'kf_{kf_str}_HBV_model_plot_{cat}.png')
         out_params_loc = os.path.join(
-            out_dir, f'kf_{kf_i:02d}_HBV_model_params_{cat}.csv')
+            out_dir, f'kf_{kf_str}_HBV_model_params_{cat}.csv')
 
         out_labs = []
         out_labs.extend(prm_syms)
@@ -807,7 +857,7 @@ def _plot_hbv_kf(
                 pass
 
         out_fig_loc = os.path.join(
-            out_dir, f'kf_{kf_i:02d}_HBV_water_bal_{cat}.png')
+            out_dir, f'kf_{kf_str}_HBV_water_bal_{cat}.png')
 
         cum_q = np.cumsum(q_act_arr_diff[off_idx:] / conv_ratio)
 

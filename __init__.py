@@ -43,7 +43,8 @@ from .models import (
 from .plotting import (
     _plot_hbv_kf,
     plot_vars,
-    plot_pops,
+    plot_prm_vecs,
     plot_kfold_effs,
     plot_kfolds_best_prms,
-    plot_kfolds_best_hbv_prms_2d)
+    plot_kfolds_best_hbv_prms_2d,
+    compare_ann_cycs_fdcs)

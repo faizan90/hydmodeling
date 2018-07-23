@@ -1021,8 +1021,6 @@ def _solve_k_cats_sys(
                 for key in opt_schm_vars_dict:
                     opt_sb[key] = opt_schm_vars_dict[key]
 
-#                 db['cdata/use_prms_labs'] = np.array(use_prms_labs, dtype='S10')
-
                 dt = h5py.special_dtype(vlen=str)
                 _prms_ds = cdata_sb.create_dataset(
                     'use_prms_labs', (len(all_prms_labs),), dtype=dt)

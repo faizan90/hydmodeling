@@ -3,11 +3,12 @@ from glob import glob
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
-from .sims import plot_hbv, plot_pop, _plot_hbv_kf
+from .sims import plot_hbv, _plot_prm_vecs, _plot_hbv_kf
 from .k_folds import (
     plot_cat_kfold_effs,
     _kfold_best_prms,
-    plot_kfolds_best_hbv_prms_2d)
+    plot_kfolds_best_hbv_prms_2d,
+    compare_ann_cycs_fdcs)
 
 
 def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
@@ -68,7 +69,7 @@ def plot_kfolds_best_prms(dbs_dir, n_cpus):
     return
 
 
-def plot_pops(dbs_dir, n_cpus):
+def plot_prm_vecs(dbs_dir, n_cpus):
     '''Plot the population
     '''
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
@@ -86,7 +87,7 @@ def plot_pops(dbs_dir, n_cpus):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
         try:
-            print(list(mp_pool.uimap(plot_pop, opt_res_gen)))
+            print(list(mp_pool.uimap(_plot_prm_vecs, opt_res_gen)))
             mp_pool.clear()
         except Exception as msg:
             mp_pool.close()
@@ -94,7 +95,7 @@ def plot_pops(dbs_dir, n_cpus):
             print('Error in plot_pops:', msg)
     else:
         for opt_res in opt_res_gen:
-            plot_pop(opt_res)
+            _plot_prm_vecs(opt_res)
     return
 
 

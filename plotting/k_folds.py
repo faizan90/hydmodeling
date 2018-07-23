@@ -62,7 +62,7 @@ def plot_cat_kfold_effs(args):
             kfold_q_sers_dict[i] = (
                 db['valid'][kf_str]['out_cats_flow_df'][cat].values.copy(order='c'))
         else:
-            date_idx = db['valid'][kf_str]['out_cats_flow_df'].index
+            date_idx = db['valid'][kf_str]['qact_df'][cat].index
             qact_arr = db['valid'][kf_str]['qact_df'][cat].values.copy(order='c')
 
     assert kfolds >= 1, 'kfolds can be 1 or greater only!'
@@ -364,6 +364,8 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
     min_col = +np.inf
     max_col = -np.inf
 
+    aux_vars_dict = {}
+    aux_prms_labs = []
     for cat_db in cats_dbs:
         with h5py.File(cat_db, 'r') as db:
             cat = db.attrs['cat']
@@ -393,7 +395,54 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
 
                 kf_prms_dict[i][cat] = db[f'calib/kf_{i:02d}/hbv_prms'][...]
 
+            aux_vars_dict[cat] = {}
+            cdata_db = db['cdata']
+
+            if 'lulc_arr' in cdata_db:
+                if 'lulc_arr' not in aux_prms_labs:
+                    aux_prms_labs.append('lulc_arr')
+
+                lulc_arr = cdata_db['lulc_arr'][...]
+                assert lulc_arr.ndim == 2
+                for i in range(lulc_arr.shape[1]):
+                    aux_vars_dict[cat][f'lulc_{i:02d}'] = lulc_arr[:, i]
+
+            if 'soil_arr' in cdata_db:
+                if 'soil_arr' not in aux_prms_labs:
+                    aux_prms_labs.append('soil_arr')
+
+                soil_arr = cdata_db['soil_arr'][...]
+                assert soil_arr.ndim == 2
+                for i in range(soil_arr.shape[1]):
+                    aux_vars_dict[cat][f'soil_{i:02d}'] = soil_arr[:, i]
+
+            if 'aspect_scale_arr' in cdata_db:
+                aspect_scale_arr = cdata_db['aspect_scale_arr'][...]
+                assert aspect_scale_arr.ndim == 1
+                aux_vars_dict[cat]['aspect_scale'] = aspect_scale_arr
+
+            if 'slope_scale_arr' in cdata_db:
+                slope_scale_arr = cdata_db['slope_scale_arr'][...]
+                assert slope_scale_arr.ndim == 1
+                aux_vars_dict[cat]['slope_scale'] = slope_scale_arr
+
+            if 'aspect_slope_scale_arr' in cdata_db:
+                aspect_slope_scale_arr = cdata_db['aspect_slope_scale_arr'][...]
+                assert aspect_slope_scale_arr.ndim == 1
+                aux_vars_dict[cat]['aspect_slope_scale'] = aspect_slope_scale_arr
+
     plot_min_max_lims = (min_row - 1, max_row + 1, min_col - 1, max_col + 1)
+
+    aux_prms_labs = list(aux_vars_dict[cat].keys())
+    _plot_aux_vars_2d(
+        aux_vars_dict,
+        out_dir,
+        aux_prms_labs,
+        shape,
+        rows_dict,
+        cols_dict,
+        plot_min_max_lims,
+        lumped_prms_flag)
 
     _plot_kf_prms_2d(
         kfolds,
@@ -410,33 +459,103 @@ def plot_kfolds_best_hbv_prms_2d(dbs_dir):
     return
 
 
-def get_daily_annual_cycle(in_data_df, n_cpus=1):
+def _plot_aux_vars_2d(
+        aux_vars_dict,
+        out_dir,
+        aux_prms_labs,
+        shape,
+        rows_dict,
+        cols_dict,
+        plot_min_max_lims,
+        lumped_prms_flag):
 
-    annual_cycle_df = pd.DataFrame(index=in_data_df.index,
-                                   columns=in_data_df.columns,
-                                   dtype=float)
+    loc_rows = 1
+    loc_cols = 1
 
-    cat_ser_gen = (in_data_df[col] for col in in_data_df.columns)
-    if n_cpus > 1:
-        mp_pool = ProcessPool(n_cpus)
-        mp_pool.restart(True)
-        try:
-            ann_cycs = list(mp_pool.uimap(_get_daily_annual_cycle,
-                                          cat_ser_gen))
+    sca_fac = 3
+    loc_rows *= sca_fac
+    loc_cols *= sca_fac
 
-            for col_ser in ann_cycs:
-                annual_cycle_df.update(col_ser)
+    legend_rows = 1
+    legend_cols = loc_cols
 
-            mp_pool.clear()
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in get_daily_annual_cycle:', msg)
-    else:
-        for col_ser in cat_ser_gen:
-            annual_cycle_df.update(_get_daily_annual_cycle(col_ser))
+    plot_shape = (loc_rows + legend_rows, loc_cols)
 
-    return annual_cycle_df
+    for prm in aux_prms_labs:
+        curr_row = 0
+        curr_col = 0
+        ax = plt.subplot2grid(
+            plot_shape,
+            loc=(curr_row, curr_col),
+            rowspan=sca_fac,
+            colspan=sca_fac)
+
+        plot_grid = np.full(shape, np.nan)
+        for cat in aux_vars_dict:
+            cell_prms = aux_vars_dict[cat][prm]
+            plot_grid[rows_dict[cat], cols_dict[cat]] = cell_prms
+
+            if lumped_prms_flag:
+                _val = str(cell_prms[0])
+                _bf_pt, _af_pt = _val.split('.')
+                _af_pt = _af_pt[:(5 - len(_bf_pt))]
+                _val = f'{_bf_pt}.{_af_pt}'
+                ax.text(
+                    cols_dict[cat][0],
+                    rows_dict[cat][0],
+                    f'{cat}\n({_val})'.rstrip('0'),
+                    va='center',
+                    ha='center', zorder=2,
+                    rotation=45)
+            else:
+                ax.text(
+                    int(cols_dict[cat].mean()),
+                    int(rows_dict[cat].mean()),
+                    f'{cat}',
+                    va='center',
+                    ha='center', zorder=2)
+
+            _ps = ax.imshow(
+                plot_grid,
+                origin='lower',
+                cmap=plt.get_cmap('gist_rainbow'),
+                zorder=1)
+
+            ax.set_ylim(plot_min_max_lims[0], plot_min_max_lims[1])
+            ax.set_xlim(plot_min_max_lims[2], plot_min_max_lims[3])
+
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            ax.set_axis_off()
+
+            curr_col += sca_fac
+            if curr_col >= loc_cols:
+                curr_col = 0
+                curr_row += sca_fac
+
+        cb_ax = plt.subplot2grid(
+            plot_shape,
+            loc=(plot_shape[0] - 1, 0),
+            rowspan=1,
+            colspan=legend_cols)
+        cb_ax.set_axis_off()
+        cb = plt.colorbar(_ps,
+                          ax=cb_ax,
+                          fraction=0.4,
+                          aspect=20,
+                          orientation='horizontal')
+        cb.set_label(prm)
+        cb.ax.set_xticklabels(cb.ax.get_xticklabels(), rotation=90)
+
+        fig = plt.gcf()
+        fig.set_size_inches(
+            (plot_shape[1] * 1.2) + 1, (plot_shape[0] * 1.2) + 1)
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, f'{prm}.png'), bbox_inches='tight')
+        plt.close()
+    return
 
 
 def _plot_kf_prms_2d(
@@ -695,6 +814,35 @@ def _kfold_best_prms(cat_db):
     return
 
 
+def get_daily_annual_cycle(in_data_df, n_cpus=1):
+
+    annual_cycle_df = pd.DataFrame(index=in_data_df.index,
+                                   columns=in_data_df.columns,
+                                   dtype=float)
+
+    cat_ser_gen = (in_data_df[col].copy() for col in in_data_df.columns)
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            ann_cycs = list(mp_pool.uimap(_get_daily_annual_cycle,
+                                          cat_ser_gen))
+
+            for col_ser in ann_cycs:
+                annual_cycle_df.update(col_ser)
+
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in get_daily_annual_cycle:', msg)
+    else:
+        for col_ser in cat_ser_gen:
+            annual_cycle_df.update(_get_daily_annual_cycle(col_ser))
+
+    return annual_cycle_df
+
+
 def _get_daily_annual_cycle(col_ser):
 
     assert isinstance(col_ser, pd.Series), 'Expected a pd.Series object!'
@@ -704,8 +852,8 @@ def _get_daily_annual_cycle(col_ser):
     # the annual cycle is the average value and is used for every doy of
     # all years
     for month in range(1, 13):
+        month_idxs = col_ser.index.month == month
         for dom in range(1, 32):
-            month_idxs = col_ser.index.month == month
             dom_idxs = col_ser.index.day == dom
             idxs_intersect = np.logical_and(month_idxs, dom_idxs)
             curr_day_vals = col_ser.values[idxs_intersect]
@@ -719,6 +867,140 @@ def _get_daily_annual_cycle(col_ser):
             curr_day_avg_val = curr_day_vals.mean()
             col_ser.loc[idxs_intersect] = curr_day_avg_val
     return col_ser
+
+
+def _get_fdc_probs_vals(in_ser):
+    assert isinstance(in_ser, pd.Series), 'Expected a pd.Series object!'
+
+    probs = (in_ser.rank(ascending=False) / (in_ser.shape[0] + 1)).values
+    vals = in_ser.values.copy()
+    sort_idxs = np.argsort(probs)
+
+    probs = probs[sort_idxs]
+    vals = vals[sort_idxs]
+    return probs, vals
+
+
+def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
+    kf_str = f'kf_{i:02d}'
+
+    kf_qact_df = db[db_lab][kf_str]['qact_df'].iloc[off_idx:]
+    cats = kf_qact_df.columns
+
+    date_idx = kf_qact_df.index
+    assert np.all(np.abs((date_idx[1:] - date_idx[:-1]).days) == 1), (
+        'Annual cycle comparision available only for daily series!')
+
+    qact_ann_cyc_df = get_daily_annual_cycle(
+        kf_qact_df.iloc[off_idx:])
+
+    kf_qsim_df = db[db_lab][kf_str]['out_cats_flow_df'].iloc[off_idx:]
+    qsim_ann_cyc_df = get_daily_annual_cycle(kf_qsim_df)
+
+    assert np.all(kf_qact_df.index == kf_qsim_df.index)
+
+    plot_qact_df = qact_ann_cyc_df.iloc[:365]
+    plot_qsim_df = qsim_ann_cyc_df.iloc[:365]
+
+    doy_labs = plot_qact_df.index.dayofyear
+    plt_xcrds = np.arange(1, plot_qact_df.shape[0] + 1, 1)
+
+    for cat in cats:
+        # ann cyc
+        plt.plot(
+            plt_xcrds,
+            plot_qact_df[cat].values,
+            alpha=0.7,
+            label='qact')
+
+        plt.plot(
+            plt_xcrds,
+            plot_qsim_df[cat].values,
+            alpha=0.7,
+            label='qsim')
+
+        plt.grid()
+        plt.legend()
+
+        plt.xticks(plt_xcrds[::15], doy_labs[::15], rotation=90)
+
+        plt.title(
+            f'''
+            {title_lab} time series annual cycle
+            comparision for actual and simulated flows for the
+            catchemnt {cat} using parameters of kfold: {i}
+            ''')
+
+        plt.xlabel('Time (day of year)')
+        plt.ylabel('Discharge ($m^3/s$)')
+
+        out_path = os.path.join(
+            out_dir, f'{kf_str}_{db_lab}_ann_cyc_compare_{cat}.png')
+        plt.savefig(out_path, bbox_inches='tight')
+
+        plt.clf()
+
+        # FDC
+        qact_probs, qact_vals = _get_fdc_probs_vals(kf_qact_df[cat])
+        qsim_probs, qsim_vals = _get_fdc_probs_vals(kf_qsim_df[cat])
+
+        plt.semilogy(
+            qact_probs,
+            qact_vals,
+            alpha=0.7,
+            label='qact')
+
+        plt.semilogy(
+            qsim_probs,
+            qsim_vals,
+            alpha=0.7,
+            label='qsim')
+
+        plt.grid()
+        plt.legend()
+
+        plt.title(
+            f'''
+            {title_lab} flow duration curve comparison for
+            actual and simulated flows for the catchemnt {cat}
+            using parameters of kfold: {i}
+            ''')
+
+        plt.xlabel('Exceedence Probability (-)')
+        plt.ylabel('Discharge ($m^3/s$)')
+
+        out_path = os.path.join(
+            out_dir, f'{kf_str}_{db_lab}_fdc_compare_{cat}.png')
+        plt.savefig(out_path, bbox_inches='tight')
+
+        plt.clf()
+    return
+
+
+def compare_ann_cycs_fdcs(hgs_db_path, off_idx, out_dir):
+
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
+    title_lab_list = ['Validation', 'Calibration']
+    db_lab_list = ['valid', 'calib']
+
+    plt.figure(figsize=(20, 10))
+    with shelve.open(hgs_db_path, 'r') as db:
+        kfolds = len(db['calib'].keys())
+
+        for lab_i in range(len(db_lab_list)):
+            for i in range(1, kfolds + 1):
+                _compare_ann_cycs_fdcs(
+                    db,
+                    i,
+                    db_lab_list[lab_i],
+                    title_lab_list[lab_i],
+                    off_idx,
+                    out_dir)
+
+    plt.close()
+    return
 
 
 if __name__ == '__main__':

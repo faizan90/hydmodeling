@@ -23,10 +23,11 @@ from hydmodeling import (
     get_cumm_cats,
     solve_cats_sys,
     plot_vars,
-    plot_pops,
+    plot_prm_vecs,
     plot_kfold_effs,
     plot_kfolds_best_prms,
-    plot_kfolds_best_hbv_prms_2d)
+    plot_kfolds_best_hbv_prms_2d,
+    compare_ann_cycs_fdcs)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -47,20 +48,14 @@ def load_pickle(in_file, mode='rb'):
 # passing flags from infilling?
 # TODO: Have months or year as the axis labels. This can be derived from units.
 # TODO: Have units, display them on figs.
-# TODO: Text in the middle of the runoff err plot to show over- and under-
-# estimation.
-# TODO: Try having an upper-upper-upper reservoir outlet. Maybe that captures
-# the peak correctly. Maybe the response is not linear.
-# TODO: Have disaggregation. Maybe that makes getting the peak better rather
-# than having another reservoir.
-# TODO: Plot auxillary parameters as well.
 # TODO: Have a check on time frequency for all input
 # TODO: create an on-the-fly HBV source compiler based on some catchment
 # characteristics flags.
-# TODO: Have elevation as a auxillary variable
-# TODO: Reverse HBV
+# TODO: Have elevation as an auxillary variable
 # TODO: make snowmelt more physical.
 # These parameters vary the most among kfolds
+# TODO: See if chull algorithm is better than depth
+# TODO: Make plots of DS cats better
 
 
 def main():
@@ -83,19 +78,21 @@ def main():
     optimize_flag = False
     plot_kfold_perfs_flag = False
     plot_best_kfold_prms_flag = False
-    plot_pop_flag = False
+    plot_prm_vecs_flag = False
     plot_2d_kfold_prms_flag = False
+    plot_ann_cys_fdcs_flag = False
     plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
-    create_stms_rels_flag = True
+#     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
-    optimize_flag = True
+#     optimize_flag = True
     plot_kfold_perfs_flag = True
     plot_best_kfold_prms_flag = True
-    plot_pop_flag = True
-    plot_2d_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
     plot_hbv_vars_flag = True
 
     # =============================================================================
@@ -402,7 +399,9 @@ def main():
         print('#' * 10)
         print(f'Total calibration time was: {_tot_t:0.4f} secs!')
         print('#' * 10)
+
     dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
+    hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
 
     #=========================================================================
     # Plot the k-fold results
@@ -410,8 +409,6 @@ def main():
 
     if plot_kfold_perfs_flag:
         _beg_t = timeit.default_timer()
-
-        hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
 
         print('\n\n')
         print('#' * 10)
@@ -464,14 +461,33 @@ def main():
     # Plot final parameter population
     #==========================================================================
 
-    if plot_pop_flag:
+    if plot_prm_vecs_flag:
         _beg_t = timeit.default_timer()
 
         print('\n\n')
         print('#' * 10)
-        print('Plotting DE population...')
+        print('Plotting parameter vectors...')
 
-        plot_pops(dbs_dir, n_cpus)
+        plot_prm_vecs(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #==========================================================================
+    # Plot annual cycle and FDC comparison
+    #==========================================================================
+    if plot_ann_cys_fdcs_flag:
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting annual cycle and FDC comparison...')
+
+        ann_cyc_fdc_plot_dir = os.path.join(
+            in_hyd_mod_dir, r'08_ann_cycs_fdc_comparison')
+        compare_ann_cycs_fdcs(hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
