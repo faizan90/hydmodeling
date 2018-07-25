@@ -27,7 +27,8 @@ from hydmodeling import (
     plot_kfold_effs,
     plot_kfolds_best_prms,
     plot_kfolds_best_hbv_prms_2d,
-    compare_ann_cycs_fdcs)
+    plot_ann_cycs_fdcs_comp,
+    plot_prm_trans_perfs)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -62,7 +63,7 @@ def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
     cfp.read('config_hydmodeling_template.ini')
 
-    n_cpus = cfp['DEFAULT']['n_cpus']
+    n_cpus = 1  # cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
         n_cpus = cpu_count() - 1
     else:
@@ -81,6 +82,7 @@ def main():
     plot_prm_vecs_flag = False
     plot_2d_kfold_prms_flag = False
     plot_ann_cys_fdcs_flag = False
+    plot_prm_trans_comp_flag = False
     plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
@@ -88,12 +90,13 @@ def main():
 #     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
 #     optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
 #     plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_hbv_vars_flag = True
+#     plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+#     plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -487,7 +490,24 @@ def main():
 
         ann_cyc_fdc_plot_dir = os.path.join(
             in_hyd_mod_dir, r'08_ann_cycs_fdc_comparison')
-        compare_ann_cycs_fdcs(hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
+        plot_ann_cycs_fdcs_comp(hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #==========================================================================
+    # Plot catchment parameter transfer comparison
+    #==========================================================================
+    if plot_prm_trans_comp_flag:
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting catchment parameter comparison...')
+
+        plot_prm_trans_perfs(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t

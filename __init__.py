@@ -27,6 +27,7 @@ from .models import (
     hbv_loop_py,
     hbv_c_loop_py,
     hbv_mult_cat_loop_py,
+    tfm_opt_to_hbv_prms_py,
 
     solve_cats_sys,
 
@@ -47,4 +48,5 @@ from .plotting import (
     plot_kfold_effs,
     plot_kfolds_best_prms,
     plot_kfolds_best_hbv_prms_2d,
-    compare_ann_cycs_fdcs)
+    plot_ann_cycs_fdcs_comp,
+    plot_prm_trans_perfs)

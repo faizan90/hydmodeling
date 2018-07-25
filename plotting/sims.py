@@ -109,7 +109,6 @@ def _plot_prm_vecs(cat_db):
 
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
-        prm_syms = db['data/all_prms_labs'][...]
         opt_schm = db['cdata/opt_schm_vars_dict/opt_schm'].value
 
         calib_db = db['calib']

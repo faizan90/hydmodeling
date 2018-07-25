@@ -10,6 +10,7 @@ import numpy as np
 cimport numpy as np
 from libcpp.map cimport map as cmap
 
+from .opt_to_hbv_prms cimport tfm_opt_to_hbv_prms
 from ..hbvs.hbv_loop cimport hbv_loop
 from ..hbvs.hbv_mult_cat_loop cimport hbv_mult_cat_loop
 from ..miscs.dtypes cimport (
@@ -266,3 +267,56 @@ cpdef dict hbv_mult_cat_loop_py(args):
     return {'outs_arr': np.array(outs_arr[:, 1:, :]),
             'qsim_arr': np.asarray(qsim_arr),
             'inflow_arr': np.asarray(inflow_arr)}
+
+cpdef np.ndarray tfm_opt_to_hbv_prms_py(
+    const DT_UL[:, ::1] prms_flags,
+    const DT_UL[:, ::1] f_var_infos,
+
+    const DT_UL[:, :, ::1] prms_idxs,
+
+    const DT_D[::1] f_vars,
+    const DT_D[::1] opt_prms,
+    const DT_D[:, ::1] bds_arr,
+    const DT_UL n_cells):
+
+    cdef:
+        Py_ssize_t k
+
+        DT_D[:, ::1] hbv_prms, bds_dfs
+
+    assert prms_flags.shape[0] == n_hbv_prms
+    assert (np.all(np.asarray(prms_flags) >= 0) & 
+            np.all(np.asarray(prms_flags) <= 1))
+    assert (np.all(np.asarray(prms_flags).sum(axis=1) > 0) &
+            np.all(np.asarray(prms_flags).sum(axis=1) < 6))
+
+    # fc and pwp calibrated using same type of criteria
+    assert (np.abs(np.asarray(prms_flags[3]) - 
+                   np.asarray(prms_flags[5])).sum() == 0)
+
+    # only one of the cols in aspect, slope or slope/aspect can be active
+    assert (np.all(np.asarray(prms_flags[:, 3:]).sum(axis=1) <= 1))
+
+    assert f_var_infos.shape[0] == 5
+    assert f_var_infos.shape[1] == 2
+    
+    assert prms_idxs.shape[0] == n_hbv_prms
+    assert prms_idxs.shape[1] == prms_flags.shape[1]
+    assert prms_idxs.shape[2] == 2
+
+    hbv_prms = np.full((n_cells, n_hbv_prms), np.nan, dtype=DT_D_NP)
+    bds_dfs = np.full((opt_prms.shape[0], 2), np.nan, dtype=DT_D_NP)
+
+    for k in range(opt_prms.shape[0]):
+        bds_dfs[k, 0] = bds_arr[k, 0]
+        bds_dfs[k, 1] = bds_arr[k, 1] - bds_arr[k, 0]
+
+    tfm_opt_to_hbv_prms(
+        prms_flags,
+        f_var_infos,
+        prms_idxs,
+        f_vars,
+        opt_prms,
+        bds_dfs,
+        hbv_prms)
+    return np.asarray(hbv_prms)

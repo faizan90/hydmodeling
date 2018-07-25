@@ -28,6 +28,7 @@ from .opts.hbv_opt import hbv_opt
 from .hyds.py_ftns import (
     hbv_loop_py,
     hbv_c_loop_py,
-    hbv_mult_cat_loop_py)
+    hbv_mult_cat_loop_py,
+    tfm_opt_to_hbv_prms_py)
 
 from .solve_cats_sys import solve_cats_sys

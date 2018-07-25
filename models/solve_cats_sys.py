@@ -1023,8 +1023,8 @@ def _solve_k_cats_sys(
 
                 dt = h5py.special_dtype(vlen=str)
                 _prms_ds = cdata_sb.create_dataset(
-                    'use_prms_labs', (len(all_prms_labs),), dtype=dt)
-                _prms_ds[:] = all_prms_labs
+                    'use_prms_labs', (len(use_prms_labs),), dtype=dt)
+                _prms_ds[:] = use_prms_labs
 
                 db['cdata/bds_arr'] = bounds_arr
 

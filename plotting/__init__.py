@@ -1,5 +1,7 @@
 import os
 from glob import glob
+
+import h5py
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
@@ -8,7 +10,8 @@ from .k_folds import (
     plot_cat_kfold_effs,
     _kfold_best_prms,
     plot_kfolds_best_hbv_prms_2d,
-    compare_ann_cycs_fdcs)
+    plot_ann_cycs_fdcs_comp,
+    plot_prm_trans)
 
 
 def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
@@ -132,4 +135,69 @@ def plot_vars(
     else:
         for plot_args in plot_gen:
             plot_hbv(plot_args)
+    return
+
+
+def plot_prm_trans_perfs(dbs_dir, n_cpus=1):
+    '''Plot the optimization results
+    '''
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+
+    assert cats_dbs
+
+    n_cats = len(cats_dbs)
+    n_cpus = min(n_cats, n_cpus)
+
+    kf_prms_dict = {}
+    cats_vars_dict = {}
+    for cat_db in cats_dbs:
+        with h5py.File(cat_db, 'r') as db:
+            kfolds = db['data'].attrs['kfolds']
+            cat = db.attrs['cat']
+
+            f_var_infos = db['cdata/aux_var_infos'][...]
+            prms_idxs = db['cdata/use_prms_idxs'][...]
+            f_vars = db['cdata/aux_vars'][...]
+            prms_flags = db['cdata/all_prms_flags'][...]
+            bds_arr = db['cdata/bds_arr'][...]
+
+            cat_vars_dict = {}
+            cat_vars_dict['f_var_infos'] = f_var_infos
+            cat_vars_dict['prms_idxs'] = prms_idxs
+            cat_vars_dict['f_vars'] = f_vars
+            cat_vars_dict['prms_flags'] = prms_flags
+            cat_vars_dict['bds_arr'] = bds_arr
+
+            cats_vars_dict[cat] = cat_vars_dict
+
+            for i in range(1, kfolds + 1):
+                kf_str = f'kf_{i:02d}'
+                cd_db = db[f'calib/{kf_str}']
+
+                opt_prms = cd_db['opt_prms'][...]
+
+                if i not in kf_prms_dict:
+                    kf_prms_dict[i] = {}
+
+                kf_prms_dict[i][cat] = {}
+
+                kf_prms_dict[i][cat]['opt_prms'] = opt_prms
+
+    const_args = (kf_prms_dict, cats_vars_dict)
+    plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
+
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            print(list(mp_pool.uimap(plot_prm_trans, plot_gen)))
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in plot_prm_trans:', msg)
+    else:
+        for plot_args in plot_gen:
+            plot_prm_trans(plot_args)
     return

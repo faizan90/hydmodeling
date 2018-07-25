@@ -18,8 +18,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 from pathos.multiprocessing import ProcessPool
-
 from ..models import (
+    hbv_loop_py,
+    tfm_opt_to_hbv_prms_py,
     get_ns_cy,
     get_ln_ns_cy,
     get_kge_cy,
@@ -30,6 +31,206 @@ from ..models import (
     get_ln_ns_prt_cy,
     get_kge_prt_cy,
     get_pcorr_prt_cy)
+
+
+def plot_prm_trans(plot_args):
+    cat_db, (kf_prm_dict, cats_vars_dict) = plot_args
+
+    with h5py.File(cat_db, 'r') as db:
+        main_out_dir = db['data'].attrs['main']
+
+        trans_out_dir = os.path.join(main_out_dir, '09_prm_trans_compare')
+        try:
+            os.mkdir(trans_out_dir)
+        except:
+            pass
+
+        kfolds = db['data'].attrs['kfolds']
+        cat = db.attrs['cat']
+
+        off_idx = db['data'].attrs['off_idx']
+        conv_ratio = db['data'].attrs['conv_ratio']
+        use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
+        area_arr = db['data/area_arr'][...]
+        n_cells = area_arr.shape[0]
+
+        all_kfs_dict = {}
+        for i in range(1, kfolds + 1):
+            cd_db = db[f'calib/kf_{i:02d}']
+            kf_dict = {key: cd_db[key][...] for key in cd_db}
+            kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
+
+            all_kfs_dict[i] = kf_dict
+
+        cats = list(kf_prm_dict[1].keys())
+        n_cats = len(cats)
+
+        ns_arr = np.full((kfolds, n_cats), np.nan)
+        ln_ns_arr = ns_arr.copy()
+
+        if (kfolds < 6) and (ns_arr.shape[1] < 6):
+            eff_strs_arr = np.full(ns_arr.shape, fill_value='', dtype='|U13')
+            plot_val_strs = True
+        else:
+            plot_val_strs = False
+
+        cat_vars_dict = cats_vars_dict[cat]
+
+        for rno, i in enumerate(range(1, kfolds + 1)):
+            kf_dict = all_kfs_dict[i]
+
+            trans_cat_dict = kf_prm_dict[i]
+            for cno, trans_cat in enumerate(trans_cat_dict):
+                trans_opt_prms = trans_cat_dict[trans_cat]
+                kf_dict['hbv_prms'] = tfm_opt_to_hbv_prms_py(
+                    cat_vars_dict['prms_flags'],
+                    cat_vars_dict['f_var_infos'],
+                    cat_vars_dict['prms_idxs'],
+                    cat_vars_dict['f_vars'],
+                    trans_opt_prms['opt_prms'],
+                    cat_vars_dict['bds_arr'],
+                    n_cells)
+
+                ns, ln_ns = _get_perfs(
+                    kf_dict,
+                    area_arr,
+                    conv_ratio,
+                    off_idx)
+
+                ns_arr[rno, cno] = ns
+                ln_ns_arr[rno, cno] = ln_ns
+
+                if plot_val_strs:
+                    eff_strs_arr[rno, cno] = f'{ns:0.4f};{ln_ns:0.4f}'
+
+        plt.figure(figsize=(20, 10))
+        plot_rows = 8
+        plot_cols = 8
+
+        x_ticks = np.arange(0.5, n_cats, 1)
+        y_ticks = np.arange(0.5, kfolds, 1)
+
+        x_tick_labs = cats
+        y_tick_labs = np.arange(1, kfolds + 1, 1)
+
+        perfs_list = [ns_arr, ln_ns_arr]
+        n_perfs = len(perfs_list)
+        titls_list = ['NS', 'Ln_NS']
+        _col_i = 0
+        _cspan = 4
+        for p_i in range(n_perfs):
+            ax = plt.subplot2grid(
+                (plot_rows, plot_cols), (0, _col_i), rowspan=7, colspan=_cspan)
+            _col_i += _cspan
+
+            _ps = ax.pcolormesh(
+                perfs_list[p_i],
+                cmap=plt.get_cmap('Blues'),
+                vmin=0,
+                vmax=1)
+
+            ax.set_xticks(x_ticks)
+            ax.set_yticks(y_ticks)
+            if p_i == 0 or (p_i == (n_perfs - 1)):
+                ax.set_xticklabels(x_tick_labs)
+                ax.set_yticklabels(y_tick_labs)
+                ax.set_ylabel('K-fold')
+            else:
+                ax.set_xticklabels([])
+                ax.set_yticklabels([])
+
+            ax.set_xlabel('Catchment')
+
+            ax.set_title(titls_list[p_i])
+
+            ax.set_xlim(0, n_cats)
+            ax.set_ylim(0, kfolds)
+
+            if plot_val_strs:
+                xx, yy = np.meshgrid(
+                    np.arange(0.5, n_cats, 1),
+                    np.arange(0.5, kfolds, 1))
+
+                xx = xx.ravel()
+                yy = yy.ravel()
+
+                _ravel = eff_strs_arr.ravel()
+                [ax.text(
+                    xx[j],
+                    yy[j],
+                    _ravel[j].split(';')[p_i],
+                    va='center',
+                    ha='center',
+                    rotation=45)
+                 for j in range(kfolds * n_cats)]
+            ax.set_aspect('equal', 'datalim')
+
+        else:
+            ax.yaxis.set_ticks_position('right')
+            ax.yaxis.set_label_position('right')
+
+        cb_plot = plt.subplot2grid(
+            (plot_rows, plot_cols), (7, 0), rowspan=1, colspan=8)
+
+        cb_plot.set_axis_off()
+        cb = plt.colorbar(_ps,
+                          ax=cb_plot,
+                          fraction=0.4,
+                          aspect=20,
+                          orientation='horizontal',
+                          extend='min')
+        cb.set_ticks(np.arange(0, 1.01, 0.2))
+        cb.set_label('Efficiency')
+
+        plt.suptitle('HBV Parameter transfer performance values for the '
+                     f'catchment {cat} for corresponding k-folds')
+
+        out_file_name = f'{cat}_prm_trans_compare.png'
+        out_file_path = os.path.join(trans_out_dir, out_file_name)
+        plt.savefig(out_file_path, bbox_inches='tight')
+        plt.close()
+    return
+
+
+def _get_perfs(
+        kf_dict,
+        area_arr,
+        conv_ratio,
+        off_idx):
+
+    temp_dist_arr = kf_dict['tem_arr']
+    prec_dist_arr = kf_dict['ppt_arr']
+    pet_dist_arr = kf_dict['pet_arr']
+    prms_dist_arr = kf_dict['hbv_prms']
+
+    all_outputs_dict = hbv_loop_py(
+        temp_dist_arr,
+        prec_dist_arr,
+        pet_dist_arr,
+        prms_dist_arr,
+        kf_dict['ini_arr'],
+        area_arr,
+        conv_ratio)
+
+    assert all_outputs_dict['loop_ret'] == 0.0
+
+    del temp_dist_arr, prec_dist_arr, pet_dist_arr, prms_dist_arr
+
+    q_sim_arr = all_outputs_dict['qsim_arr']
+
+    del all_outputs_dict
+
+    extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
+
+    q_sim_arr = (q_sim_arr).copy(order='C')
+    q_act_arr = kf_dict['qact_arr']
+    if extra_us_inflow_flag:
+        extra_us_inflow = kf_dict['extra_us_inflow']
+        q_sim_arr = q_sim_arr + extra_us_inflow
+
+    ns = get_ns_cy(q_act_arr, q_sim_arr, off_idx)
+    ln_ns = get_ln_ns_cy(q_act_arr, q_sim_arr, off_idx)
+    return (ns, ln_ns)
 
 
 def plot_cat_kfold_effs(args):
@@ -977,7 +1178,7 @@ def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
     return
 
 
-def compare_ann_cycs_fdcs(hgs_db_path, off_idx, out_dir):
+def plot_ann_cycs_fdcs_comp(hgs_db_path, off_idx, out_dir):
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
