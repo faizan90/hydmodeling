@@ -63,7 +63,7 @@ def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
     cfp.read('config_hydmodeling_template.ini')
 
-    n_cpus = 1  # cfp['DEFAULT']['n_cpus']
+    n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
         n_cpus = cpu_count() - 1
     else:
@@ -87,16 +87,16 @@ def main():
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
-#     create_stms_rels_flag = True
+    create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
     plot_prm_trans_comp_flag = True
-#     plot_hbv_vars_flag = True
+    plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -546,7 +546,7 @@ def main():
 
 
 if __name__ == '__main__':
-    _save_log_ = False
+    _save_log_ = True
     if _save_log_:
         from datetime import datetime
         from std_logger import StdFileLoggerCtrl

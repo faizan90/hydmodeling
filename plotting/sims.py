@@ -50,14 +50,19 @@ def plot_hbv(plot_args):
 
             all_kfs_dict[i] = kf_dict
 
-        all_tem_arr = np.concatenate([all_kfs_dict[i]['tem_arr']
-                                      for i in all_kfs_dict], axis=1)
-        all_ppt_arr = np.concatenate([all_kfs_dict[i]['ppt_arr']
-                                      for i in all_kfs_dict], axis=1)
-        all_pet_arr = np.concatenate([all_kfs_dict[i]['pet_arr']
-                                      for i in all_kfs_dict], axis=1)
-        all_qact_arr = np.concatenate([all_kfs_dict[i]['qact_arr']
-                                      for i in all_kfs_dict], axis=0)
+        all_tem_arr = np.concatenate([
+            all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
+        all_ppt_arr = np.concatenate([
+            all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
+        all_pet_arr = np.concatenate([
+            all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
+        all_qact_arr = np.concatenate([
+            all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
+
+        if 'extra_us_inflow' in kf_dict:
+            all_us_inflow_arr = np.concatenate([
+                all_kfs_dict[i]['extra_us_inflow']
+                for i in all_kfs_dict], axis=0)
 
         for i in range(1, kfolds + 1):
             kf_dict = all_kfs_dict[i]
@@ -80,6 +85,8 @@ def plot_hbv(plot_args):
             kf_dict['ppt_arr'] = all_ppt_arr
             kf_dict['pet_arr'] = all_pet_arr
             kf_dict['qact_arr'] = all_qact_arr
+            if 'extra_us_inflow' in kf_dict:
+                kf_dict['extra_us_inflow'] = all_us_inflow_arr
 
             kf_i = f'{kf_i}_all'
             _plot_hbv_kf(

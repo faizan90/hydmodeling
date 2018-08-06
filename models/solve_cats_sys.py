@@ -910,7 +910,7 @@ def _solve_k_cats_sys(
             mean_time = (out_db_dict['n_calls'].mean() *
                          n_cells /
                          (opt_end_time - opt_strt_time))
-            print(f'{mean_time:0.4f} hbv loops per second!')
+            print(f'{mean_time:0.4f} hbv loops per second per cell per thread!')
             print('Opt time was: %0.3f seconds' %
                   (opt_end_time - opt_strt_time))
 
