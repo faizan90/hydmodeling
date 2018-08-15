@@ -105,7 +105,7 @@ def plot_prm_trans(plot_args):
                     if plot_val_strs:
                         eff_strs_arr[rno, cno] = f'{ns:0.4f};{ln_ns:0.4f}'
 
-            plt.figure(figsize=(20, 10))
+            plt.figure(figsize=(n_cats * 2, kfolds * 2))
             plot_rows = 8
             plot_cols = 8
 
@@ -138,8 +138,8 @@ def plot_prm_trans(plot_args):
                 ax.set_xticks(x_ticks)
                 ax.set_yticks(y_ticks)
                 if p_i == 0 or (p_i == (n_perfs - 1)):
-                    ax.set_xticklabels(x_tick_labs)
-                    ax.set_yticklabels(y_tick_labs)
+                    ax.set_xticklabels(x_tick_labs, rotation=90)
+                    ax.set_yticklabels(y_tick_labs, rotation=90)
                     ax.set_ylabel('K-fold')
                 else:
                     ax.set_xticklabels([])
@@ -169,7 +169,7 @@ def plot_prm_trans(plot_args):
                         ha='center',
                         rotation=45)
                      for j in range(kfolds * n_cats)]
-                ax.set_aspect('equal', 'datalim')
+                ax.set_aspect('equal', 'box')
 
             else:
                 ax.yaxis.set_ticks_position('right')

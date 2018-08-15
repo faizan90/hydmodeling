@@ -87,14 +87,14 @@ def main():
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
-    create_stms_rels_flag = True
+#     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
+#     optimize_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
     plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
 
