@@ -61,7 +61,7 @@ def load_pickle(in_file, mode='rb'):
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read('config_hydmodeling_template.ini')
+    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template_she.ini')
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
@@ -85,10 +85,12 @@ def main():
     plot_prm_trans_comp_flag = False
     plot_hbv_vars_flag = False
 
-#     hyd_analysis_flag = True
-#     get_stms_flag = True
+    use_params_from_file = True
+
+    #hyd_analysis_flag = True
+    #get_stms_flag = True
     create_stms_rels_flag = True
-#     create_cumm_cats_flag = True
+    create_cumm_cats_flag = True
     optimize_flag = True
     plot_kfold_perfs_flag = True
     plot_best_kfold_prms_flag = True
@@ -97,6 +99,8 @@ def main():
     plot_ann_cys_fdcs_flag = True
     plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
+
+    #use_params_from_file = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -228,6 +232,8 @@ def main():
     water_bal_step_size = cfp['OPT_HYD_MODEL'].getint('water_bal_step_size')
     route_type = cfp['OPT_HYD_MODEL'].getint('route_type')
     kfolds = cfp['OPT_HYD_MODEL'].getint('kfolds')
+    if use_params_from_file == True:
+        kfolds = 1
     compare_ann_cyc_flag = cfp['OPT_HYD_MODEL'].getboolean(
         'compare_ann_cyc_flag')
     use_obs_flow_flag = cfp['OPT_HYD_MODEL'].getboolean('use_obs_flow_flag')
@@ -388,6 +394,7 @@ def main():
             in_hyd_mod_dir,
             bounds_dict,
             all_prms_flags,
+            use_params_from_file,
             obj_ftn_wts,
             min_q_thresh,
             sep,
@@ -546,7 +553,7 @@ def main():
 
 
 if __name__ == '__main__':
-    _save_log_ = True
+    _save_log_ = False
     if _save_log_:
         from datetime import datetime
         from std_logger import StdFileLoggerCtrl
