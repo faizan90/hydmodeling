@@ -31,6 +31,8 @@ from hydmodeling import (
     plot_ann_cycs_fdcs_comp,
     plot_prm_trans_perfs)
 
+raise Exception
+
 
 def load_pickle(in_file, mode='rb'):
     with open(in_file, mode) as _pkl_hdl:
@@ -48,12 +50,9 @@ def load_pickle(in_file, mode='rb'):
 # TODO: Add a scaling factor to ppt (or pet) as an optimization parameter.
 # TODO: Somehow identify flows that might be erroneous.
 # passing flags from infilling?
-# TODO: Have months or year as the axis labels. This can be derived from units.
+# TODO: Have months or years as the axis labels. This can be derived from units.
 # TODO: Have units, display them on figs.
 # TODO: Have a check on time frequency for all input
-# TODO: create an on-the-fly HBV source compiler based on some catchment
-# characteristics flags.
-# TODO: Have elevation as an auxillary variable
 # TODO: make snowmelt more physical.
 # These parameters vary the most among kfolds
 # TODO: See if chull algorithm is better than depth

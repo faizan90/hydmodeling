@@ -1154,12 +1154,14 @@ def _solve_k_cats_sys(
 
 
 def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
+
     out_dict = {cat: aux_dict[cat] for cat in cats}
     if lf:
         out_dict = {cat: np.array([((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
                     for cat in cats}
     for cat in cats:
         assert not np.any(np.isnan(out_dict[cat]))
+        assert out_dict[cat].ndim == 2
     return out_dict
 
 
