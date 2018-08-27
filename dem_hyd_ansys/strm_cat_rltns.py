@@ -175,7 +175,7 @@ def plot_strm_rltn(in_cat_shp,
     assert len(cats_poly_pts) == len(q_stns_pts), 'Missed some polygons!'
 
     plt.figure(figsize=(10, 10))
-    plt.axes().set_aspect('equal', 'datalim')
+    plt.axes().set_aspect('equal', 'box')
     for i, _cat in enumerate(cats_poly_pts):
         plt.plot(_cat[:, 0], _cat[:, 1], 'g-', alpha=0.6)
         plt.text(centroids_list[i][0],

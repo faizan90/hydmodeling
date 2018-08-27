@@ -13,6 +13,7 @@ from psutil import cpu_count
 from collections import OrderedDict
 
 import numpy as np
+import h5py
 import pandas as pd
 
 from hydmodeling import (
@@ -61,7 +62,7 @@ def load_pickle(in_file, mode='rb'):
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template_she.ini')
+    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template.ini')
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
@@ -85,10 +86,10 @@ def main():
     plot_prm_trans_comp_flag = False
     plot_hbv_vars_flag = False
 
-    use_params_from_file = True
+    valid_flag= False
 
-    #hyd_analysis_flag = True
-    #get_stms_flag = True
+    # hyd_analysis_flag = True
+    # get_stms_flag = True
     create_stms_rels_flag = True
     create_cumm_cats_flag = True
     optimize_flag = True
@@ -100,7 +101,7 @@ def main():
     plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
 
-    #use_params_from_file = True
+    valid_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -226,14 +227,17 @@ def main():
     in_date_fmt = cfp['OPT_HYD_MODEL']['in_date_fmt']
     start_date = cfp['OPT_HYD_MODEL']['start_date']
     end_date = cfp['OPT_HYD_MODEL']['end_date']
+    if valid_flag == True:
+        start_date_calib = cfp['OPT_HYD_MODEL']['start_date_calib']
+        end_date_calib = cfp['OPT_HYD_MODEL']['end_date_calib']
+        start_date_valid = cfp['OPT_HYD_MODEL']['start_date_valid']
+        end_date_valid = cfp['OPT_HYD_MODEL']['end_date_valid']
     time_freq = cfp['OPT_HYD_MODEL']['time_freq']
 
     warm_up_steps = cfp['OPT_HYD_MODEL'].getint('warm_up_steps')
     water_bal_step_size = cfp['OPT_HYD_MODEL'].getint('water_bal_step_size')
     route_type = cfp['OPT_HYD_MODEL'].getint('route_type')
     kfolds = cfp['OPT_HYD_MODEL'].getint('kfolds')
-    if use_params_from_file == True:
-        kfolds = 1
     compare_ann_cyc_flag = cfp['OPT_HYD_MODEL'].getboolean(
         'compare_ann_cyc_flag')
     use_obs_flow_flag = cfp['OPT_HYD_MODEL'].getboolean('use_obs_flow_flag')
@@ -339,6 +343,7 @@ def main():
         in_q_df = pd.read_csv(in_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=in_date_fmt)
 
+
         in_use_step_ser = pd.Series(
             index=in_q_df.index,
             data=np.ones(in_q_df.shape[0], dtype=np.int32))
@@ -350,8 +355,31 @@ def main():
 #             _bool_idxs = _bool_idxs | (in_use_step_ser.index.month == _month)
 #         in_use_step_ser.loc[_bool_idxs] = 0
 
+        if valid_flag == True:
+            cal_sel_idx = np.any([in_use_step_ser.index <= start_date_calib,
+                             in_use_step_ser.index >= end_date_calib], axis=0)
+            in_use_step_ser.loc[cal_sel_idx] = 0
+
+            in_index = in_q_df.index[in_q_df.index >= start_date]
+            in_index = in_index[in_index <= end_date]
+            valid_step_ser = pd.Series(
+                index=in_index,
+                data=np.ones(in_index.shape[0], dtype=np.int32))
+            valid_sel_idx = np.any([valid_step_ser.index <= start_date_valid,
+                             valid_step_ser.index >= end_date_valid], axis=0)
+            valid_step_ser.loc[valid_sel_idx] = 0
+
+
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
+
+        # filter for temperature smaller 1°C
+        # value = np.all([[in_temp_dfs_dict[411].index >= in_q_df.index[0]], [in_temp_dfs_dict[411].index <= in_q_df.index[in_q_df.index.shape[0]-1]]], axis=0)
+        # in_temp_mask = in_temp_dfs_dict[411][value[0,:]]
+        # bigger_one = in_temp_mask.values > 1
+        # _bool_idxs = np.all(bigger_one, axis=1)
+        # in_use_step_ser.loc[_bool_idxs] = 0
+
         in_pet_dfs_dict = load_pickle(in_pet_file)
         in_cell_vars_dict = load_pickle(in_cell_vars_pkl)
 
@@ -394,7 +422,6 @@ def main():
             in_hyd_mod_dir,
             bounds_dict,
             all_prms_flags,
-            use_params_from_file,
             obj_ftn_wts,
             min_q_thresh,
             sep,
@@ -410,8 +437,17 @@ def main():
         print(f'Total calibration time was: {_tot_t:0.4f} secs!')
         print('#' * 10)
 
-    dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
-    hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
+        dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
+        hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
+
+        dbs = os.path.join(dbs_dir, r'cat_411.hdf5')
+        db = h5py.File(dbs, 'r+')
+
+        if valid_flag == True:
+            # manipulate dbs_dir
+            val_time = db.create_group('valid_time')
+            vali_data = val_time.create_dataset("val_data",
+                                                data=valid_step_ser)
 
     #=========================================================================
     # Plot the k-fold results
@@ -539,6 +575,7 @@ def main():
 
         plot_vars(
             dbs_dir,
+            valid_flag,
             water_bal_step_size,
             plot_simple_opt_flag,
             plot_dist_wat_bal_flag,
@@ -549,6 +586,33 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
     #==========================================================================
+    # plot the hbv variables different validation
+    #=========================================================================
+
+    if valid_flag == True:
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting hbv variables...')
+
+        _beg_t = timeit.default_timer()
+
+        plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_simple_opt_flag')
+        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_wat_bal_flag')
+
+        plot_vars(
+            dbs_dir,
+            valid_flag,
+            water_bal_step_size,
+            plot_simple_opt_flag,
+            plot_dist_wat_bal_flag,
+            n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
     return
 
 

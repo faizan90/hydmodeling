@@ -29,7 +29,8 @@ plt.ioff()
 def plot_hbv(plot_args):
     cat_db, (wat_bal_stps,
              plot_simple_flag,
-             plot_wat_bal_flag) = plot_args
+             plot_wat_bal_flag,
+             valid_flag) = plot_args
 
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
@@ -49,15 +50,24 @@ def plot_hbv(plot_args):
             kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
 
             all_kfs_dict[i] = kf_dict
-
-        all_tem_arr = np.concatenate([
-            all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
-        all_ppt_arr = np.concatenate([
-            all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
-        all_pet_arr = np.concatenate([
-            all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
-        all_qact_arr = np.concatenate([
-            all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
+        if valid_flag == True:
+            all_tem_arr = np.concatenate([
+                all_kfs_dict[i]['tem_arr'][:,np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=1)
+            all_ppt_arr = np.concatenate([
+                all_kfs_dict[i]['ppt_arr'][:,np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=1)
+            all_pet_arr = np.concatenate([
+                all_kfs_dict[i]['pet_arr'][:,np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=1)
+            all_qact_arr = np.concatenate([
+                all_kfs_dict[i]['qact_arr'][np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=0)
+        else:
+            all_tem_arr = np.concatenate([
+                all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
+            all_ppt_arr = np.concatenate([
+                all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
+            all_pet_arr = np.concatenate([
+                all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
+            all_qact_arr = np.concatenate([
+                all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
 
         if 'extra_us_inflow' in kf_dict:
             all_us_inflow_arr = np.concatenate([
@@ -79,7 +89,8 @@ def plot_hbv(plot_args):
                 out_dir,
                 wat_bal_stps,
                 plot_simple_flag,
-                plot_wat_bal_flag)
+                plot_wat_bal_flag,
+                valid_flag)
 
             kf_dict['tem_arr'] = all_tem_arr
             kf_dict['ppt_arr'] = all_ppt_arr
@@ -100,7 +111,8 @@ def plot_hbv(plot_args):
                 out_dir,
                 wat_bal_stps,
                 plot_simple_flag,
-                plot_wat_bal_flag)
+                plot_wat_bal_flag,
+                valid_flag)
     return
 
 
@@ -320,7 +332,8 @@ def _plot_hbv_kf(
         out_dir,
         wat_bal_stps,
         plot_simple_flag,
-        plot_wat_bal_flag):
+        plot_wat_bal_flag,
+        valid_flag):
 
     if 'use_obs_flow_flag' in kf_dict:
         use_obs_flow_flag = bool(kf_dict['use_obs_flow_flag'])
@@ -384,7 +397,11 @@ def _plot_hbv_kf(
         q_sim_arr = q_sim_arr + extra_us_inflow
         q_act_arr_diff = q_act_arr - extra_us_inflow
 
-    hbv_figs_dir = os.path.join(out_dir, '03_hbv_figs')
+    if valid_flag == True:
+        hbv_figs_dir = os.path.join(out_dir, '03_hbv_figs_valid')
+
+    else:
+        hbv_figs_dir = os.path.join(out_dir, '03_hbv_figs')
     if not os.path.exists(hbv_figs_dir):
         try:
             os.mkdir(hbv_figs_dir)

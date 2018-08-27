@@ -104,6 +104,7 @@ def plot_prm_vecs(dbs_dir, n_cpus):
 
 def plot_vars(
         dbs_dir,
+        valid_flag,
         water_bal_step_size,
         plot_simple_opt_flag=False,
         plot_wat_bal_flag=False,
@@ -118,7 +119,7 @@ def plot_vars(
     n_cats = len(cats_dbs)
     n_cpus = min(n_cats, n_cpus)
 
-    const_args = (water_bal_step_size, plot_simple_opt_flag, plot_wat_bal_flag)
+    const_args = (water_bal_step_size, plot_simple_opt_flag, plot_wat_bal_flag, valid_flag)
 
     plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
 

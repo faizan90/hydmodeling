@@ -141,7 +141,7 @@ def get_stms(in_dem_net_shp_file,
     unique_wat_ids = np.unique(in_wat_id_arr)
     for unique_cat in unique_cats_list:
         if unique_cat not in in_wat_id_arr:
-            raise Exception('Catchment id not in wat_id_arr!')
+            raise Exception('Catchment %d not in wat_id_arr!' % unique_cat)
 
     got_fin_outlet = False
     for unique_cat in unique_wat_ids:
