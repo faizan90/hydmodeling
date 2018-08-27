@@ -520,7 +520,7 @@ def _plot_hbv_kf(
     ns = get_ns_cy(q_act_arr, q_sim_arr, off_idx)
     if valid_flags[1] == True:
         ns_she = get_ns_cy(q_act_arr, q_she_arr, off_idx)
-        print("NS Shetran {}: {}", kf_str, ns_she)
+        print("NS Shetran {}: {:f}".format(kf_str, ns_she))
     ln_ns = get_ln_ns_cy(q_act_arr, q_sim_arr, off_idx)
     kge = get_kge_cy(q_act_arr, q_sim_arr, off_idx)
     q_correl = get_pcorr_cy(q_act_arr, q_sim_arr, off_idx)
