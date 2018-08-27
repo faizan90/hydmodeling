@@ -31,7 +31,7 @@ from hydmodeling import (
     plot_ann_cycs_fdcs_comp,
     plot_prm_trans_perfs)
 
-raise Exception
+#raise Exception
 
 
 def load_pickle(in_file, mode='rb'):
@@ -61,7 +61,7 @@ def load_pickle(in_file, mode='rb'):
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template_she.ini')
+    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template.ini')
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
@@ -86,6 +86,7 @@ def main():
     plot_hbv_vars_flag = False
 
     valid_flag= False
+    show_q_shetran = False
 
     # hyd_analysis_flag = True
     # get_stms_flag = True
@@ -101,6 +102,7 @@ def main():
     plot_hbv_vars_flag = True
 
     valid_flag = True
+    show_q_shetran = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -556,6 +558,36 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
+    # ==========================================================================
+    # plot the hbv variables different validation
+    # =========================================================================
+
+    if valid_flag == True:
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting hbv variables...')
+
+        _beg_t = timeit.default_timer()
+
+        plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_simple_opt_flag')
+        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_wat_bal_flag')
+
+        plot_vars(
+            dbs_dir,
+            valid_flag,
+            water_bal_step_size,
+            plot_simple_opt_flag,
+            plot_dist_wat_bal_flag,
+            n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+        valid_flag = False
+
     #=========================================================================
     # plot the hbv variables
     #=========================================================================
@@ -584,36 +616,6 @@ def main():
         _tot_t = _end_t - _beg_t
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
-    #==========================================================================
-    # plot the hbv variables different validation
-    #=========================================================================
-
-    if valid_flag == True:
-        print('\n\n')
-        print('#' * 10)
-        print('Plotting hbv variables...')
-
-        _beg_t = timeit.default_timer()
-
-        plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean(
-            'plot_simple_opt_flag')
-        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
-            'plot_wat_bal_flag')
-
-        plot_vars(
-            dbs_dir,
-            valid_flag,
-            water_bal_step_size,
-            plot_simple_opt_flag,
-            plot_dist_wat_bal_flag,
-            n_cpus)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-        print(f'Took {_tot_t:0.4f} seconds!')
-        print('#' * 10)
-    return
-
 
 if __name__ == '__main__':
     _save_log_ = False
