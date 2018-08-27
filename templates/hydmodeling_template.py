@@ -229,10 +229,14 @@ def main():
     start_date = cfp['OPT_HYD_MODEL']['start_date']
     end_date = cfp['OPT_HYD_MODEL']['end_date']
     if valid_flag == True:
+        valid_flags = [valid_flag, show_q_shetran]
         start_date_calib = cfp['OPT_HYD_MODEL']['start_date_calib']
         end_date_calib = cfp['OPT_HYD_MODEL']['end_date_calib']
         start_date_valid = cfp['OPT_HYD_MODEL']['start_date_valid']
         end_date_valid = cfp['OPT_HYD_MODEL']['end_date_valid']
+        if show_q_shetran == True:
+            q_shetran_dir = cfp['OPT_HYD_MODEL']['in_q_shetran_file']
+            q_shetran =  pd.read_csv(q_shetran_dir, sep=str(sep), index_col=0)
     time_freq = cfp['OPT_HYD_MODEL']['time_freq']
 
     warm_up_steps = cfp['OPT_HYD_MODEL'].getint('warm_up_steps')
@@ -370,6 +374,10 @@ def main():
                              valid_step_ser.index >= end_date_valid], axis=0)
             valid_step_ser.loc[valid_sel_idx] = 0
 
+            if show_q_shetran:
+                q_she = q_shetran[q_shetran.index >= start_date]
+                q_she = q_she[q_she.index <= end_date]
+                q_she = q_she.values[:,0]
 
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
@@ -449,6 +457,8 @@ def main():
             val_time = db.create_group('valid_time')
             vali_data = val_time.create_dataset("val_data",
                                                 data=valid_step_ser)
+            if show_q_shetran:
+                q_shetran = val_time.create_dataset("q_shetran", data=q_she)
 
     #=========================================================================
     # Plot the k-fold results
@@ -576,7 +586,7 @@ def main():
 
         plot_vars(
             dbs_dir,
-            valid_flag,
+            valid_flags,
             water_bal_step_size,
             plot_simple_opt_flag,
             plot_dist_wat_bal_flag,
@@ -586,7 +596,8 @@ def main():
         _tot_t = _end_t - _beg_t
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
-        valid_flag = False
+        valid_flags[0] = False
+        valid_flags[1] = False
 
     #=========================================================================
     # plot the hbv variables
@@ -606,7 +617,7 @@ def main():
 
         plot_vars(
             dbs_dir,
-            valid_flag,
+            valid_flags,
             water_bal_step_size,
             plot_simple_opt_flag,
             plot_dist_wat_bal_flag,
