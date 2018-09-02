@@ -30,8 +30,6 @@ from hydmodeling import (
     plot_ann_cycs_fdcs_comp,
     plot_prm_trans_perfs)
 
-raise Exception
-
 
 def load_pickle(in_file, mode='rb'):
     with open(in_file, mode) as _pkl_hdl:
