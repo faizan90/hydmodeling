@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties as f_props
+from scipy.stats import t
 
 from ..models import (
     hbv_loop_py,
@@ -42,6 +43,7 @@ def plot_hbv(plot_args):
         prm_syms = db['data/all_prms_labs'][...]
         use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
         area_arr = db['data/area_arr'][...]
+        bds_arr = db['cdata/bds_arr'][...]
 
         valid_flag = valid_flags[0]
 
@@ -51,10 +53,10 @@ def plot_hbv(plot_args):
             kf_dict = {key: cd_db[key][...] for key in cd_db}
             kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
 
-        if valid_flags[1] == True:
-            kf_dict['q_she_arr'] = np.asarray(db['valid_time']['q_shetran'])
+            if valid_flags[1] == True:
+                kf_dict['q_she_arr'] = np.asarray(db['valid_time']['q_shetran'])
 
-        all_kfs_dict[i] = kf_dict
+            all_kfs_dict[i] = kf_dict
 
         if valid_flag == True:
             valid_tem_arr = np.concatenate([
@@ -121,7 +123,8 @@ def plot_hbv(plot_args):
                     wat_bal_stps,
                     plot_simple_flag,
                     plot_wat_bal_flag,
-                    valid_flags)
+                    valid_flags,
+                    bds_arr)
 
 
 
@@ -147,7 +150,8 @@ def plot_hbv(plot_args):
                 wat_bal_stps,
                 plot_simple_flag,
                 plot_wat_bal_flag,
-                valid_flags)
+                valid_flags,
+                bds_arr)
 
             kf_dict['tem_arr'] = valid_tem_arr
             kf_dict['ppt_arr'] = valid_ppt_arr
@@ -170,7 +174,8 @@ def plot_hbv(plot_args):
                 wat_bal_stps,
                 plot_simple_flag,
                 plot_wat_bal_flag,
-                valid_flags)
+                valid_flags,
+                bds_arr)
         else:
             kf_dict['tem_arr'] = all_tem_arr
             kf_dict['ppt_arr'] = all_ppt_arr
@@ -193,7 +198,9 @@ def plot_hbv(plot_args):
                 wat_bal_stps,
                 plot_simple_flag,
                 plot_wat_bal_flag,
-                valid_flags)
+                valid_flags,
+                bds_arr)
+
     return
 
 
@@ -414,8 +421,18 @@ def _plot_hbv_kf(
         wat_bal_stps,
         plot_simple_flag,
         plot_wat_bal_flag,
-        valid_flags):
+        valid_flags,
+        bds_arr):
 
+    # if valid_flags[2] == 'DE':
+    #      pass
+    # elif valid_flags[2] == 'ROPE':
+    #     all_kfs_dict = {}
+    #     for i in range(1, kfolds + 1):
+    #         cd_db = db[f'calib/kf_{i:02d}']
+    #         prm_vecs = np.asarray(cd_db.attrs['prm_vecs'])
+    #         for i in range(prm_vecs.shape[0]):
+    #             pass
     if 'use_obs_flow_flag' in kf_dict:
         use_obs_flow_flag = bool(kf_dict['use_obs_flow_flag'])
     else:
@@ -427,13 +444,35 @@ def _plot_hbv_kf(
     temp_dist_arr = kf_dict['tem_arr']
     prec_dist_arr = kf_dict['ppt_arr']
     pet_dist_arr = kf_dict['pet_arr']
-    prms_dist_arr = kf_dict['hbv_prms']
-    prms_arr = (rarea_arr * prms_dist_arr).sum(axis=0)
+    if valid_flags[2] == 'DE':
+        prms_dist_arr = kf_dict['hbv_prms']
+    elif valid_flags[2] == 'ROPE':
+        hbv_params = np.zeros_like(kf_dict['prm_vecs'])
+        for i in range(kf_dict['prm_vecs'].shape[1]):
+            hbv_params[:,i] = bds_arr[i,0] + (kf_dict['prm_vecs'][:,i] * (bds_arr[i,1] - bds_arr[i,0] ))
+        prms_dist_arr  = hbv_params
+    prms_arr = (rarea_arr * kf_dict['hbv_prms']).sum(axis=0)
     if valid_flags[1] == True:
         q_she_arr = kf_dict['q_she_arr']
 
     n_recs = temp_dist_arr.shape[1]
     n_cells = temp_dist_arr.shape[0]
+
+    all_sims = np.zeros((prms_dist_arr.shape[0], temp_dist_arr.shape[1]))
+
+    for i in range(prms_dist_arr.shape[0]):
+        all_outputs_dict = hbv_loop_py(
+            temp_dist_arr,
+            prec_dist_arr,
+            pet_dist_arr,
+            np.expand_dims(prms_dist_arr[i,:], axis=0),
+            kf_dict['ini_arr'],
+            area_arr,
+            conv_ratio)
+
+        all_sims[i] = all_outputs_dict['qsim_arr']
+
+    prms_dist_arr = kf_dict['hbv_prms']
 
     all_outputs_dict = hbv_loop_py(
         temp_dist_arr,
@@ -443,6 +482,15 @@ def _plot_hbv_kf(
         kf_dict['ini_arr'],
         area_arr,
         conv_ratio)
+
+    if valid_flags[2] == 'ROPE':
+        sim_mean = np.mean(all_sims, axis=0)
+        sim_std = np.std(all_sims, axis=0)
+        conf_level = 0.95
+        t_bounds = t.interval(conf_level, all_sims.shape[0] - 1)
+
+        ci = [sim_mean + critval * sim_std / np.sqrt(all_sims.shape[0]) for critval in
+              t_bounds]
 
     assert all_outputs_dict['loop_ret'] == 0.0
 
@@ -518,9 +566,16 @@ def _plot_hbv_kf(
         hbv_figs_dir, f'kf_{kf_str}_HBV_sim_{cat}.csv'), sep=';')
 
     ns = get_ns_cy(q_act_arr, q_sim_arr, off_idx)
+    print('Best NS:{}'.format(ns))
     if valid_flags[1] == True:
         ns_she = get_ns_cy(q_act_arr, q_she_arr, off_idx)
         print("NS Shetran {}: {:f}".format(kf_str, ns_she))
+
+    for i in range(all_sims.shape[0]):
+        ns = get_ns_cy(q_act_arr, all_sims[i,:], off_idx)
+        print(ns)
+    else:
+        ns_she = 0
     ln_ns = get_ln_ns_cy(q_act_arr, q_sim_arr, off_idx)
     kge = get_kge_cy(q_act_arr, q_sim_arr, off_idx)
     q_correl = get_pcorr_cy(q_act_arr, q_sim_arr, off_idx)
@@ -561,12 +616,12 @@ def _plot_hbv_kf(
         if 'route_labs' in kf_dict:
             out_labs.extend(kf_dict['route_labs'])
 
-        out_labs.extend(['ns', 'ln_ns', 'kge', 'obj_ftn', 'p_corr'])
+        out_labs.extend(['ns', 'ln_ns', 'ns_she', 'kge', 'obj_ftn', 'p_corr'])
 
         out_params_df = pd.DataFrame(index=out_labs, columns=['value'])
         out_params_df['value'] = \
             np.concatenate((prms_arr,
-                            [ns, ln_ns, kge, 'nothing_yet', q_correl]))
+                            [ns, ln_ns, ns_she, kge, 'nothing_yet', q_correl]))
         out_params_df.to_csv(out_params_loc, sep=str(';'), index_label='param')
 
         cum_q = np.cumsum(q_act_arr_diff[off_idx:] / conv_ratio)
@@ -732,12 +787,29 @@ def _plot_hbv_kf(
                                         colspan=1)
 
         bar_x = np.arange(0, n_recs, 1)
-        discharge_ax.plot(q_act_arr, 'r-', label='Actual Flow', lw=0.8)
-        discharge_ax.plot(q_sim_arr,
-                          'b-',
-                          label='Simulated Flow',
-                          lw=0.5,
-                          alpha=0.5)
+        if valid_flags[2] == 'DE':
+            discharge_ax.plot(q_act_arr, 'r-', label='Actual Flow', lw=0.8)
+            discharge_ax.plot(q_sim_arr,
+                              'b-',
+                              label='Simulated Flow',
+                              lw=0.5,
+                              alpha=0.5)
+        elif valid_flags[2] == 'ROPE':
+            discharge_ax.fill_between(np.arange(0, n_recs, 1), ci[0], ci[1], color='#539caf',
+                            alpha=0.4, label='95% CI')
+            discharge_ax.plot(q_act_arr, 'r-', label='Actual Flow',
+                              lw=0.8)
+            # discharge_ax.plot(q_sim_arr,
+            #                   'b-',
+            #                   label='Simulated Flow',
+            #                   lw=0.5,
+            #                   alpha=0.5)
+            discharge_ax.plot(sim_mean,
+                              'b-',
+                              label='Simulated Flow',
+                              lw=0.5,
+                              alpha=0.5)
+
         if valid_flags[1] == True:
             discharge_ax.plot(q_she_arr,
                           'darkgrey',
@@ -905,7 +977,7 @@ def _plot_hbv_kf(
             ('$K_{ul}$ = %0.4f' % k_ul).rstrip('0'),
             ('$K_d$ = %0.4f' % k_d).rstrip('0'),
             ('$K_{ll}$ = %0.4f' % k_ll).rstrip('0'),
-            ''])  #
+            ('$NS_{Shetran}$ = %0.4f' % ns_she).rstrip('0')])  #
 
         text = text.reshape(6, 6)
         table = params_ax.table(cellText=text,

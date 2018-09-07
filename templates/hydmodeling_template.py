@@ -88,21 +88,21 @@ def main():
     valid_flag= False
     show_q_shetran = False
 
-    # hyd_analysis_flag = True
-    # get_stms_flag = True
+    #hyd_analysis_flag = True
+    #get_stms_flag = True
     create_stms_rels_flag = True
     create_cumm_cats_flag = True
     optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
+    #plot_kfold_perfs_flag = True
+    #plot_best_kfold_prms_flag = True
+    #plot_prm_vecs_flag = True
+    #plot_2d_kfold_prms_flag = True
+    #plot_ann_cys_fdcs_flag = True
+    #plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
 
-    valid_flag = True
-    show_q_shetran = True
+    #valid_flag = True
+    #show_q_shetran = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -229,7 +229,6 @@ def main():
     start_date = cfp['OPT_HYD_MODEL']['start_date']
     end_date = cfp['OPT_HYD_MODEL']['end_date']
     if valid_flag == True:
-        valid_flags = [valid_flag, show_q_shetran]
         start_date_calib = cfp['OPT_HYD_MODEL']['start_date_calib']
         end_date_calib = cfp['OPT_HYD_MODEL']['end_date_calib']
         start_date_valid = cfp['OPT_HYD_MODEL']['start_date_valid']
@@ -237,6 +236,7 @@ def main():
         if show_q_shetran == True:
             q_shetran_dir = cfp['OPT_HYD_MODEL']['in_q_shetran_file']
             q_shetran =  pd.read_csv(q_shetran_dir, sep=str(sep), index_col=0)
+
     time_freq = cfp['OPT_HYD_MODEL']['time_freq']
 
     warm_up_steps = cfp['OPT_HYD_MODEL'].getint('warm_up_steps')
@@ -324,6 +324,8 @@ def main():
     k_d_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_d'].split(sep)]
     k_ll_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ll'].split(sep)]
 
+    valid_flags = [valid_flag, show_q_shetran, in_opt_schm_vars_dict['opt_schm']]
+
     all_prms_flags = np.array(
         [tt_flags,
          cm_flags,
@@ -336,6 +338,8 @@ def main():
          k_ul_flags,
          k_d_flags,
          k_ll_flags], dtype=np.int32)
+
+    dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
 
     if optimize_flag:
         in_cats_prcssed_df = pd.read_csv(in_cats_prcssed_file,
@@ -382,10 +386,10 @@ def main():
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
 
-        # filter for temperature smaller 1°C
+        # # filter for temperature smaller 1°C
         # value = np.all([[in_temp_dfs_dict[411].index >= in_q_df.index[0]], [in_temp_dfs_dict[411].index <= in_q_df.index[in_q_df.index.shape[0]-1]]], axis=0)
         # in_temp_mask = in_temp_dfs_dict[411][value[0,:]]
-        # bigger_one = in_temp_mask.values > 1
+        # bigger_one = in_temp_mask.values < 1
         # _bool_idxs = np.all(bigger_one, axis=1)
         # in_use_step_ser.loc[_bool_idxs] = 0
 
@@ -446,7 +450,6 @@ def main():
         print(f'Total calibration time was: {_tot_t:0.4f} secs!')
         print('#' * 10)
 
-        dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
         hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
 
         dbs = os.path.join(dbs_dir, r'cat_411.hdf5')
