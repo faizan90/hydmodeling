@@ -88,6 +88,9 @@ def plot_hbv(plot_args):
             if 'extra_us_inflow' in kf_dict:
                 kf_dict['extra_us_inflow'] = all_us_inflow_arr
 
+            if kfolds == 1:
+                continue
+
             kf_i = f'{kf_i}_all'
             _plot_hbv_kf(
                 kf_i,

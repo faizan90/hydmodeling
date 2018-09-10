@@ -702,7 +702,7 @@ cpdef dict hbv_opt(args):
         stm_to_idx_map)
 
     print('Number of iterations:', iter_curr)
-    print('Final min. obj. value value:', fval_pre_global)
+    print('Final min. obj. value:', fval_pre_global)
     print('Successful tries:', n_succ)
     print('Last successful try at:', last_succ_i)
     print('cont_iter:', cont_iter)
