@@ -167,9 +167,19 @@ def solve_cats_sys(
 
     if time_freq == 'D':
         pass
+    elif time_freq == '24H':
+        pass
     elif time_freq == '12H':
         pass
+    elif time_freq == '8H':
+        pass
     elif time_freq == '6H':
+        pass
+    elif time_freq == '3H':
+        pass
+    elif time_freq == '2H':
+        pass
+    elif time_freq == 'H':
         pass
     else:
         raise NotImplementedError(f'Invalid time-freq: {time_freq}')
@@ -841,10 +851,20 @@ def _solve_k_cats_sys(
 
         if time_freq == 'D':
             conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400)
+        elif time_freq == '24H':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400)
         elif time_freq == '12H':
             conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400 * 0.5)
+        elif time_freq == '8H':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 28800)
         elif time_freq == '6H':
             conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400 * 0.25)
+        elif time_freq == '3H':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 10800)
+        elif time_freq == '2H':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 7200)
+        elif time_freq == 'H':
+            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 3600)
         else:
             raise ValueError(f'Incorrect time_freq: {time_freq}')
 

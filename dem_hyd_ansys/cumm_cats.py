@@ -31,7 +31,6 @@ def get_cumm_cats(in_cat_shp,
     feat = lyr.GetNextFeature()
     while feat:
         f_val = feat.GetFieldAsString(id_field_name)
-        print(f_val)
         feat_dict[f_val] = feat
         feat_geom = feat.GetGeometryRef()
         feat_area_dict[f_val] = feat_geom.Area()
