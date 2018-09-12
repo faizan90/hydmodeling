@@ -8,6 +8,7 @@ import os
 import time
 import timeit
 import pickle
+import datetime
 import configparser as cfpm
 from psutil import cpu_count
 from collections import OrderedDict
@@ -90,8 +91,8 @@ def main():
 
     #hyd_analysis_flag = True
     #get_stms_flag = True
-    create_stms_rels_flag = True
-    create_cumm_cats_flag = True
+    #create_stms_rels_flag = True
+    #create_cumm_cats_flag = True
     optimize_flag = True
     #plot_kfold_perfs_flag = True
     #plot_best_kfold_prms_flag = True
@@ -101,8 +102,8 @@ def main():
     #plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
 
-    #valid_flag = True
-    #show_q_shetran = True
+    valid_flag = True
+    show_q_shetran = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -236,6 +237,9 @@ def main():
         if show_q_shetran == True:
             q_shetran_dir = cfp['OPT_HYD_MODEL']['in_q_shetran_file']
             q_shetran =  pd.read_csv(q_shetran_dir, sep=str(sep), index_col=0)
+            shetran_start = cfp['OPT_HYD_MODEL']['shetran_start_date']
+            #shetran_dir = cfp['OPT_HYD_MODEL']['shetran_hdf5']
+            shetran_dir = cfp['OPT_HYD_MODEL']['shetran_output']
 
     time_freq = cfp['OPT_HYD_MODEL']['time_freq']
 
@@ -379,9 +383,9 @@ def main():
             valid_step_ser.loc[valid_sel_idx] = 0
 
             if show_q_shetran:
+                q_shetran.index = pd.date_range(start = shetran_start, periods = len(q_shetran))
                 q_she = q_shetran[q_shetran.index >= start_date]
                 q_she = q_she[q_she.index <= end_date]
-                q_she = q_she.values[:,0]
 
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
@@ -461,7 +465,38 @@ def main():
             vali_data = val_time.create_dataset("val_data",
                                                 data=valid_step_ser)
             if show_q_shetran:
-                q_shetran = val_time.create_dataset("q_shetran", data=q_she)
+                shetran = db.create_group('shetran')
+                shetran_q = shetran.create_group('Q')
+                shetran_q.create_dataset("q", data=q_she.values[:,0])
+
+                shetran_out = open(shetran_dir, 'r')
+                shetran_val = pd.read_csv(shetran_out, delimiter=',', header=1, index_col=0)
+
+                # #shetran.create_dataset("time", data=q_she.index.values.astype('datetime64[D]'))
+                # shetran_db = h5py.File(shetran_dir, 'r')
+                snow = shetran.create_group('snow')
+                #
+                # value = np.asarray(
+                #             shetran_db['VARIABLES']['  6 snow_dep']['value'])
+                # times = np.asarray(
+                #             shetran_db['VARIABLES']['  6 snow_dep']['time'])
+                #
+                # value[value == -1.0] = np.nan
+                # value = np.nanmean(value, axis=(0,1))
+                # value = pd.DataFrame(value)
+                #
+                # value.index =  pd.to_datetime(times, unit='h',
+                #                origin=pd.Timestamp('1960-01-01')).values.astype('datetime64[D]')
+                shetran_val.index = pd.to_datetime(shetran_val.index, unit='h',
+                                origin=pd.Timestamp('1960-01-01')).values.astype('datetime64[D]')
+                # value = value[value.index >= start_date]
+                # value = value[value.index <= end_date]
+                shetran_crop = shetran_val[shetran_val.index >= start_date]
+                shetran_crop = shetran_crop[
+                    shetran_crop.index <= end_date]
+                snow.create_dataset('depth', data=shetran_crop['    Snow Storage'].values)
+                # snow.create_dataset('depth', data=value.values[:,0])
+                # #snow.create_dataset('time', data=value.index)
 
     #=========================================================================
     # Plot the k-fold results

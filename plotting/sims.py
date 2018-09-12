@@ -54,7 +54,9 @@ def plot_hbv(plot_args):
             kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
 
             if valid_flags[1] == True:
-                kf_dict['q_she_arr'] = np.asarray(db['valid_time']['q_shetran'])
+                kf_dict['q_she_arr'] = np.asarray(db['shetran']['Q']['q'])
+                kf_dict['snow_she_arr'] = np.asarray(
+                    db['shetran']['snow']['depth'])
 
             all_kfs_dict[i] = kf_dict
 
@@ -70,6 +72,10 @@ def plot_hbv(plot_args):
             if valid_flags[1]== True:
                 valid_q_she_arr = np.concatenate([
                     all_kfs_dict[i]['q_she_arr'][np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis = 0)
+                valid_snow_she_arr = np.concatenate([
+                    all_kfs_dict[i]['snow_she_arr'][
+                        np.asarray(db['valid_time']['val_data']) == 1]
+                    for i in all_kfs_dict], axis=0)
             if 'extra_us_inflow' in kf_dict:
                 valid_us_inflow_arr = np.concatenate([
                     all_kfs_dict[i]['extra_us_inflow'][np.asarray(db['valid_time']['val_data']) ==1]
@@ -86,6 +92,8 @@ def plot_hbv(plot_args):
             if valid_flags[1]== True:
                 calib_q_she_arr = np.concatenate([
                     all_kfs_dict[i]['q_she_arr'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis = 0)
+                calib_snow_she_arr = np.concatenate([
+                    all_kfs_dict[i]['snow_she_arr'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis = 0)
             if 'extra_us_inflow' in kf_dict:
                 calib_us_inflow_arr = np.concatenate([
                     all_kfs_dict[i]['extra_us_inflow'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1]
@@ -134,6 +142,7 @@ def plot_hbv(plot_args):
             kf_dict['pet_arr'] = calib_pet_arr
             kf_dict['qact_arr'] = calib_qact_arr
             kf_dict['q_she_arr'] = calib_q_she_arr
+            kf_dict['snow_she_arr'] = calib_snow_she_arr
             if 'extra_us_inflow' in kf_dict:
                 kf_dict['extra_us_inflow'] = calib_us_inflow_arr
 
@@ -158,6 +167,7 @@ def plot_hbv(plot_args):
             kf_dict['pet_arr'] = valid_pet_arr
             kf_dict['qact_arr'] = valid_qact_arr
             kf_dict['q_she_arr'] = valid_q_she_arr
+            kf_dict['snow_she_arr'] = valid_snow_she_arr
             if 'extra_us_inflow' in kf_dict:
                 kf_dict['extra_us_inflow'] = valid_us_inflow_arr
 
@@ -454,6 +464,7 @@ def _plot_hbv_kf(
     prms_arr = (rarea_arr * kf_dict['hbv_prms']).sum(axis=0)
     if valid_flags[1] == True:
         q_she_arr = kf_dict['q_she_arr']
+        snow_she_arr = kf_dict['snow_she_arr']
 
     n_recs = temp_dist_arr.shape[1]
     n_cells = temp_dist_arr.shape[0]
@@ -524,11 +535,16 @@ def _plot_hbv_kf(
     q_act_arr = kf_dict['qact_arr']
     if valid_flags[1] == True:
         q_she_arr = kf_dict['q_she_arr']
+        snow_she_arr = kf_dict['snow_she_arr']
+        q_she_arr_diff = q_she_arr.copy()
     q_act_arr_diff = q_act_arr.copy()
+
     if extra_us_inflow_flag:
         extra_us_inflow = kf_dict['extra_us_inflow']
         q_sim_arr = q_sim_arr + extra_us_inflow
         q_act_arr_diff = q_act_arr - extra_us_inflow
+        if valid_flags[1] == True:
+            q_she_arr_diff = q_she_arr - extra_us_inflow
 
     if valid_flags[0] == True:
         hbv_figs_dir = os.path.join(out_dir, '03_hbv_figs_valid')
@@ -626,6 +642,8 @@ def _plot_hbv_kf(
 
         cum_q = np.cumsum(q_act_arr_diff[off_idx:] / conv_ratio)
         cum_q_sim = np.cumsum(comb_run_arr[off_idx:])
+        if valid_flags[1] == True:
+            cum_q_she = np.cumsum(q_she_arr_diff[off_idx:] / conv_ratio)
 
         min_vol_diff_err = 0.5
         max_vol_diff_err = 1.5
@@ -637,12 +655,25 @@ def _plot_hbv_kf(
             max_vol_diff_err - 0.05)
         vol_diff_arr = np.concatenate((np.full(shape=(off_idx - 1),
                                                fill_value=np.nan),
-                                       vol_diff_arr))
+                                                vol_diff_arr))
+
+        if valid_flags[1] == True:
+            vol_diff_she_arr = cum_q_she / cum_q
+
+            vol_diff_she_arr[vol_diff_she_arr < min_vol_diff_err + 0.05] = (
+                    min_vol_diff_err + 0.05)
+            vol_diff_she_arr[vol_diff_she_arr > max_vol_diff_err - 0.05] = (
+                    max_vol_diff_err - 0.05)
+            vol_diff_she_arr = np.concatenate((np.full(shape=(off_idx - 1),
+                                       fill_value=np.nan),
+                                               vol_diff_she_arr))
 
         bal_idxs = [0]
         bal_idxs.extend(list(range(off_idx, n_recs, wat_bal_stps)))
         act_bal_arr = []
         sim_bal_arr = []
+        if valid_flags[1] == True:
+            sim_bal_she_arr = []
 
         prec_sum_arr = []
 
@@ -653,6 +684,10 @@ def _plot_hbv_kf(
             # ET accounted for
             _curr_q_act = q_act_arr_diff[bal_idxs[i]:bal_idxs[i + 1]]
             _curr_q_act_sum = np.sum(_curr_q_act / conv_ratio)
+
+            if valid_flags[1] ==  True:
+                _curr_q_she = q_she_arr_diff[bal_idxs[i]:bal_idxs[i + 1]]
+                _curr_q_she_sum = np.sum(_curr_q_she / conv_ratio)
 
             _curr_prec_sum = np.sum(prec_arr[bal_idxs[i]:bal_idxs[i + 1]])
             _curr_evap_sum = np.sum(evap_arr[bal_idxs[i]:bal_idxs[i + 1]])
@@ -665,6 +700,11 @@ def _plot_hbv_kf(
             sim_bal_arr.append(_curr_comb_sum /
                                (_curr_prec_sum - _curr_evap_sum))
 
+            if valid_flags[1] ==  True:
+                sim_bal_she_arr.append(_curr_q_she_sum /
+                                   (_curr_prec_sum - _curr_evap_sum))
+
+
             prec_sum_arr.append(_curr_prec_sum)
 
         act_bal_arr = np.array(act_bal_arr)
@@ -674,6 +714,10 @@ def _plot_hbv_kf(
 
         act_bal_arr = np.concatenate(([np.nan, np.nan], act_bal_arr), axis=0)
         sim_bal_arr = np.concatenate(([np.nan, np.nan], sim_bal_arr), axis=0)
+
+        if valid_flags[1] == True:
+            sim_bal_she_arr = np.concatenate(
+                ([np.nan, np.nan], sim_bal_she_arr), axis=0)
 
         prec_sum_arr = np.concatenate(([np.nan, np.nan], prec_sum_arr), axis=0)
 
@@ -822,6 +866,12 @@ def _plot_hbv_kf(
                         lw=0.5,
                         label='Cumm. Runoff Error',
                         alpha=0.95)
+        if valid_flags[1] == True:
+            vol_err_ax.plot(vol_diff_she_arr,
+                            'darkgrey',
+                            lw=0.5,
+                            label='Cumm. Runoff Shetran Error',
+                            alpha=0.95)
         vol_err_ax.set_ylim(min_vol_diff_err, max_vol_diff_err)
         vol_err_ax.text(vol_diff_arr.shape[0] * 0.5,
                         1.25,
@@ -849,6 +899,14 @@ def _plot_hbv_kf(
                            label='Simulated Outflow (Q + ET)',
                            alpha=0.6,
                            s=scatt_size)
+        if valid_flags[1] == True:
+            balance_ax.scatter(bal_idxs,
+                               sim_bal_she_arr,
+                               c='darkgrey',
+                               marker='*',
+                               label='Simulated Shetran Outflow (Q + ET)',
+                               alpha=0.6,
+                               s=scatt_size)
         balance_ax.set_ylim(min_vol_err_wET, max_vol_err_wET)
 
         prec_ax.bar(bar_x,
@@ -890,6 +948,8 @@ def _plot_hbv_kf(
                     bbox={'facecolor': 'white', 'alpha': 0.5, 'pad': 2})
 
         snow_ax.plot(snow_arr, lw=0.5, label='Snow')
+        if valid_flags[1] == True:
+            snow_ax.plot(snow_she_arr, 'darkgrey', lw=0.5, label='Shetran Snow')
         liqu_ax.bar(bar_x,
                     liqu_arr,
                     width=1.0,
@@ -1053,6 +1113,9 @@ def _plot_hbv_kf(
 
         cum_q_sim = np.cumsum(comb_run_arr[off_idx:])
 
+        if valid_flags[1] == True:
+            cum_q_she = np.cumsum(q_she_arr_diff[off_idx:] / conv_ratio)
+
         min_vol_diff_err = 0.5
         max_vol_diff_err = 1.5
 
@@ -1064,6 +1127,17 @@ def _plot_hbv_kf(
         vol_diff_arr = np.concatenate((np.full(shape=(off_idx - 1),
                                                fill_value=np.nan),
                                        vol_diff_arr))
+
+        if valid_flags[1] == True:
+            vol_diff_she_arr = cum_q_she / cum_q
+
+            vol_diff_she_arr[vol_diff_she_arr < min_vol_diff_err + 0.05] = (
+                    min_vol_diff_err + 0.05)
+            vol_diff_she_arr[vol_diff_she_arr > max_vol_diff_err - 0.05] = (
+                    max_vol_diff_err - 0.05)
+            vol_diff_she_arr = np.concatenate((np.full(shape=(off_idx - 1),
+                                       fill_value=np.nan),
+                                               vol_diff_she_arr))
 
         bal_idxs = [0]
         bal_idxs.extend(list(range(off_idx, n_recs, wat_bal_stps)))
@@ -1078,13 +1152,22 @@ def _plot_hbv_kf(
         evap_sum_arr = []
         q_act_sum_arr = []
         q_sim_sum_arr = []
+        if valid_flags[1] == True:
+            q_she_sum_arr = []
+            sim_bal_she_wo_et_arr = []
+            sim_bal_she_w_et_arr = []
 
         min_vol_ratio_err = 0
         max_vol_ratio_err = 1.5
 
         for i in range(1, len(bal_idxs) - 1):
             _curr_q_act = q_act_arr_diff[bal_idxs[i]:bal_idxs[i + 1]]
+
             _curr_q_act_sum = np.sum(_curr_q_act / conv_ratio)
+            if valid_flags[1] == True:
+                _curr_q_she = q_she_arr_diff[
+                              bal_idxs[i]:bal_idxs[i + 1]]
+                _curr_q_she_sum = np.sum(_curr_q_she / conv_ratio)
 
             _prec_sum = np.sum(prec_arr[bal_idxs[i]:bal_idxs[i + 1]])
             _evap_sum = np.sum(evap_arr[bal_idxs[i]:bal_idxs[i + 1]])
@@ -1094,15 +1177,23 @@ def _plot_hbv_kf(
             # ET accounted for
             act_bal_w_et_arr.append(_curr_q_act_sum / (_prec_sum - _evap_sum))
             sim_bal_w_et_arr.append(_curr_comb_sum / (_prec_sum - _evap_sum))
+            if valid_flags[1] == True:
+                sim_bal_she_w_et_arr.append(
+                    _curr_q_she_sum / (_prec_sum - _evap_sum))
 
             # ET not accounted for
             act_bal_wo_et_arr.append(_curr_q_act_sum / _prec_sum)
             sim_bal_wo_et_arr.append(_curr_comb_sum / _prec_sum)
 
+            if valid_flags[1] == True:
+                sim_bal_she_wo_et_arr.append(_curr_q_she_sum / _prec_sum)
+
             prec_sum_arr.append(_prec_sum)
             evap_sum_arr.append(_evap_sum)
             q_act_sum_arr.append(_curr_q_act_sum)
             q_sim_sum_arr.append(_curr_comb_sum)
+            if valid_flags[1] == True:
+                q_she_sum_arr.append(_curr_q_she_sum)
 
         act_bal_w_et_arr = np.array(act_bal_w_et_arr)
         act_bal_wo_et_arr = np.array(act_bal_wo_et_arr)
@@ -1117,6 +1208,11 @@ def _plot_hbv_kf(
         sim_bal_w_et_arr = (
             np.concatenate(([np.nan, np.nan], sim_bal_w_et_arr), axis=0))
 
+        if valid_flags[1] == True:
+            sim_bal_she_w_et_arr = (
+                np.concatenate(([np.nan, np.nan], sim_bal_she_w_et_arr),
+                               axis=0))
+
         act_bal_wo_et_arr[act_bal_wo_et_arr < min_vol_ratio_err] = (
             min_vol_ratio_err)
         act_bal_wo_et_arr[act_bal_wo_et_arr > max_vol_ratio_err] = (
@@ -1127,6 +1223,11 @@ def _plot_hbv_kf(
         sim_bal_wo_et_arr = (
             np.concatenate(([np.nan, np.nan], sim_bal_wo_et_arr), axis=0))
 
+        if valid_flags[1] == True:
+            sim_bal_she_wo_et_arr = (
+                np.concatenate(([np.nan, np.nan], sim_bal_she_wo_et_arr),
+                               axis=0))
+
         prec_sum_arr = np.concatenate(([np.nan, np.nan], prec_sum_arr), axis=0)
         evap_sum_arr = np.concatenate(([np.nan, np.nan], evap_sum_arr), axis=0)
 
@@ -1134,6 +1235,10 @@ def _plot_hbv_kf(
             np.concatenate(([np.nan, np.nan], q_act_sum_arr), axis=0))
         q_sim_sum_arr = (
             np.concatenate(([np.nan, np.nan], q_sim_sum_arr), axis=0))
+
+        if valid_flags[1] == True:
+            q_she_sum_arr = (
+                np.concatenate(([np.nan, np.nan], q_she_sum_arr), axis=0))
 
         font_size = 5
         plt.figure(figsize=(11, 6), dpi=150)
@@ -1174,6 +1279,12 @@ def _plot_hbv_kf(
                         lw=0.5,
                         label='Cumm. Runoff Error',
                         alpha=0.95)
+        if valid_flags[1] == True:
+            vol_err_ax.plot(vol_diff_she_arr,
+                            'darkgrey',
+                            lw=0.5,
+                            label='Cumm. Runoff Error Shetran',
+                            alpha=0.95)
         vol_err_ax.set_ylim(min_vol_diff_err, max_vol_diff_err)
         vol_err_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
         vol_err_ax.text(vol_diff_arr.shape[0] * 0.5,
@@ -1196,6 +1307,12 @@ def _plot_hbv_kf(
                           label='Simulated Flow',
                           lw=0.5,
                           alpha=0.5)
+        if valid_flags[1] == True:
+            discharge_ax.plot(q_she_arr,
+                              'darkgrey',
+                              label='Shetran Flow',
+                              lw=0.5,
+                              alpha=0.5)
         discharge_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
         discharge_ax.set_xticklabels([])
 
@@ -1214,6 +1331,13 @@ def _plot_hbv_kf(
                                  alpha=0.6,
                                  s=scatt_size)
 
+        if valid_flags[1] == True:
+            balance_ratio_ax.scatter(bal_idxs, sim_bal_she_w_et_arr,
+                                     marker='*',
+                                     label='Shetran Outflow (Q + ET)',
+                                     alpha=0.6,
+                                     s=scatt_size)
+
         balance_ratio_ax.scatter(bal_idxs,
                                  act_bal_wo_et_arr,
                                  marker='o',
@@ -1226,6 +1350,13 @@ def _plot_hbv_kf(
                                  label='Simulated Outflow (Q)',
                                  alpha=0.6,
                                  s=scatt_size)
+        if valid_flags[1] == True:
+            balance_ratio_ax.scatter(bal_idxs,
+                                     sim_bal_she_wo_et_arr,
+                                     marker='*',
+                                     label='Shertan Outflow (Q)',
+                                     alpha=0.6,
+                                     s=scatt_size)
 
         balance_ratio_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
         balance_ratio_ax.set_ylim(min_vol_ratio_err, max_vol_ratio_err)
@@ -1254,6 +1385,13 @@ def _plot_hbv_kf(
                                alpha=0.6,
                                marker='+',
                                label='Simulated Runoff Sum',
+                               s=scatt_size)
+        if valid_flags[1] == True:
+            balance_sum_ax.scatter(bal_idxs,
+                               q_she_sum_arr,
+                               alpha=0.6,
+                               marker='*',
+                               label='Shetran Runoff Sum',
                                s=scatt_size)
         balance_sum_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
         balance_sum_ax.set_ylim(0, balance_sum_ax.get_ylim()[1])
