@@ -28,48 +28,50 @@ plt.ioff()
 
 fc_i, pwp_i = get_fc_pwp_is()
 
-all_prms_labs = ['tt',
-                 'cm',
-                 'pcm',
-                 'fc',
-                 'beta',
-                 'pwp',
-                 'ur_thr',
-                 'k_uu',
-                 'k_ul',
-                 'k_d',
-                 'k_ll']
+all_prms_labs = [
+    'tt',
+    'cm',
+    'pcm',
+    'fc',
+    'beta',
+    'pwp',
+    'ur_thr',
+    'k_uu',
+    'k_ul',
+    'k_d',
+    'k_ll']
 
 _at_sp_labs = ['min', 'max', 'exp']
 
 
 def solve_cats_sys(
-    in_cats_prcssed_df,
-    in_stms_prcssed_df,
-    in_dem_net_df,
-    in_use_step_ser,
-    in_q_df,
-    in_ppt_dfs_dict,
-    in_tem_dfs_dict,
-    in_pet_dfs_dict,
-    aux_cell_vars_dict,
-    in_date_fmt,
-    beg_date,
-    end_date,
-    time_freq,
-    warm_up_steps,
-    n_cpus,
-    route_type,
-    out_dir,
-    bounds_dict,
-    all_prms_flags,
-    obj_ftn_wts,
-    min_q_thresh,
-    sep,
-    kfolds,
-    use_obs_flow_flag,
-    run_as_lump_flag,
-    opt_schm_vars_dict):
+        in_cats_prcssed_df,
+        in_stms_prcssed_df,
+        in_dem_net_df,
+        in_use_step_ser,
+        in_q_df,
+        in_ppt_dfs_dict,
+        in_tem_dfs_dict,
+        in_pet_dfs_dict,
+        aux_cell_vars_dict,
+        in_date_fmt,
+        beg_date,
+        end_date,
+        time_freq,
+        warm_up_steps,
+        n_cpus,
+        route_type,
+        out_dir,
+        bounds_dict,
+        all_prms_flags,
+        obj_ftn_wts,
+        min_q_thresh,
+        sep,
+        kfolds,
+        use_obs_flow_flag,
+        run_as_lump_flag,
+        opt_schm_vars_dict):
+
     '''Optimize parameters for a given catchment
 
     Do a k folds calibration and validation as well
@@ -139,11 +141,12 @@ def solve_cats_sys(
     assert isinstance(opt_schm_vars_dict, dict)
 
     date_range = pd.date_range(beg_date, end_date, freq=time_freq)
-    sel_idxs_arr = np.linspace(0,
-                               date_range.shape[0],
-                               kfolds + 1,
-                               dtype=np.int64,
-                               endpoint=True)
+    sel_idxs_arr = np.linspace(
+        0,
+        date_range.shape[0],
+        kfolds + 1,
+        dtype=np.int64,
+        endpoint=True)
 
     n_sel_idxs = sel_idxs_arr.shape[0]
     uni_sel_idxs_arr = np.unique(sel_idxs_arr)
@@ -160,8 +163,8 @@ def solve_cats_sys(
     sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
     assert np.all(np.isfinite(sel_cats))
 
-    beg_date, end_date = pd.to_datetime([beg_date, end_date],
-                                          format=in_date_fmt)
+    beg_date, end_date = pd.to_datetime(
+        [beg_date, end_date], format=in_date_fmt)
 
     n_steps = date_range.shape[0]
 
@@ -185,23 +188,44 @@ def solve_cats_sys(
         raise NotImplementedError(f'Invalid time-freq: {time_freq}')
 
     assert beg_date >= in_q_df.index[0]
-    assert all([beg_date >= _df.index[0] for _df in in_ppt_dfs_dict.values()])
-    assert all([beg_date >= _df.index[0] for _df in in_tem_dfs_dict.values()])
-    assert all([beg_date >= _df.index[0] for _df in in_pet_dfs_dict.values()])
+
+    assert all(
+        [beg_date >= _df.index[0]
+        for _df in in_ppt_dfs_dict.values()])
+
+    assert all(
+        [beg_date >= _df.index[0]
+        for _df in in_tem_dfs_dict.values()])
+
+    assert all(
+        [beg_date >= _df.index[0]
+        for _df in in_pet_dfs_dict.values()])
 
     assert end_date <= in_q_df.index[-1]
-    assert all([end_date <= _df.index[-1] for _df in in_ppt_dfs_dict.values()])
-    assert all([end_date <= _df.index[-1] for _df in in_tem_dfs_dict.values()])
-    assert all([end_date <= _df.index[-1] for _df in in_pet_dfs_dict.values()])
 
-    assert (in_ppt_dfs_dict.keys() ==
-            in_tem_dfs_dict.keys() ==
-            in_pet_dfs_dict.keys())
+    assert all(
+        [end_date <= _df.index[-1]
+        for _df in in_ppt_dfs_dict.values()])
+
+    assert all(
+        [end_date <= _df.index[-1]
+        for _df in in_tem_dfs_dict.values()])
+
+    assert all(
+        [end_date <= _df.index[-1]
+        for _df in in_pet_dfs_dict.values()])
+
+    assert (
+        in_ppt_dfs_dict.keys() ==
+        in_tem_dfs_dict.keys() ==
+        in_pet_dfs_dict.keys())
 
     in_q_df.columns = pd.to_numeric(in_q_df.columns)
     in_q_df = in_q_df.loc[beg_date:end_date, sel_cats]
+
     if np.any(np.isnan(in_q_df.values)):
         raise RuntimeError('NaNs in in_q_df')
+
     in_q_df[in_q_df.values < min_q_thresh] = min_q_thresh
     assert in_q_df.shape[0] == n_steps
 
@@ -243,51 +267,62 @@ def solve_cats_sys(
 
     assert all([fin_ppt_dfs_dict, fin_tem_dfs_dict, fin_pet_dfs_dict])
     for cat in sel_cats:
-        assert (n_steps ==
-                fin_ppt_dfs_dict[cat].shape[0] ==
-                fin_tem_dfs_dict[cat].shape[0] ==
-                fin_pet_dfs_dict[cat].shape[0])
+        assert (
+            n_steps ==
+            fin_ppt_dfs_dict[cat].shape[0] ==
+            fin_tem_dfs_dict[cat].shape[0] ==
+            fin_pet_dfs_dict[cat].shape[0])
 
-        assert (fin_ppt_dfs_dict[cat].shape[1] ==
-                fin_tem_dfs_dict[cat].shape[1] ==
-                fin_pet_dfs_dict[cat].shape[1])
+        assert (
+            fin_ppt_dfs_dict[cat].shape[1] ==
+            fin_tem_dfs_dict[cat].shape[1] ==
+            fin_pet_dfs_dict[cat].shape[1])
 
         assert np.all(fin_ppt_dfs_dict[cat].values >= 0)
         assert np.all(fin_pet_dfs_dict[cat].values >= 0)
 
         if np.any(np.isnan(fin_ppt_dfs_dict[cat].values)):
             raise RuntimeError('NaNs in precipiation!')
+
         if np.any(np.isnan(fin_tem_dfs_dict[cat].values)):
             raise RuntimeError('NaNs in temperature!')
+
         if np.any(np.isnan(fin_pet_dfs_dict[cat].values)):
             raise RuntimeError('NaNs in PET!')
 
-    ini_arrs_dict = {sel_cat:
-                     np.zeros((fin_tem_dfs_dict[sel_cat].shape[1], 4),
-                              dtype=np.float64,
-                              order='c')
-                     for sel_cat in sel_cats}
+    ini_arrs_dict = {
+        sel_cat:
+        np.zeros(
+            (fin_tem_dfs_dict[sel_cat].shape[1], 4),
+            dtype=np.float64,
+            order='c')
+
+        for sel_cat in sel_cats}
 
     dumm_dict = None
     kfold_prms_dict = {}
 
     k_in_use_step_ser = in_use_step_ser.loc[beg_date:end_date]
     assert k_in_use_step_ser.shape[0] == n_steps
-    assert np.all((k_in_use_step_ser.values >= 0) &
-                  (k_in_use_step_ser.values <= 1))
+    assert np.all(
+        (k_in_use_step_ser.values >= 0) & (k_in_use_step_ser.values <= 1))
+
     assert np.any(k_in_use_step_ser.values > 0)
 
     if in_use_step_ser.values.sum() == in_use_step_ser.shape[0]:
         use_step_flag = False
+
     else:
         use_step_flag = True
+
     print('INFO: use_step_flag:', use_step_flag)
 
-    kwargs = {'use_obs_flow_flag': use_obs_flow_flag,
-              'run_as_lump_flag': run_as_lump_flag,
-              'use_step_flag': use_step_flag,
-              'min_q_thresh': min_q_thresh,
-              'time_freq': time_freq}
+    kwargs = {
+        'use_obs_flow_flag': use_obs_flow_flag,
+        'run_as_lump_flag': run_as_lump_flag,
+        'use_step_flag': use_step_flag,
+        'min_q_thresh': min_q_thresh,
+        'time_freq': time_freq}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -390,44 +425,48 @@ def solve_cats_sys(
 
 
 def _solve_k_cats_sys(
-    in_use_step_ser,
-    in_q_df,
-    in_ppt_dfs_dict,
-    in_tem_dfs_dict,
-    in_pet_dfs_dict,
-    in_aux_vars_dict,
-    in_cats_prcssed_df,
-    in_stms_prcssed_df,
-    in_dem_net_df,
-    bounds_dict,
-    all_prms_flags,
-    route_type,
-    obj_ftn_wts,
-    warm_up_steps,
-    n_cpus,
-    dirs_dict,
-    sep,
-    kf_i,
-    ini_arrs_dict,
-    opt_schm_vars_dict,
-    cat_to_idx_dict,
-    stm_to_idx_dict,
-    sim_prms_dict,
-    calib_run,
-    kfolds,
-    kwargs):
+        in_use_step_ser,
+        in_q_df,
+        in_ppt_dfs_dict,
+        in_tem_dfs_dict,
+        in_pet_dfs_dict,
+        in_aux_vars_dict,
+        in_cats_prcssed_df,
+        in_stms_prcssed_df,
+        in_dem_net_df,
+        bounds_dict,
+        all_prms_flags,
+        route_type,
+        obj_ftn_wts,
+        warm_up_steps,
+        n_cpus,
+        dirs_dict,
+        sep,
+        kf_i,
+        ini_arrs_dict,
+        opt_schm_vars_dict,
+        cat_to_idx_dict,
+        stm_to_idx_dict,
+        sim_prms_dict,
+        calib_run,
+        kfolds,
+        kwargs):
 
-    cats_outflow_arr = np.zeros((in_q_df.shape[0],
-                                 in_cats_prcssed_df.shape[0]),
-                                order='f',
-                                dtype=np.float64)
-    stms_inflow_arr = np.zeros((in_q_df.shape[0], in_stms_prcssed_df.shape[0]),
-                               order='f',
-                               dtype=np.float64)
+    cats_outflow_arr = np.zeros(
+        (in_q_df.shape[0], in_cats_prcssed_df.shape[0]),
+        order='f',
+        dtype=np.float64)
+
+    stms_inflow_arr = np.zeros(
+        (in_q_df.shape[0], in_stms_prcssed_df.shape[0]),
+        order='f',
+        dtype=np.float64)
+
     stms_outflow_arr = stms_inflow_arr.copy(order='f')
 
-    in_dem_net_arr = np.ascontiguousarray(in_dem_net_df.values,
-                                          dtype=np.float64)
+    in_dem_net_arr = np.ascontiguousarray(
+        in_dem_net_df.values, dtype=np.float64)
+
     if np.any(np.isnan(in_dem_net_arr)):
         raise RuntimeError('NaNs in_dem_net_arr')
 
@@ -449,6 +488,7 @@ def _solve_k_cats_sys(
 
     if use_step_flag:
         use_step_arr = in_use_step_ser.values.astype(np.int32, 'c')
+
     else:
         use_step_arr = np.array([0], dtype=np.int32)
 
@@ -474,6 +514,7 @@ def _solve_k_cats_sys(
             for _ in in_dem_net_df.index:
                 us_stm_cond_1 = in_dem_net_df.loc[_, 'up_cat'] == cat
                 us_stm_cond_5 = in_dem_net_df.loc[_, 'DSNODEID'] == cat
+
                 if not (us_stm_cond_1 or us_stm_cond_5):
                     continue
 
@@ -514,33 +555,37 @@ def _solve_k_cats_sys(
         ppt_arr = in_ppt_dfs_dict[cat].values.T.copy(order='C')
         pet_arr = in_pet_dfs_dict[cat].values.T.copy(order='C')
         ini_arr = ini_arrs_dict[cat].copy(order='C')
-        cat_area_ratios_arr = in_aux_vars_dict['area_ratios'][cat].copy(order='C')
         cat_shape = in_aux_vars_dict['shape']
         cat_rows_idxs = in_aux_vars_dict['rows'][cat]
         cat_cols_idxs = in_aux_vars_dict['cols'][cat]
+        cat_area_ratios_arr = in_aux_vars_dict[
+            'area_ratios'][cat].copy(order='C')
 
-        assert (tem_arr.shape[0] ==
-                ppt_arr.shape[0] ==
-                pet_arr.shape[0] ==
-                ini_arr.shape[0] ==
-                cat_area_ratios_arr.shape[0])
+        assert (
+            tem_arr.shape[0] ==
+            ppt_arr.shape[0] ==
+            pet_arr.shape[0] ==
+            ini_arr.shape[0] ==
+            cat_area_ratios_arr.shape[0])
 
-        assert (tem_arr.shape[1] ==
-                ppt_arr.shape[1] ==
-                pet_arr.shape[1] ==
-                q_arr.shape[0]), (
-                    tem_arr.shape[1],
-                    ppt_arr.shape[1],
-                    pet_arr.shape[1],
-                    q_arr.shape[0])
+        assert (
+            tem_arr.shape[1] ==
+            ppt_arr.shape[1] ==
+            pet_arr.shape[1] ==
+            q_arr.shape[0]), (
+                tem_arr.shape[1],
+                ppt_arr.shape[1],
+                pet_arr.shape[1],
+                q_arr.shape[0])
 
         n_cells = ini_arr.shape[0]
         print(f'n_cells: {n_cells}')
 
         assert np.all(all_prms_flags >= 0) & np.all(all_prms_flags <= 1)
-        assert (np.all(all_prms_flags.sum(axis=1) > 0) &
-                np.all(all_prms_flags.sum(axis=1) < 6))
         assert len(all_prms_labs) == all_prms_flags.shape[0]
+        assert (
+            np.all(all_prms_flags.sum(axis=1) > 0) &
+            np.all(all_prms_flags.sum(axis=1) < 6))
 
         # fc and pwp calibrated using same type of criteria
         assert (np.abs(all_prms_flags[3] - all_prms_flags[5]).sum() == 0)
@@ -563,6 +608,7 @@ def _solve_k_cats_sys(
                 lulc_arr = in_aux_vars_dict['lulc_ratios'][cat]
                 _1 = lulc_arr.shape[1]
                 lulc_drop_idxs = (lulc_arr.max(axis=0) == 0)
+
                 if lulc_drop_idxs.sum():
                     lulc_arr = lulc_arr[:, ~lulc_drop_idxs].copy(order='c')
                     _2 = lulc_arr.shape[1]
@@ -570,8 +616,10 @@ def _solve_k_cats_sys(
 
                 n_lulc = lulc_arr.shape[1]
                 assert lulc_arr.shape[0] == n_cells
+
                 print(f'n_lulc:  {n_lulc}')
                 print('lulc class ratios:\n', lulc_arr.sum(axis=0) / n_cells)
+
                 assert np.all((lulc_arr >= 0) & (lulc_arr <= 1))
 
                 aux_var_infos.append([0, lulc_arr.shape[1]])
@@ -586,6 +634,7 @@ def _solve_k_cats_sys(
                 soil_arr = in_aux_vars_dict['soil_ratios'][cat]
                 _1 = soil_arr.shape[1]
                 soil_drop_idxs = (soil_arr.max(axis=0) == 0)
+
                 if soil_drop_idxs.sum():
                     soil_arr = soil_arr[:, ~soil_drop_idxs].copy(order='c')
                     _2 = soil_arr.shape[1]
@@ -593,12 +642,15 @@ def _solve_k_cats_sys(
 
                 n_soil = soil_arr.shape[1]
                 assert soil_arr.shape[0] == n_cells
+
                 print(f'n_soil: {n_soil}')
                 print('soil class ratios:\n', soil_arr.sum(axis=0) / n_cells)
+
                 assert np.all((soil_arr >= 0) & (soil_arr <= 1))
 
                 if aux_vars:
                     _beg_idx = sum([_.size for _ in aux_vars])
+
                 else:
                     _beg_idx = 0
 
@@ -625,32 +677,36 @@ def _solve_k_cats_sys(
             if np.any(all_prms_flags[:, 3]):
                 aspect_scale_arr = get_aspect_scale_arr_cy(aspect_arr)
 
-                assert np.all((aspect_scale_arr >= 0) &
-                              (aspect_scale_arr <= 1))
+                assert np.all(
+                    (aspect_scale_arr >= 0) & (aspect_scale_arr <= 1))
 
                 if aux_vars:
                     _beg_idx = sum([_.size for _ in aux_vars])
+
                 else:
                     _beg_idx = 0
 
                 aux_var_infos.append([_beg_idx, 1])
                 aux_vars.append(aspect_scale_arr)
+
             else:
                 aux_var_infos.append([0, 0])
 
             if np.any(all_prms_flags[:, 4]):
                 slope_scale_arr = get_slope_scale_arr_cy(slope_arr)
 
-                assert np.all((slope_scale_arr >= 0) &
-                              (slope_scale_arr <= 1))
+                assert np.all(
+                    (slope_scale_arr >= 0) & (slope_scale_arr <= 1))
 
                 if aux_vars:
                     _beg_idx = sum([_.size for _ in aux_vars])
+
                 else:
                     _beg_idx = 0
 
                 aux_var_infos.append([_beg_idx, 1])
                 aux_vars.append(slope_scale_arr)
+
             else:
                 aux_var_infos.append([0, 0])
 
@@ -658,35 +714,41 @@ def _solve_k_cats_sys(
                 aspect_slope_scale_arr = get_aspect_and_slope_scale_arr_cy(
                     aspect_arr, slope_arr)
 
-                assert np.all((aspect_slope_scale_arr >= 0) &
-                              (aspect_slope_scale_arr <= 1))
+                assert np.all(
+                    (aspect_slope_scale_arr >= 0) &
+                    (aspect_slope_scale_arr <= 1))
 
                 if aux_vars:
                     _beg_idx = sum([_.size for _ in aux_vars])
+
                 else:
                     _beg_idx = 0
 
                 aux_var_infos.append([_beg_idx, 1])
                 aux_vars.append(aspect_slope_scale_arr)
+
             else:
                 aux_var_infos.append([0, 0])
 
             if len(aux_vars) < 1:
                 aux_vars = np.array(aux_vars, dtype=np.float64)
+
             else:
                 aux_vars = np.concatenate(aux_vars)
                 aux_vars = aux_vars.astype(np.float64, order='c')
 
             aux_var_infos = np.atleast_2d(
                 np.array(aux_var_infos, dtype=np.int32))
+
             assert aux_var_infos.shape[0] == 5
             assert aux_var_infos.shape[1] == 2
 
             use_prms_labs = []
-            use_prms_idxs = np.zeros((all_prms_flags.shape[0],
-                                      all_prms_flags.shape[1],
-                                      2),
-                                     dtype=np.int32)
+            use_prms_idxs = np.zeros(
+                (all_prms_flags.shape[0],
+                 all_prms_flags.shape[1],
+                 2),
+                dtype=np.int32)
 
             # for every parameter to be calibrated, insert bounds.
             # also, indicate indices in the use_prms_idxs of parameters in the
@@ -697,6 +759,7 @@ def _solve_k_cats_sys(
             prms_span_idxs = []
             for i in range(all_prms_flags.shape[0]):
                 _beg_span_idx = len(use_prms_labs)
+
                 if all_prms_flags[i, 0]:
                     assert np.all(all_prms_flags[i, 1:] == 0)
                     _bef_len = len(use_prms_labs)
@@ -706,17 +769,22 @@ def _solve_k_cats_sys(
 
                 if all_prms_flags[i, 1]:
                     _bef_len = len(use_prms_labs)
-                    use_prms_labs.extend([f'{all_prms_labs[i]}_lc_{j:02d}'
-                                          for j in range(n_lulc)])
+                    use_prms_labs.extend(
+                        [f'{all_prms_labs[i]}_lc_{j:02d}'
+                         for j in range(n_lulc)])
+
                     use_prms_idxs[i, 1, :] = _bef_len, len(use_prms_labs)
+
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_lulc)
 
                 if all_prms_flags[i, 2]:
                     _bef_len = len(use_prms_labs)
-                    use_prms_labs.extend([f'{all_prms_labs[i]}_sl_{j:02d}'
-                                          for j in range(n_soil)])
+                    use_prms_labs.extend(
+                        [f'{all_prms_labs[i]}_sl_{j:02d}' for j in range(n_soil)])
+
                     use_prms_idxs[i, 2, :] = _bef_len, len(use_prms_labs)
+
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_soil)
 
@@ -728,8 +796,10 @@ def _solve_k_cats_sys(
                          for j in range(3)])
 
                     use_prms_idxs[i, 3, :] = _bef_len, len(use_prms_labs)
+
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * 2)
+
                     bounds_list.append(bounds_dict['exp_bds'])
 
                 if all_prms_flags[i, 4]:
@@ -740,8 +810,10 @@ def _solve_k_cats_sys(
                          for j in range(3)])
 
                     use_prms_idxs[i, 4, :] = _bef_len, len(use_prms_labs)
+
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * 2)
+
                     bounds_list.append(bounds_dict['exp_bds'])
 
                 if all_prms_flags[i, 5]:
@@ -752,8 +824,10 @@ def _solve_k_cats_sys(
                          for j in range(3)])
 
                     use_prms_idxs[i, 5, :] = _bef_len, len(use_prms_labs)
+
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * 2)
+
                     bounds_list.append(bounds_dict['exp_bds'])
 
                 _end_span_idx = len(use_prms_labs)
@@ -770,6 +844,7 @@ def _solve_k_cats_sys(
             if n_stms > 0:
                 if route_type == 0:
                     pass
+
                 elif route_type == 1:
                     # these bounds might change for individual streams
                     lag_bds = [bounds_dict['musk_lag_bds']] * n_stms
@@ -797,13 +872,16 @@ def _solve_k_cats_sys(
 
             n_prm_vecs = int(
                 bounds_arr.shape[0] ** opt_schm_vars_dict['n_prm_vecs_exp'])
+
             assert n_prm_vecs >= 3
 
             _opt_list = []
             # TODO: Add minimum value constraints
             if opt_schm_vars_dict['opt_schm'] == 'DE':
-                _opt_list.extend([opt_schm_vars_dict['mu_sc_fac_bds'],
-                                  opt_schm_vars_dict['cr_cnst_bds']])
+                _opt_list.extend(
+                    [opt_schm_vars_dict['mu_sc_fac_bds'],
+                     opt_schm_vars_dict['cr_cnst_bds']])
+
             elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
                 acc_rate = opt_schm_vars_dict['acc_rate']
 
@@ -816,22 +894,30 @@ def _solve_k_cats_sys(
 
                 n_uvecs = int(
                     bounds_arr.shape[0] ** opt_schm_vars_dict['n_uvecs_exp'])
+                max_chull_tries = opt_schm_vars_dict['max_chull_tries']
 
-                _opt_list.extend([n_temp_rope_prm_vecs,
-                                  n_acc_prm_vecs,
-                                  n_uvecs])
+                _opt_list.extend([
+                    n_temp_rope_prm_vecs,
+                    n_acc_prm_vecs,
+                    n_uvecs,
+                    max_chull_tries])
+
                 print(f'n_temp_rope_prm_vecs: {n_temp_rope_prm_vecs}')
                 print(f'n_acc_prm_vecs: {n_acc_prm_vecs}')
                 print(f'n_uvecs: {n_uvecs}')
+                print(f'max_chull_tries: {max_chull_tries}')
+
             else:
                 raise Exception
 
             print(f'n_prm_vecs: {n_prm_vecs}')
-            _opt_list.extend([n_prm_vecs,
-                              opt_schm_vars_dict['max_iters'],
-                              opt_schm_vars_dict['max_cont_iters'],
-                              opt_schm_vars_dict['obj_ftn_tol'],
-                              opt_schm_vars_dict['prm_pcnt_tol']])
+            _opt_list.extend([
+                n_prm_vecs,
+                opt_schm_vars_dict['max_iters'],
+                opt_schm_vars_dict['max_cont_iters'],
+                opt_schm_vars_dict['obj_ftn_tol'],
+                opt_schm_vars_dict['prm_pcnt_tol']])
+
             curr_cat_params.append(_opt_list)
 
         else:
@@ -846,6 +932,7 @@ def _solve_k_cats_sys(
 
         if n_stms:
             stms_idxs = np.array(curr_us_stms_idxs, dtype=np.int32)
+
         else:
             stms_idxs = np.array([0], dtype=np.int32)
 
@@ -868,43 +955,49 @@ def _solve_k_cats_sys(
         else:
             raise ValueError(f'Incorrect time_freq: {time_freq}')
 
-        curr_cat_params.append([curr_us_stm,
-                                stms_idxs,
-                                cat_to_idx_dict,
-                                stm_to_idx_dict])
+        curr_cat_params.append([
+            curr_us_stm,
+            stms_idxs,
+            cat_to_idx_dict,
+            stm_to_idx_dict])
 
-        curr_cat_params.append([in_dem_net_arr,
-                                cats_outflow_arr,
-                                stms_inflow_arr,
-                                stms_outflow_arr])
+        curr_cat_params.append([
+            in_dem_net_arr,
+            cats_outflow_arr,
+            stms_inflow_arr,
+            stms_outflow_arr])
 
-        curr_cat_params.append([warm_up_steps,
-                                conv_ratio,
-                                route_type,
-                                int(cat),
-                                n_cpus,
-                                n_stms,
-                                n_cells,
-                                use_obs_flow_flag,
-                                n_hm_params,
-                                use_step_flag,
-                                use_step_arr,
-                                min_q_thresh])
+        curr_cat_params.append([
+            warm_up_steps,
+            conv_ratio,
+            route_type,
+            int(cat),
+            n_cpus,
+            n_stms,
+            n_cells,
+            use_obs_flow_flag,
+            n_hm_params,
+            use_step_flag,
+            use_step_arr,
+            min_q_thresh])
 
         assert cat_area_ratios_arr.shape[0] == n_cells
 
         if calib_run:
-            curr_cat_params.append([cat_area_ratios_arr,
-                                    use_prms_idxs,
-                                    all_prms_flags,
-                                    prms_span_idxs,
-                                    aux_vars,
-                                    aux_var_infos])
+            curr_cat_params.append([
+                cat_area_ratios_arr,
+                use_prms_idxs,
+                all_prms_flags,
+                prms_span_idxs,
+                aux_vars,
+                aux_var_infos])
 
             if opt_schm_vars_dict['opt_schm'] == 'DE':
                 curr_cat_params.append(1)
+
             elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
                 curr_cat_params.append(2)
+
             else:
                 raise ValueError(opt_schm_vars_dict['opt_schm'])
 
@@ -918,19 +1011,24 @@ def _solve_k_cats_sys(
                 (opt_schm_vars_dict['opt_schm'] == 'ROPE')):
 
                 out_db_dict = hbv_opt(curr_cat_params)
+
             else:
                 raise ValueError(
                     f'opt_schm ({opt_schm_vars_dict["opt_schm"]}) '
                     'can only be DE!')
 
-            prms_dict[cat] = (out_db_dict['hbv_prms'],
-                              out_db_dict['route_prms'])
+            prms_dict[cat] = (
+                out_db_dict['hbv_prms'], out_db_dict['route_prms'])
 
             opt_end_time = timeit.default_timer()
-            mean_time = (out_db_dict['n_calls'].mean() *
-                         n_cells /
-                         (opt_end_time - opt_strt_time))
-            print(f'{mean_time:0.4f} hbv loops per second per cell per thread!')
+            mean_time = (
+                out_db_dict['n_calls'].mean() *
+                n_cells /
+                (opt_end_time - opt_strt_time))
+
+            print(f'{mean_time:0.4f} hbv loops per second per cell per '
+                  'thread!')
+
             print('Opt time was: %0.3f seconds' %
                   (opt_end_time - opt_strt_time))
 
@@ -951,16 +1049,19 @@ def _solve_k_cats_sys(
 
         if route_type == 0:
             pass
+
         elif route_type == 1:
             if curr_us_stm == -2:
                 pass
+
             else:
                 route_labs = [[f'lag_{i}', f'wt_{i}']
                               for i in curr_us_stms]
                 out_db_dict['route_labs'] = route_labs
+
         else:
-            raise NotImplementedError('Implement stuff for this routing '
-                                      'type!')
+            raise NotImplementedError(
+                'Implement stuff for this routing type!')
 
         out_db_dict['calib_valid_suff'] = calib_valid_suff
         out_db_dict['use_step_flag'] = use_step_flag
@@ -1072,16 +1173,22 @@ def _solve_k_cats_sys(
                 continue
 
             plt.figure(figsize=(20, 7))
-            plt.plot(stms_inflow_arr[:, stm_to_idx_dict[stm]],
-                     label='inflow',
-                     alpha=0.5)
-            plt.plot(stms_outflow_arr[:, stm_to_idx_dict[stm]],
-                     label='outflow',
-                     alpha=0.5)
+            plt.plot(
+                stms_inflow_arr[:, stm_to_idx_dict[stm]],
+                label='inflow',
+                alpha=0.5)
+
+            plt.plot(
+                stms_outflow_arr[:, stm_to_idx_dict[stm]],
+                label='outflow',
+                alpha=0.5)
+
             plt.legend()
             plt.grid()
+
             out_name = f'{calib_valid_suff}_kfold_{kf_i:02d}__stm_{stm}.png'
             out_path = os.path.join(dirs_dict['hgs'], out_name)
+
             plt.savefig(out_path, dpi=200, bbox_inches='tight')
             plt.close()
 
@@ -1091,20 +1198,28 @@ def _solve_k_cats_sys(
 
             plt.figure(figsize=(20, 7))
             curr_us_stm = all_us_cat_stms[i]
+
             if curr_us_stm != -2:
                 us_inflow = stms_outflow_arr[:, stm_to_idx_dict[curr_us_stm]]
+
             else:
                 us_inflow = np.zeros(stms_outflow_arr.shape[0])
+
             plt.plot(us_inflow, label='us_inflow', alpha=0.5)
-            plt.plot(cats_outflow_arr[:, cat_to_idx_dict[cat]],
-                     label='cat_outflow',
-                     alpha=0.5)
+
+            plt.plot(
+                cats_outflow_arr[:, cat_to_idx_dict[cat]],
+                label='cat_outflow',
+                alpha=0.5)
+
             plt.plot(in_q_df.loc[:, cat].values, label='q_act_arr', alpha=0.5)
 
             plt.legend()
             plt.grid()
+
             out_name = f'{calib_valid_suff}_kfold_{kf_i:02d}__cat_{cat}.png'
             out_path = os.path.join(dirs_dict['hgs'], out_name)
+
             plt.savefig(out_path, dpi=200, bbox_inches='tight')
             plt.close()
 
@@ -1139,28 +1254,36 @@ def _solve_k_cats_sys(
         #     out_stm_outflow_path, sep=str(sep), float_format='%0.5f')
         #======================================================================
 
-        out_cats_flow_df = pd.DataFrame(data=cats_outflow_arr,
-                                        columns=in_cats_prcssed_df.index,
-                                        index=in_q_df.index,
-                                        dtype=float)
+        out_cats_flow_df = pd.DataFrame(
+            data=cats_outflow_arr,
+            columns=in_cats_prcssed_df.index,
+            index=in_q_df.index,
+             dtype=float)
+
         hgs_dict['out_cats_flow_df'] = out_cats_flow_df
 
         out_cats_outflow_path = (
             os.path.join(dirs_dict['hgs'], f'{_iter_str}_cats_outflow.csv'))
+
         out_cats_flow_df.to_csv(
             out_cats_outflow_path, sep=str(sep), float_format='%0.5f')
 
         out_hgs_dfs_path = (
             os.path.join(dirs_dict['hgs'], 'hgs_dfs'))
+
         with shelve.open(out_hgs_dfs_path, 'c', writeback=True) as db:
             kf_str = f'kf_{kf_i:02d}'
+
             if calib_run:
                 if 'calib' not in db:
                     db['calib'] = {}
+
                 db_str = 'calib'
+
             else:
                 if 'valid' not in db:
                     db['valid'] = {}
+
                 db_str = 'valid'
 
             db[db_str][kf_str] = {}
@@ -1175,12 +1298,16 @@ def _solve_k_cats_sys(
 def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
 
     out_dict = {cat: aux_dict[cat] for cat in cats}
+
     if lf:
-        out_dict = {cat: np.array([((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
-                    for cat in cats}
+        out_dict = {
+            cat: np.array([((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
+            for cat in cats}
+
     for cat in cats:
         assert not np.any(np.isnan(out_dict[cat]))
         assert out_dict[cat].ndim == 2
+
     return out_dict
 
 
@@ -1205,9 +1332,11 @@ def _get_k_aux_vars_dict(
         cats_rows_idxs = {}
         cats_cols_idxs = {}
         k = 0
+
         for i in range(loc_rows):
             if k >= n_cats:
                 break
+
             for j in range(loc_cols):
                 cats_rows_idxs[cats[k]] = np.array([i])
                 cats_cols_idxs[cats[k]] = np.array([j])
@@ -1215,6 +1344,7 @@ def _get_k_aux_vars_dict(
 
                 if k >= n_cats:
                     break
+
     else:
         cats_shape = in_dict['shape']
         cats_rows_idxs = {cat: in_dict['rows'][cat] for cat in cats}
@@ -1250,26 +1380,32 @@ def _get_k_aux_vars_dict(
 
 
 def _get_var_dict(in_df_dict, cats, area_dict, db, de, lf):
+
     out_dict = {}
+
     for cat in cats:
         _df_1 = in_df_dict[cat].loc[db:de]
+
         if lf:
             _df_2 = pd.DataFrame(index=_df_1.index, dtype=float, columns=[0])
             _vals = _df_1.values * area_dict[cat]
             _df_2.values[:] = _vals.sum(axis=1).reshape(-1, 1)
             _df_1 = _df_2
+
         out_dict[cat] = _df_1
+
     return out_dict
 
 
-def _get_var_dicts(in_ppts,
-                   in_tems,
-                   in_pets,
-                   area_dict,
-                   cats,
-                   db,
-                   de,
-                   lf):
+def _get_var_dicts(
+        in_ppts,
+        in_tems,
+        in_pets,
+        area_dict,
+        cats,
+        db,
+        de,
+        lf):
 
     _get_var_dict_p = partial(
         _get_var_dict,

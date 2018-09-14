@@ -51,6 +51,8 @@ cdef void pre_rope(
     const DT_UL n_cpus,
           DT_UL *chull_vecs_ctr,
           DT_UL *cont_iter,
+    const DT_UL max_chull_tries,
+          DT_UL *cont_opt_flag,
     ) nogil except +
 
 

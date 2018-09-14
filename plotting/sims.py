@@ -50,18 +50,19 @@ def plot_hbv(plot_args):
 
             all_kfs_dict[i] = kf_dict
 
-        all_tem_arr = np.concatenate([
-            all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
-        all_ppt_arr = np.concatenate([
-            all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
-        all_pet_arr = np.concatenate([
-            all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
-        all_qact_arr = np.concatenate([
-            all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
+        if kfolds > 1:
+            all_tem_arr = np.concatenate([
+                all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
+            all_ppt_arr = np.concatenate([
+                all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
+            all_pet_arr = np.concatenate([
+                all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
+            all_qact_arr = np.concatenate([
+                all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
 
-        if 'extra_us_inflow' in kf_dict:
-            all_us_inflow_arr = np.concatenate([
-                all_kfs_dict[i]['extra_us_inflow']
+            if 'extra_us_inflow' in kf_dict:
+                all_us_inflow_arr = np.concatenate([
+                    all_kfs_dict[i]['extra_us_inflow']
                 for i in all_kfs_dict], axis=0)
 
         for i in range(1, kfolds + 1):
@@ -81,15 +82,15 @@ def plot_hbv(plot_args):
                 plot_simple_flag,
                 plot_wat_bal_flag)
 
+            if kfolds == 1:
+                continue
+
             kf_dict['tem_arr'] = all_tem_arr
             kf_dict['ppt_arr'] = all_ppt_arr
             kf_dict['pet_arr'] = all_pet_arr
             kf_dict['qact_arr'] = all_qact_arr
             if 'extra_us_inflow' in kf_dict:
                 kf_dict['extra_us_inflow'] = all_us_inflow_arr
-
-            if kfolds == 1:
-                continue
 
             kf_i = f'{kf_i}_all'
             _plot_hbv_kf(
@@ -163,8 +164,10 @@ def _plot_k_prm_vecs(
     norm_prm_vecs = prm_vecs.copy()
     for i in range(prm_vecs.shape[0]):
         for j in range(prm_vecs.shape[1]):
-            prm_vecs[i, j] = ((prm_vecs[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) +
-                         bounds_arr[j, 0])
+            prm_vecs[i, j] = (
+                (prm_vecs[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) +
+                bounds_arr[j, 0])
+
             if not np.isfinite(prm_vecs[i, j]):
                 prm_vecs[i, j] = bounds_arr[j, 0]
 
@@ -362,6 +365,10 @@ def _plot_hbv_kf(
     all_output = all_outputs_dict['outs_arr']
     all_output = (rrarea_arr * all_output).sum(axis=0)
 
+    q_sim_arr = all_outputs_dict['qsim_arr']
+
+    del all_outputs_dict
+
     snow_arr = all_output[:, 0]
     liqu_arr = all_output[:, 1]
     sm_arr = all_output[:, 2]
@@ -374,8 +381,6 @@ def _plot_hbv_kf(
     lr_sto_arr = all_output[:, 9]
     lr_run_arr = lr_sto_arr * prms_arr[10]
     comb_run_arr = ur_run_uu + ur_run_ul + lr_run_arr
-
-    q_sim_arr = all_outputs_dict['qsim_arr']
 
     extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
 
@@ -1141,10 +1146,10 @@ def _plot_hbv_kf(
         plt.close('all')
         return
 
-    if plot_simple_flag:
-        save_simple_opt(hbv_figs_dir)
-
     if plot_wat_bal_flag:
         save_water_bal_opt(os.path.join(out_dir, '04_wat_bal_figs'))
+
+    if plot_simple_flag:
+        save_simple_opt(hbv_figs_dir)
 
     return

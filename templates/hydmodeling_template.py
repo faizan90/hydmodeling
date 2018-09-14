@@ -63,6 +63,7 @@ def main():
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
         n_cpus = cpu_count() - 1
+
     else:
         n_cpus = int(n_cpus)
 
@@ -83,16 +84,16 @@ def main():
     plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
-#     get_stms_flag = True
-#     create_stms_rels_flag = True
-#     create_cumm_cats_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
+    get_stms_flag = True
+    create_stms_rels_flag = True
+    create_cumm_cats_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
 
     # =============================================================================
@@ -113,6 +114,7 @@ def main():
         in_gage_shp_loc,
         out_pre_proc_dir,
         n_cpus=n_cpus)
+
     hyd_ansys.run_type = hyd_ansys_runtype
     hyd_ansys.strm_orign_thresh = strm_strt_thresh
     hyd_ansys.max_cell_move = max_cell_move
@@ -138,16 +140,17 @@ def main():
     sep = cfp['DEFAULT']['sep']
 
     if get_stms_flag:
-        get_stms(in_dem_net_shp_file,
-                 in_wat_ids_file,
-                 in_dem_file,
-                 in_cats_file,
-                 in_gauges_coords_file,
-                 out_dem_net_shp_file,
-                 out_df_file,
-                 out_wat_ids_file,
-                 sep,
-                 gauge_coords_field_name)
+        get_stms(
+            in_dem_net_shp_file,
+            in_wat_ids_file,
+            in_dem_file,
+            in_cats_file,
+            in_gauges_coords_file,
+            out_dem_net_shp_file,
+            out_df_file,
+            out_wat_ids_file,
+            sep,
+            gauge_coords_field_name)
 
     #=========================================================================
     # This creates a stream relationship tree based on their order of
@@ -235,6 +238,7 @@ def main():
         cfp['OPT_HYD_MODEL']['obj_ftn_wts'].split(sep), dtype=np.float64)
 
     in_opt_schm_vars_dict = cfp['OPT_SCHM_VARS']
+
     opt_schm_vars_dict = {}
     if in_opt_schm_vars_dict['opt_schm'] == 'DE':
         opt_schm_vars_dict['opt_schm'] = 'DE'
@@ -242,6 +246,7 @@ def main():
             in_opt_schm_vars_dict['mu_sc_fac_bds'].split(sep), dtype=np.float64)
         opt_schm_vars_dict['cr_cnst_bds'] = np.array(
             in_opt_schm_vars_dict['cr_cnst_bds'].split(sep), dtype=np.float64)
+
     elif in_opt_schm_vars_dict['opt_schm'] == 'ROPE':
         opt_schm_vars_dict['opt_schm'] = 'ROPE'
         opt_schm_vars_dict['acc_rate'] = in_opt_schm_vars_dict.getfloat(
@@ -250,6 +255,9 @@ def main():
             'n_uvecs_exp')
         opt_schm_vars_dict['n_rope_prm_vecs_exp'] = (
             in_opt_schm_vars_dict.getfloat('n_rope_prm_vecs_exp'))
+        opt_schm_vars_dict['max_chull_tries'] = (
+            in_opt_schm_vars_dict.getint('max_chull_tries'))
+
     else:
         raise NotImplementedError(
             'Incorrect opt_schm: %s' % in_opt_schm_vars_dict['opt_schm'])
@@ -306,27 +314,29 @@ def main():
     k_d_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_d'].split(sep)]
     k_ll_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ll'].split(sep)]
 
-    all_prms_flags = np.array(
-        [tt_flags,
-         cm_flags,
-         pcm_flags,
-         fc_flags,
-         beta_flags,
-         pwp_flags,
-         ur_thr_flags,
-         k_uu_flags,
-         k_ul_flags,
-         k_d_flags,
-         k_ll_flags], dtype=np.int32)
+    all_prms_flags = np.array([
+        tt_flags,
+        cm_flags,
+        pcm_flags,
+        fc_flags,
+        beta_flags,
+        pwp_flags,
+        ur_thr_flags,
+        k_uu_flags,
+        k_ul_flags,
+        k_d_flags,
+        k_ll_flags],
+        dtype=np.int32)
 
     if optimize_flag:
-        in_cats_prcssed_df = pd.read_csv(in_cats_prcssed_file,
-                                         sep=str(sep),
-                                         index_col=0)
-        in_stms_prcssed_df = pd.read_csv(in_stms_prcssed_file,
-                                         sep=str(sep),
-                                         index_col=0)
-        in_dem_net_df = pd.read_csv(in_dem_net_file, sep=str(sep), index_col=0)
+        in_cats_prcssed_df = pd.read_csv(
+            in_cats_prcssed_file, sep=str(sep), index_col=0)
+
+        in_stms_prcssed_df = pd.read_csv(
+            in_stms_prcssed_file, sep=str(sep), index_col=0)
+
+        in_dem_net_df = pd.read_csv(
+            in_dem_net_file, sep=str(sep), index_col=0)
         in_q_df = pd.read_csv(in_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=in_date_fmt)
 
@@ -351,20 +361,23 @@ def main():
         aux_cell_vars_dict['shape'] = in_cell_vars_dict['shape']
         aux_cell_vars_dict['rows'] = in_cell_vars_dict['rows']
         aux_cell_vars_dict['cols'] = in_cell_vars_dict['cols']
+
         if np.any(all_prms_flags[:, 1]):
             aux_cell_vars_dict['lulc_ratios'] = in_cell_vars_dict[
                 'lulc_ratios']
+
         if np.any(all_prms_flags[:, 2]):
             aux_cell_vars_dict['soil_ratios'] = in_cell_vars_dict[
                 'soil_ratios']
+
         if np.any(all_prms_flags[:, 3]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['aspect'] = in_cell_vars_dict[
-                'aspect']
+            aux_cell_vars_dict['aspect'] = in_cell_vars_dict['aspect']
+
         if np.any(all_prms_flags[:, 4]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['slope'] = in_cell_vars_dict[
-                'slope']
+            aux_cell_vars_dict['slope'] = in_cell_vars_dict['slope']
 
         _beg_t = timeit.default_timer()
+
         solve_cats_sys(
             in_cats_prcssed_df,
             in_stms_prcssed_df,
@@ -418,6 +431,7 @@ def main():
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
+
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
@@ -436,6 +450,7 @@ def main():
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
+
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
@@ -454,6 +469,7 @@ def main():
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
+
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
@@ -472,6 +488,7 @@ def main():
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
+
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
@@ -487,10 +504,13 @@ def main():
 
         ann_cyc_fdc_plot_dir = os.path.join(
             in_hyd_mod_dir, r'08_ann_cycs_fdc_comparison')
-        plot_ann_cycs_fdcs_comp(hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
+
+        plot_ann_cycs_fdcs_comp(
+            hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
+
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
@@ -508,6 +528,7 @@ def main():
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
+
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
@@ -524,6 +545,7 @@ def main():
 
         plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean(
             'plot_simple_opt_flag')
+
         plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
             'plot_wat_bal_flag')
 
@@ -536,6 +558,7 @@ def main():
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
+
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
     #==========================================================================

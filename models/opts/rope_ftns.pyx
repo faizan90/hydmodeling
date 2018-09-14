@@ -85,6 +85,7 @@ cdef void get_new_chull_vecs(
 
     for i in range(n_prm_vecs):
         sort_obj_vals[i] = pre_obj_vals[i]
+
     quick_sort(&sort_obj_vals[0], 0, n_prm_vecs - 1)
 
     for i in range(n_prm_vecs):
@@ -120,6 +121,7 @@ cdef void get_new_chull_vecs(
     ctr = 0
     for i in range(n_acc_vecs):
         depths_arr[i] = mins[0, i]
+
         for j in range(1, n_cpus):
             if mins[j, i] >= depths_arr[i]:
                 continue
@@ -131,7 +133,9 @@ cdef void get_new_chull_vecs(
 
         for j in range(n_prms):
             chull_vecs[ctr, j] = acc_vecs[i, j]
+
         ctr += 1
+
     chull_vecs_ctr[0] = ctr
 
     # just to be sure
@@ -155,6 +159,7 @@ cdef void adjust_rope_bds(
     for j in range(n_prms):
         min_prm_val = +INF
         max_prm_val = -INF
+
         for i in range(chull_vecs_ctr):
             if chull_vecs[i, j] < min_prm_val:
                 min_prm_val = chull_vecs[i, j]
@@ -190,17 +195,26 @@ cdef void gen_vecs_in_chull(
     const DT_UL n_hbv_prms,
     const DT_UL chull_vecs_ctr,
     const DT_UL n_cpus,
+    const DT_UL max_chull_tries,
+          DT_UL *cont_opt_flag,
     ) nogil except +:
 
     cdef:
-        Py_ssize_t i, j, k, m, ctr, cfc_i, cpwp_i
+        Py_ssize_t i, j, k, m, cfc_i, cpwp_i
+        Py_ssize_t tries_ctr, ctr, pre_ctr
         DT_UL n_prm_vecs = prm_vecs.shape[0]
         DT_UL n_prms = prm_vecs.shape[1]
         DT_UL n_temp_rope_prm_vecs = temp_rope_prm_vecs.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
 
+    with gil: print('\n')
+
     ctr = 0
+    tries_ctr = 0
     while ctr < n_prm_vecs:
+        with gil: print(f'Try no.: {tries_ctr}, ctr: {ctr}')
+        pre_ctr = ctr
+
         for i in range(n_temp_rope_prm_vecs):
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = (
@@ -215,6 +229,7 @@ cdef void gen_vecs_in_chull(
                 # TODO: guarantee that it will break eventually
                 while (temp_rope_prm_vecs[i, cpwp_i] >
                        temp_rope_prm_vecs[i, cfc_i]):
+
                     temp_rope_prm_vecs[i, cpwp_i] = rope_bds_dfs[cpwp_i, 0] + (
                         rand_c() * rope_bds_dfs[cpwp_i, 1])
 
@@ -255,6 +270,7 @@ cdef void gen_vecs_in_chull(
 
         for i in range(n_temp_rope_prm_vecs):
             depths_arr[i] = mins[0, i]
+
             for j in range(1, n_cpus):
                 if mins[j, i] >= depths_arr[i]:
                     continue
@@ -269,7 +285,19 @@ cdef void gen_vecs_in_chull(
 
             for j in range(n_prms):
                 prm_vecs[ctr, j] = temp_rope_prm_vecs[i, j]
+
             ctr += 1
+
+        if not (ctr - pre_ctr):
+            tries_ctr += 1
+
+        if tries_ctr >= max_chull_tries:
+            with gil: 
+                print('***Could not generate points inside the chull!***')
+
+            cont_opt_flag[0] = 0
+
+            break
     return
 
 
@@ -299,6 +327,8 @@ cdef void pre_rope(
     const DT_UL n_cpus,
           DT_UL *chull_vecs_ctr,
           DT_UL *cont_iter,
+    const DT_UL max_chull_tries,
+          DT_UL *cont_opt_flag,
     ) nogil except +:
 
     get_new_chull_vecs(
@@ -319,10 +349,7 @@ cdef void pre_rope(
 
     with gil: assert chull_vecs_ctr[0] >= 3, chull_vecs_ctr[0]
 
-    adjust_rope_bds(
-        chull_vecs,
-        rope_bds_dfs,
-        chull_vecs_ctr[0])
+    adjust_rope_bds(chull_vecs, rope_bds_dfs, chull_vecs_ctr[0])
 
     gen_vecs_in_chull(
         depths_arr,
@@ -341,7 +368,9 @@ cdef void pre_rope(
         dot_test_sort,
         n_hbv_prms,
         chull_vecs_ctr[0],
-        n_cpus)
+        n_cpus,
+        max_chull_tries,
+        cont_opt_flag)
 
     cont_iter[0] += 1
     return
