@@ -5,7 +5,7 @@ import h5py
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
-from .sims import plot_hbv, _plot_prm_vecs, _plot_hbv_kf
+from .sims import plot_hbv, _plot_prm_vecs, _plot_hbv_kf, plot_opt_evo
 from .k_folds import (
     plot_cat_kfold_effs,
     _kfold_best_prms,
@@ -73,8 +73,7 @@ def plot_kfolds_best_prms(dbs_dir, n_cpus):
 
 
 def plot_prm_vecs(dbs_dir, n_cpus):
-    '''Plot the population
-    '''
+
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
     assert cats_dbs
@@ -95,10 +94,42 @@ def plot_prm_vecs(dbs_dir, n_cpus):
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
-            print('Error in plot_pops:', msg)
+            print('Error in _plot_prm_vecs:', msg)
     else:
         for opt_res in opt_res_gen:
             _plot_prm_vecs(opt_res)
+    return
+
+
+def plot_opt_evos(dbs_dir, n_cpus):
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+
+    assert cats_dbs
+
+    n_cats = len(cats_dbs)
+    n_cpus = min(n_cats, n_cpus)
+
+    n_cpus = min(n_cats, n_cpus)
+
+    opt_res_gen = (cat_db for cat_db in cats_dbs)
+
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+
+        try:
+            print(list(mp_pool.uimap(plot_opt_evo, opt_res_gen)))
+            mp_pool.clear()
+
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in plot_opt_evo:', msg)
+
+    else:
+        for opt_res in opt_res_gen:
+            plot_opt_evo(opt_res)
     return
 
 
@@ -108,6 +139,7 @@ def plot_vars(
         plot_simple_opt_flag=False,
         plot_wat_bal_flag=False,
         n_cpus=1):
+
     '''Plot the optimization results
     '''
 

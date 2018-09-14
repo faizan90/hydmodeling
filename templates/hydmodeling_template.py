@@ -28,7 +28,8 @@ from hydmodeling import (
     plot_kfolds_best_prms,
     plot_kfolds_best_hbv_prms_2d,
     plot_ann_cycs_fdcs_comp,
-    plot_prm_trans_perfs)
+    plot_prm_trans_perfs,
+    plot_opt_evos)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -81,20 +82,22 @@ def main():
     plot_2d_kfold_prms_flag = False
     plot_ann_cys_fdcs_flag = False
     plot_prm_trans_comp_flag = False
+    plot_opt_evo_flag = False
     plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
-#     get_stms_flag = True
-#     create_stms_rels_flag = True
-#     create_cumm_cats_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
+    get_stms_flag = True
+    create_stms_rels_flag = True
+    create_cumm_cats_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_hbv_vars_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -525,6 +528,24 @@ def main():
         print('Plotting catchment parameter comparison...')
 
         plot_prm_trans_perfs(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #==========================================================================
+    # Plot catchment parameter transfer comparison
+    #==========================================================================
+    if plot_opt_evo_flag:
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting optimization parameters evolution...')
+
+        plot_opt_evos(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
