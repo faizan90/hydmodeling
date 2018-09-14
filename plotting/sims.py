@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from matplotlib.font_manager import FontProperties as f_props
 
 from ..models import (
@@ -109,9 +110,11 @@ def plot_hbv(plot_args):
 
 
 def _plot_prm_vecs(cat_db):
+
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'06_prm_vecs')
+
         if not os.path.exists(out_dir):
             try:
                 os.mkdir(out_dir)
@@ -131,6 +134,8 @@ def _plot_prm_vecs(cat_db):
             prm_syms = db['cdata/use_prms_labs'][...]
             cobj_vals = calib_db[kf_str + '/curr_obj_vals'][...]
             pobj_vals = calib_db[kf_str + '/pre_obj_vals'][...]
+            iter_prm_vecs = calib_db[kf_str + '/iter_prm_vecs'][...]
+
             _plot_k_prm_vecs(
                 i,
                 cat,
@@ -140,7 +145,8 @@ def _plot_prm_vecs(cat_db):
                 cobj_vals,
                 pobj_vals,
                 prm_syms,
-                opt_schm)
+                opt_schm,
+                iter_prm_vecs)
     return
 
 
@@ -153,165 +159,231 @@ def _plot_k_prm_vecs(
         cobj_vals,
         pobj_vals,
         prm_syms,
-        opt_schm):
+        opt_schm,
+        iter_prm_vecs):
 
-    plt.figure(figsize=(max(35, bounds_arr.shape[0]), 13))
-    tick_font_size = 10
+#     plt.figure(figsize=(max(35, bounds_arr.shape[0]), 13))
+#     tick_font_size = 10
+#
+#     stats_cols = ['min', 'max', 'mean', 'stdev', 'min_bd', 'max_bd']
+#     n_stats_cols = len(stats_cols)
+#
+#     norm_prm_vecs = prm_vecs.copy()
+#     for i in range(prm_vecs.shape[0]):
+#         for j in range(prm_vecs.shape[1]):
+#             prm_vecs[i, j] = (
+#                 (prm_vecs[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) +
+#                 bounds_arr[j, 0])
+#
+#             if not np.isfinite(prm_vecs[i, j]):
+#                 prm_vecs[i, j] = bounds_arr[j, 0]
+#
+#     n_params = bounds_arr.shape[0]
+#
+#     curr_min = prm_vecs.min(axis=0)
+#     curr_max = prm_vecs.max(axis=0)
+#     curr_mean = prm_vecs.mean(axis=0)
+#     curr_stdev = prm_vecs.std(axis=0)
+#     min_opt_bounds = bounds_arr.min(axis=1)
+#     max_opt_bounds = bounds_arr.max(axis=1)
+#     xx, yy = np.meshgrid(np.arange(-0.5, n_params, 1),
+#                          np.arange(-0.5, n_stats_cols, 1))
+#
+#     stats_arr = np.vstack([curr_min,
+#                            curr_max,
+#                            curr_mean,
+#                            curr_stdev,
+#                            min_opt_bounds,
+#                            max_opt_bounds])
+#
+#     stats_ax = plt.subplot2grid((4, 1), (0, 0), rowspan=1, colspan=1)
+#     stats_ax.pcolormesh(xx,
+#                         yy,
+#                         stats_arr,
+#                         cmap=plt.get_cmap('Blues'),
+#                         vmin=0.0,
+#                         vmax=1e30)
+#
+#     stats_xx, stats_yy = np.meshgrid(np.arange(n_stats_cols),
+#                                      np.arange(n_params))
+#     stats_xx = stats_xx.ravel()
+#     stats_yy = stats_yy.ravel()
+#
+#     [stats_ax.text(
+#         stats_yy[i],
+#          stats_xx[i],
+#          (f'{stats_arr[stats_xx[i], stats_yy[i]]:0.4f}').rstrip('0'),
+#          va='center',
+#          ha='center')
+#      for i in range(int(n_stats_cols * n_params))]
+#
+#     stats_ax.set_xticks(list(range(0, n_params)))
+#     stats_ax.set_xticklabels(prm_syms)
+#     stats_ax.set_xlim(-0.5, n_params - 0.5)
+#     stats_ax.set_yticks(list(range(0, n_stats_cols)))
+#     stats_ax.set_ylim(-0.5, n_stats_cols - 0.5)
+#     stats_ax.set_yticklabels(stats_cols)
+#
+#     stats_ax.spines['left'].set_position(('outward', 10))
+#     stats_ax.spines['right'].set_position(('outward', 10))
+#     stats_ax.spines['top'].set_position(('outward', 10))
+#     stats_ax.spines['bottom'].set_visible(False)
+#
+#     stats_ax.set_ylabel('Statistics')
+#
+#     stats_ax.tick_params(labelleft=True,
+#                          labelbottom=False,
+#                          labeltop=True,
+#                          labelright=True)
+#
+#     stats_ax.xaxis.set_ticks_position('top')
+#     stats_ax.yaxis.set_ticks_position('both')
+#
+#     for _tick in stats_ax.get_xticklabels():
+#         _tick.set_rotation(60)
+#
+#     params_ax = plt.subplot2grid((4, 1),
+#                                  (1, 0),
+#                                  rowspan=3,
+#                                  colspan=1,
+#                                  sharex=stats_ax)
+#     plot_range = list(range(n_params))
+#     for i in range(prm_vecs.shape[0]):
+#         params_ax.plot(plot_range,
+#                        norm_prm_vecs[i],
+#                        alpha=0.1,
+#                        color='k')
+#
+#     params_ax.set_ylim(0., 1.)
+#     params_ax.set_xticks(plot_range)
+#     params_ax.set_xticklabels(prm_syms)
+#     params_ax.set_xlim(-0.5, n_params - 0.5)
+#     params_ax.set_ylabel('Normalized value')
+#     params_ax.grid()
+#
+#     params_ax.tick_params(labelleft=True,
+#                           labelbottom=True,
+#                           labeltop=False,
+#                           labelright=True)
+#     params_ax.yaxis.set_ticks_position('both')
+#
+#     for _tick in params_ax.get_xticklabels():
+#         _tick.set_rotation(60)
+#
+#     title_str = ('Distributed HBV parameters - '
+#                  f'{opt_schm} final prm_vecs (n={prm_vecs.shape[0]})')
+#     plt.suptitle(title_str, size=tick_font_size + 10)
+#     plt.subplots_adjust(hspace=0.15)
+#
+#     plt.savefig(str(Path(out_dir, f'hbv_prm_vecs_{cat}_kf_{kf_i:02d}.png')),
+#                 bbox_inches='tight')
+#     plt.close()
+#
+#     # curr_obj_vals
+#     * _, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+#     n_vals = float(cobj_vals.shape[0])
+#
+#     probs = 1 - (np.arange(1.0, n_vals + 1) / (n_vals + 1))
+#
+#     ax1.set_title(('Final objective function distribution\n'
+#                    f'Min. obj.: {cobj_vals.min():0.4f}, '
+#                    f'max. obj.: {cobj_vals.max():0.4f}'))
+#     ax1.plot(np.sort(cobj_vals), probs, marker='o', alpha=0.8)
+#     ax1.set_ylabel('Non-exceedence Probability (-)')
+#     ax1.set_xlim(ax1.set_xlim()[1], ax1.set_xlim()[0])
+#     ax1.grid()
+#
+#     ax2.hist(cobj_vals, bins=20)
+#     ax2.set_xlabel('Obj. ftn. values (-)')
+#     ax2.set_ylabel('Frequency (-)')
+#     plt.savefig(str(Path(out_dir, f'hbv_cobj_cdf_{cat}_kf_{kf_i:02d}.png')),
+#                 bbox_inches='tight')
+#
+#     # pre_obj_vals
+#     * _, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+#     n_vals = float(pobj_vals.shape[0])
+#
+#     probs = 1 - (np.arange(1.0, n_vals + 1) / (n_vals + 1))
+#
+#     ax1.set_title(('2nd last objective function distribution\n'
+#                    f'Min. obj.: {pobj_vals.min():0.4f}, '
+#                    f'max. obj.: {pobj_vals.max():0.4f}'))
+#     ax1.plot(np.sort(pobj_vals), probs, marker='o', alpha=0.8)
+#     ax1.set_ylabel('Non-exceedence Probability (-)')
+#     ax1.set_xlim(ax1.set_xlim()[1], ax1.set_xlim()[0])
+#     ax1.grid()
+#
+#     ax2.hist(pobj_vals, bins=20)
+#     ax2.set_xlabel('Obj. ftn. values (-)')
+#     ax2.set_ylabel('Frequency (-)')
+#     plt.savefig(str(Path(out_dir, f'hbv_pobj_cdf_{cat}_kf_{kf_i:02d}.png')),
+#                 bbox_inches='tight')
+#     plt.close('all')
 
-    stats_cols = ['min', 'max', 'mean', 'stdev', 'min_bd', 'max_bd']
-    n_stats_cols = len(stats_cols)
+    prm_cols = 7
+    prm_rows = 7
 
-    norm_prm_vecs = prm_vecs.copy()
-    for i in range(prm_vecs.shape[0]):
-        for j in range(prm_vecs.shape[1]):
-            prm_vecs[i, j] = (
-                (prm_vecs[i, j] * (bounds_arr[j, 1] - bounds_arr[j, 0])) +
-                bounds_arr[j, 0])
+    tot_sps_per_fig = prm_cols * prm_rows
 
-            if not np.isfinite(prm_vecs[i, j]):
-                prm_vecs[i, j] = bounds_arr[j, 0]
+    tot_iters = iter_prm_vecs.shape[0]
+    min_lim = 0  # np.nanmin(iter_prm_vecs)
+    max_lim = 1  # np.nanmax(iter_prm_vecs)
 
-    n_params = bounds_arr.shape[0]
+    tot_figs = int(np.ceil(tot_iters / tot_sps_per_fig))
+    prm_iter_ct = 0
 
-    curr_min = prm_vecs.min(axis=0)
-    curr_max = prm_vecs.max(axis=0)
-    curr_mean = prm_vecs.mean(axis=0)
-    curr_stdev = prm_vecs.std(axis=0)
-    min_opt_bounds = bounds_arr.min(axis=1)
-    max_opt_bounds = bounds_arr.max(axis=1)
-    xx, yy = np.meshgrid(np.arange(-0.5, n_params, 1),
-                         np.arange(-0.5, n_stats_cols, 1))
+    stop_plotting = False
 
-    stats_arr = np.vstack([curr_min,
-                           curr_max,
-                           curr_mean,
-                           curr_stdev,
-                           min_opt_bounds,
-                           max_opt_bounds])
+    for fig_no in range(tot_figs):
+        if stop_plotting:
+            break
 
-    stats_ax = plt.subplot2grid((4, 1), (0, 0), rowspan=1, colspan=1)
-    stats_ax.pcolormesh(xx,
-                        yy,
-                        stats_arr,
-                        cmap=plt.get_cmap('Blues'),
-                        vmin=0.0,
-                        vmax=1e30)
+        plt.figure(figsize=(20, 10))
+        axes = GridSpec(prm_rows, prm_cols)
 
-    stats_xx, stats_yy = np.meshgrid(np.arange(n_stats_cols),
-                                     np.arange(n_params))
-    stats_xx = stats_xx.ravel()
-    stats_yy = stats_yy.ravel()
+        for i in range(prm_rows):
+            for j in range(prm_cols):
+                if np.isnan(iter_prm_vecs[prm_iter_ct, 0, 0]):
+                    stop_plotting = True
+                    break
 
-    [stats_ax.text(
-        stats_yy[i],
-         stats_xx[i],
-         (f'{stats_arr[stats_xx[i], stats_yy[i]]:0.4f}').rstrip('0'),
-         va='center',
-         ha='center')
-     for i in range(int(n_stats_cols * n_params))]
+                ax = plt.subplot(axes[i, j])
 
-    stats_ax.set_xticks(list(range(0, n_params)))
-    stats_ax.set_xticklabels(prm_syms)
-    stats_ax.set_xlim(-0.5, n_params - 0.5)
-    stats_ax.set_yticks(list(range(0, n_stats_cols)))
-    stats_ax.set_ylim(-0.5, n_stats_cols - 0.5)
-    stats_ax.set_yticklabels(stats_cols)
+                for k in range(iter_prm_vecs.shape[1]):
+                    ax.plot(iter_prm_vecs[prm_iter_ct, k], alpha=0.1)
 
-    stats_ax.spines['left'].set_position(('outward', 10))
-    stats_ax.spines['right'].set_position(('outward', 10))
-    stats_ax.spines['top'].set_position(('outward', 10))
-    stats_ax.spines['bottom'].set_visible(False)
+                ax.set_ylim(min_lim, max_lim)
 
-    stats_ax.set_ylabel('Statistics')
+                ax.text(
+                    0.95,
+                    0.95,
+                    f'({prm_iter_ct})',
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    transform=ax.transAxes)
 
-    stats_ax.tick_params(labelleft=True,
-                         labelbottom=False,
-                         labeltop=True,
-                         labelright=True)
+                ax.set_xticklabels([])
+                ax.set_yticklabels([])
 
-    stats_ax.xaxis.set_ticks_position('top')
-    stats_ax.yaxis.set_ticks_position('both')
+                prm_iter_ct += 1
 
-    for _tick in stats_ax.get_xticklabels():
-        _tick.set_rotation(60)
+                if prm_iter_ct >= tot_iters:
+                    stop_plotting = True
+                    break
 
-    params_ax = plt.subplot2grid((4, 1),
-                                 (1, 0),
-                                 rowspan=3,
-                                 colspan=1,
-                                 sharex=stats_ax)
-    plot_range = list(range(n_params))
-    for i in range(prm_vecs.shape[0]):
-        params_ax.plot(plot_range,
-                       norm_prm_vecs[i],
-                       alpha=0.1,
-                       color='k')
+            if stop_plotting:
+                break
 
-    params_ax.set_ylim(0., 1.)
-    params_ax.set_xticks(plot_range)
-    params_ax.set_xticklabels(prm_syms)
-    params_ax.set_xlim(-0.5, n_params - 0.5)
-    params_ax.set_ylabel('Normalized value')
-    params_ax.grid()
+        plt.suptitle(
+            f'Parameter vector evolution per iteration\n'
+            f'Vectors per iteration: {prm_vecs.shape[0]}')
 
-    params_ax.tick_params(labelleft=True,
-                          labelbottom=True,
-                          labeltop=False,
-                          labelright=True)
-    params_ax.yaxis.set_ticks_position('both')
+        out_fig_name = (
+            f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_fig_{fig_no:02d}.png')
 
-    for _tick in params_ax.get_xticklabels():
-        _tick.set_rotation(60)
+        plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
+        plt.close()
 
-    title_str = ('Distributed HBV parameters - '
-                 f'{opt_schm} final prm_vecs (n={prm_vecs.shape[0]})')
-    plt.suptitle(title_str, size=tick_font_size + 10)
-    plt.subplots_adjust(hspace=0.15)
-
-    plt.savefig(str(Path(out_dir, f'hbv_prm_vecs_{cat}_kf_{kf_i:02d}.png')),
-                bbox_inches='tight')
-    plt.close()
-
-    # curr_obj_vals
-    * _, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
-    n_vals = float(cobj_vals.shape[0])
-
-    probs = 1 - (np.arange(1.0, n_vals + 1) / (n_vals + 1))
-
-    ax1.set_title(('Final objective function distribution\n'
-                   f'Min. obj.: {cobj_vals.min():0.4f}, '
-                   f'max. obj.: {cobj_vals.max():0.4f}'))
-    ax1.plot(np.sort(cobj_vals), probs, marker='o', alpha=0.8)
-    ax1.set_ylabel('Non-exceedence Probability (-)')
-    ax1.set_xlim(ax1.set_xlim()[1], ax1.set_xlim()[0])
-    ax1.grid()
-
-    ax2.hist(cobj_vals, bins=20)
-    ax2.set_xlabel('Obj. ftn. values (-)')
-    ax2.set_ylabel('Frequency (-)')
-    plt.savefig(str(Path(out_dir, f'hbv_cobj_cdf_{cat}_kf_{kf_i:02d}.png')),
-                bbox_inches='tight')
-
-    # pre_obj_vals
-    * _, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
-    n_vals = float(pobj_vals.shape[0])
-
-    probs = 1 - (np.arange(1.0, n_vals + 1) / (n_vals + 1))
-
-    ax1.set_title(('2nd last objective function distribution\n'
-                   f'Min. obj.: {pobj_vals.min():0.4f}, '
-                   f'max. obj.: {pobj_vals.max():0.4f}'))
-    ax1.plot(np.sort(pobj_vals), probs, marker='o', alpha=0.8)
-    ax1.set_ylabel('Non-exceedence Probability (-)')
-    ax1.set_xlim(ax1.set_xlim()[1], ax1.set_xlim()[0])
-    ax1.grid()
-
-    ax2.hist(pobj_vals, bins=20)
-    ax2.set_xlabel('Obj. ftn. values (-)')
-    ax2.set_ylabel('Frequency (-)')
-    plt.savefig(str(Path(out_dir, f'hbv_pobj_cdf_{cat}_kf_{kf_i:02d}.png')),
-                bbox_inches='tight')
-    plt.close('all')
     return
 
 

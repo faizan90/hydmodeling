@@ -84,17 +84,17 @@ def main():
     plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
-    get_stms_flag = True
-    create_stms_rels_flag = True
-    create_cumm_cats_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
+#     get_stms_flag = True
+#     create_stms_rels_flag = True
+#     create_cumm_cats_flag = True
+#     optimize_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
     plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_hbv_vars_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
+#     plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -454,25 +454,6 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
-    # Plot hbv prms for all catchments per kfold in 2d
-    #==========================================================================
-
-    if plot_2d_kfold_prms_flag:
-        _beg_t = timeit.default_timer()
-
-        print('\n\n')
-        print('#' * 10)
-        print('Plotting HBV prms in 2D...')
-
-        plot_kfolds_best_hbv_prms_2d(dbs_dir)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-
-        print(f'Took {_tot_t:0.4f} seconds!')
-        print('#' * 10)
-
     #============================ ==============================================
     # Plot final parameter population
     #==========================================================================
@@ -485,6 +466,25 @@ def main():
         print('Plotting parameter vectors...')
 
         plot_prm_vecs(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #==========================================================================
+    # Plot hbv prms for all catchments per kfold in 2d
+    #==========================================================================
+
+    if plot_2d_kfold_prms_flag:
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting HBV prms in 2D...')
+
+        plot_kfolds_best_hbv_prms_2d(dbs_dir)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t

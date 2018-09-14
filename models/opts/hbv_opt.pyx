@@ -118,6 +118,7 @@ cpdef dict hbv_opt(args):
         DT_D[::1] obj_ftn_wts, obj_doubles
         DT_D[:, ::1] curr_opt_prms, bounds, bds_dfs
         DT_D[:, ::1] prm_vecs, temp_prm_vecs
+        DT_D[:, :, ::1] iter_prm_vecs
         #======================================================================
 
         #======================================================================
@@ -129,7 +130,6 @@ cpdef dict hbv_opt(args):
 
         DT_D[::1] mu_sc_fac_bds, cr_cnst_bds, curr_obj_vals
         DT_D[:, ::1] v_j_g, u_j_gs
-        # TODO: save populatiopn state at certain iterations to see how they evolve 
 
         # ROPE related parameters
         DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs, n_uvecs
@@ -142,7 +142,6 @@ cpdef dict hbv_opt(args):
         DT_D[:, ::1] acc_vecs, chull_vecs, rope_bds_dfs, uvecs
         DT_D[:, ::1] prms_mean_thrs_arr
         DT_D[:, ::1] dot_ref, dot_test, dot_test_sort, temp_rope_prm_vecs
-
         #======================================================================
 
         #======================================================================
@@ -275,6 +274,9 @@ cpdef dict hbv_opt(args):
     prm_vecs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
     temp_prm_vecs = prm_vecs.copy()
 
+    iter_prm_vecs = np.full(
+        (max_iters + 1, n_prm_vecs, n_prms), np.nan, dtype=DT_D_NP)
+
     hbv_prms = np.zeros((n_cpus, n_cells, n_hbv_prms), dtype=DT_D_NP)
 
     n_route_prms = n_prms - n_hm_prms
@@ -312,20 +314,21 @@ cpdef dict hbv_opt(args):
     if use_step_flag:
         mean_ref = get_mean_prt(qact_arr, use_step_arr, &off_idx)
         ln_mean_ref = get_ln_mean_prt(qact_arr, use_step_arr, &off_idx)
-    
+
         demr = get_demr_prt(qact_arr, use_step_arr, &mean_ref, &off_idx)
         ln_demr = get_ln_demr_prt(
             qact_arr, use_step_arr, &ln_mean_ref, &off_idx)
-    
+
         act_std_dev = get_variance_prt(
             &mean_ref, qact_arr, use_step_arr, &off_idx)**0.5
+
     else:
         mean_ref = get_mean(qact_arr, &off_idx)
         ln_mean_ref = get_ln_mean(qact_arr, &off_idx)
-    
+
         demr = get_demr(qact_arr, &mean_ref, &off_idx)
         ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &off_idx)
-    
+
         act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
 
     bds_dfs = np.zeros((n_prms, 2), dtype=DT_D_NP)
@@ -524,6 +527,10 @@ cpdef dict hbv_opt(args):
     print('Initial min. obj. value:', fval_pre_global)
 #     raise Exception('Stop!')
 
+    for i in range(n_prm_vecs):
+        for j in range(n_prms):
+            iter_prm_vecs[0, i, j] = prm_vecs[i, j]
+
     cont_opt_flag = 1
     while cont_opt_flag:
         if opt_schm == 1:
@@ -573,6 +580,16 @@ cpdef dict hbv_opt(args):
 
         if not cont_opt_flag:
             break
+
+        if opt_schm == 1:
+            for i in range(n_prm_vecs):
+                for j in range(n_prms):
+                    iter_prm_vecs[iter_curr + 1, i, j] = u_j_gs[i, j]
+
+        elif opt_schm == 2:
+            for i in range(n_prm_vecs):
+                for j in range(n_prms):
+                    iter_prm_vecs[iter_curr + 1, i, j] = prm_vecs[i, j]
 
         for t_i in prange(
             n_prm_vecs, 
@@ -748,7 +765,8 @@ cpdef dict hbv_opt(args):
         'total_vars': total_vars,
         'n_calls': np.asarray(n_calls),
         'qsim_arr': np.asarray(qsim_mult_arr[tid]),
-        'pre_obj_vals' : np.asarray(pre_obj_vals)}
+        'pre_obj_vals' : np.asarray(pre_obj_vals),
+        'iter_prm_vecs': np.asarray(iter_prm_vecs)}
 
     if opt_schm == 1:
         out_dict['prm_vecs'] = np.asarray(prm_vecs)
