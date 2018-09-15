@@ -9,9 +9,9 @@ import time
 import timeit
 import pickle
 import configparser as cfpm
-from psutil import cpu_count
 from collections import OrderedDict
 
+from psutil import cpu_count
 import numpy as np
 import pandas as pd
 
@@ -86,9 +86,9 @@ def main():
     plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
-    get_stms_flag = True
-    create_stms_rels_flag = True
-    create_cumm_cats_flag = True
+#     get_stms_flag = True
+#     create_stms_rels_flag = True
+#     create_cumm_cats_flag = True
     optimize_flag = True
     plot_kfold_perfs_flag = True
     plot_best_kfold_prms_flag = True
@@ -260,6 +260,12 @@ def main():
             in_opt_schm_vars_dict.getfloat('n_rope_prm_vecs_exp'))
         opt_schm_vars_dict['max_chull_tries'] = (
             in_opt_schm_vars_dict.getint('max_chull_tries'))
+
+        opt_schm_vars_dict['depth_ftn_type'] = (
+            in_opt_schm_vars_dict.getint('depth_ftn_type'))
+
+        opt_schm_vars_dict['min_pts_in_chull'] = (
+            in_opt_schm_vars_dict.getint('min_pts_in_chull'))
 
     else:
         raise NotImplementedError(

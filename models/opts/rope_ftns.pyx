@@ -30,20 +30,43 @@ warm_up()
 cdef extern from "data_depths.h" nogil:
     cdef:
         void quick_sort(
-                double *arr,
-                long first_index,
-                long last_index)
+            double *arr,
+            long first_index,
+            long last_index)
 
         long searchsorted(
-                const double *arr,
-                const double value,
-                const long arr_size)
+            const double *arr,
+            const double value,
+            const long arr_size)
 
         void depth_ftn_c(
             const double *ref,
             const double *test,
             const double *uvecs,
                   double *dot_ref,
+                  double *dot_test,
+                  double *dot_test_sort,
+                  long *temp_mins,
+                  long *mins,
+            const long n_ref,
+            const long n_test,
+            const long n_uvecs,
+            const long n_dims,
+            const long n_cpus)
+
+        void pre_depth_c(
+            const double *ref,
+            const double *uvecs,
+                  double *dot_ref_sort,
+            const long n_ref,
+            const long n_uvecs,
+            const long n_dims,
+            const long n_cpus)
+
+        void post_depth_c(
+            const double *test,
+            const double *uvecs,
+                  double *dot_ref_sort,
                   double *dot_test,
                   double *dot_test_sort,
                   long *temp_mins,
@@ -197,6 +220,8 @@ cdef void gen_vecs_in_chull(
     const DT_UL n_cpus,
     const DT_UL max_chull_tries,
           DT_UL *cont_opt_flag,
+    const DT_UL depth_ftn_type,
+    const DT_UL min_pts_in_chull,
     ) nogil except +:
 
     cdef:
@@ -208,6 +233,16 @@ cdef void gen_vecs_in_chull(
         DT_UL n_uvecs = uvecs.shape[0]
 
     with gil: print('\n')
+
+    if depth_ftn_type == 2:
+        pre_depth_c(
+            &chull_vecs[0, 0],
+            &uvecs[0, 0],
+            &dot_ref[0, 0],
+            chull_vecs_ctr,
+            n_uvecs,
+            n_prms,
+            n_cpus)
 
     ctr = 0
     tries_ctr = 0
@@ -253,20 +288,36 @@ cdef void gen_vecs_in_chull(
                 temp_mins[j, i] = n_temp_rope_prm_vecs
                 mins[j, i] = n_temp_rope_prm_vecs
 
-        depth_ftn_c(
-            &chull_vecs[0, 0],
-            &temp_rope_prm_vecs[0, 0],
-            &uvecs[0, 0],
-            &dot_ref[0, 0],
-            &dot_test[0, 0],
-            &dot_test_sort[0, 0],
-            &temp_mins[0, 0],
-            &mins[0, 0],
-            chull_vecs_ctr,
-            n_temp_rope_prm_vecs,
-            n_uvecs,
-            n_prms,
-            n_cpus)
+        if depth_ftn_type == 1:
+            depth_ftn_c(
+                &chull_vecs[0, 0],
+                &temp_rope_prm_vecs[0, 0],
+                &uvecs[0, 0],
+                &dot_ref[0, 0],
+                &dot_test[0, 0],
+                &dot_test_sort[0, 0],
+                &temp_mins[0, 0],
+                &mins[0, 0],
+                chull_vecs_ctr,
+                n_temp_rope_prm_vecs,
+                n_uvecs,
+                n_prms,
+                n_cpus)
+
+        elif depth_ftn_type == 2:
+            post_depth_c(
+                &temp_rope_prm_vecs[0, 0],
+                &uvecs[0, 0],
+                &dot_ref[0, 0],
+                &dot_test[0, 0],
+                &dot_test_sort[0, 0],
+                &temp_mins[0, 0],
+                &mins[0, 0],
+                chull_vecs_ctr,
+                n_temp_rope_prm_vecs,
+                n_uvecs,
+                n_prms,
+                n_cpus)
 
         for i in range(n_temp_rope_prm_vecs):
             depths_arr[i] = mins[0, i]
@@ -288,7 +339,7 @@ cdef void gen_vecs_in_chull(
 
             ctr += 1
 
-        if not (ctr - pre_ctr):
+        if (ctr - pre_ctr) < min_pts_in_chull:
             tries_ctr += 1
 
         if tries_ctr >= max_chull_tries:
@@ -329,6 +380,8 @@ cdef void pre_rope(
           DT_UL *cont_iter,
     const DT_UL max_chull_tries,
           DT_UL *cont_opt_flag,
+    const DT_UL depth_ftn_type,
+    const DT_UL min_pts_in_chull,
     ) nogil except +:
 
     get_new_chull_vecs(
@@ -370,7 +423,9 @@ cdef void pre_rope(
         chull_vecs_ctr[0],
         n_cpus,
         max_chull_tries,
-        cont_opt_flag)
+        cont_opt_flag,
+        depth_ftn_type,
+        min_pts_in_chull)
 
     cont_iter[0] += 1
     return

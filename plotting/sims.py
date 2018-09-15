@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on %(date)s
 
@@ -7,9 +6,9 @@ Created on %(date)s
 """
 
 import os
-import h5py
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -63,8 +62,8 @@ def plot_hbv(plot_args):
 
             if 'extra_us_inflow' in kf_dict:
                 all_us_inflow_arr = np.concatenate([
-                    all_kfs_dict[i]['extra_us_inflow']
-                for i in all_kfs_dict], axis=0)
+                    all_kfs_dict[i]['extra_us_inflow'] for i in all_kfs_dict],
+                    axis=0)
 
         for i in range(1, kfolds + 1):
             kf_dict = all_kfs_dict[i]
@@ -118,7 +117,8 @@ def _plot_prm_vecs(cat_db):
         if not os.path.exists(out_dir):
             try:
                 os.mkdir(out_dir)
-            except:
+
+            except FileExistsError:
                 pass
 
         kfolds = db['data'].attrs['kfolds']
@@ -208,10 +208,11 @@ def _plot_k_prm_vecs(
 
     [stats_ax.text(
         stats_yy[i],
-         stats_xx[i],
-         (f'{stats_arr[stats_xx[i], stats_yy[i]]:0.4f}').rstrip('0'),
-         va='center',
-         ha='center')
+        stats_xx[i],
+        (f'{stats_arr[stats_xx[i], stats_yy[i]]:0.4f}').rstrip('0'),
+        va='center',
+        ha='center')
+
      for i in range(int(n_stats_cols * n_params))]
 
     stats_ax.set_xticks(list(range(0, n_params)))
@@ -313,8 +314,9 @@ def _plot_k_prm_vecs(
     ax2.hist(pobj_vals, bins=20)
     ax2.set_xlabel('Obj. ftn. values (-)')
     ax2.set_ylabel('Frequency (-)')
-    plt.savefig(str(Path(out_dir, f'hbv_pobj_cdf_{cat}_kf_{kf_i:02d}.png')),
-                bbox_inches='tight')
+    plt.savefig(
+        str(Path(out_dir, f'hbv_pobj_cdf_{cat}_kf_{kf_i:02d}.png')),
+        bbox_inches='tight')
     plt.close('all')
     return
 
@@ -329,7 +331,7 @@ def plot_opt_evo(cat_db):
             try:
                 os.mkdir(out_dir)
 
-            except:
+            except FileExistsError:
                 pass
 
         kfolds = db['data'].attrs['kfolds']
@@ -389,7 +391,10 @@ def plot_opt_evo_kf(
                 ax = plt.subplot(axes[i, j])
 
                 for k in range(iter_prm_vecs.shape[1]):
-                    ax.plot(iter_prm_vecs[prm_iter_ct, k], alpha=0.1)
+                    ax.plot(
+                        iter_prm_vecs[prm_iter_ct, k],
+                        alpha=0.005,
+                        color='k')
 
                 ax.text(
                     0.95,
@@ -506,7 +511,8 @@ def _plot_hbv_kf(
     if not os.path.exists(hbv_figs_dir):
         try:
             os.mkdir(hbv_figs_dir)
-        except:
+
+        except FileExistsError:
             pass
 
     sim_dict = {
@@ -549,7 +555,9 @@ def _plot_hbv_kf(
      k_d,
      k_ll) = prms_arr
 
+
     def save_simple_opt(out_dir):
+
         '''Save the output of the optimize function
         '''
         assert np.all(np.isfinite(prms_arr)), 'Invalid HBV parameters!'
@@ -559,7 +567,8 @@ def _plot_hbv_kf(
         if not os.path.exists(out_dir):
             try:
                 os.mkdir(out_dir)
-            except:
+
+            except FileExistsError:
                 pass
 
         out_fig_loc = os.path.join(
@@ -964,7 +973,9 @@ def _plot_hbv_kf(
         plt.close('all')
         return
 
+
     def save_water_bal_opt(out_dir):
+
         '''Save the output of the optimize function
 
         Just the water balance part
@@ -977,7 +988,8 @@ def _plot_hbv_kf(
         if not os.path.exists(out_dir):
             try:
                 os.mkdir(out_dir)
-            except:
+
+            except FileExistsError:
                 pass
 
         out_fig_loc = os.path.join(
@@ -1255,6 +1267,7 @@ def _plot_hbv_kf(
         plt.savefig(out_fig_loc, bbox_inches='tight')
         plt.close('all')
         return
+
 
     if plot_wat_bal_flag:
         save_water_bal_opt(os.path.join(out_dir, '04_wat_bal_figs'))

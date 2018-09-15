@@ -53,6 +53,8 @@ cdef void pre_rope(
           DT_UL *cont_iter,
     const DT_UL max_chull_tries,
           DT_UL *cont_opt_flag,
+    const DT_UL depth_ftn_type,
+    const DT_UL min_pts_in_chull,
     ) nogil except +
 
 

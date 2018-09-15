@@ -133,7 +133,7 @@ cpdef dict hbv_opt(args):
 
         # ROPE related parameters
         DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs, n_uvecs
-        DT_UL max_chull_tries
+        DT_UL max_chull_tries, depth_ftn_type, min_pts_in_chull
 
         DT_UL[::1] depths_arr
         DT_UL[:, ::1] temp_mins, mins
@@ -205,6 +205,8 @@ cpdef dict hbv_opt(args):
          n_acc_prm_vecs,
          n_uvecs,
          max_chull_tries,
+         depth_ftn_type,
+         min_pts_in_chull,
          n_prm_vecs,
          max_iters, 
          max_cont_iters, 
@@ -356,10 +358,20 @@ cpdef dict hbv_opt(args):
 
         temp_mins = mins.copy()
         depths_arr = np.zeros(n_temp_rope_prm_vecs, dtype=DT_UL_NP)
-        dot_ref = np.empty((n_cpus, n_temp_rope_prm_vecs), dtype=DT_D_NP)
+
+        if depth_ftn_type == 1:
+            dot_ref = np.empty((n_cpus, n_temp_rope_prm_vecs), dtype=DT_D_NP)
+
+        elif depth_ftn_type == 2:
+            dot_ref = np.empty((n_uvecs, n_temp_rope_prm_vecs), dtype=DT_D_NP)
+
+        else:
+            raise RuntimeError(
+                f'depth_ftn_type can be only 1 or 2 not {depth_ftn_type}!')
+
         dot_test = np.empty((n_cpus, n_temp_rope_prm_vecs), dtype=DT_D_NP)
         dot_test_sort = np.empty((n_cpus, n_temp_rope_prm_vecs), dtype=DT_D_NP)
-        
+
         temp_rope_prm_vecs = np.empty(
             (n_temp_rope_prm_vecs, n_prms), dtype=DT_D_NP)
 
@@ -576,7 +588,9 @@ cpdef dict hbv_opt(args):
                 &chull_vecs_ctr,
                 &cont_iter,
                 max_chull_tries,
-                &cont_opt_flag)
+                &cont_opt_flag,
+                depth_ftn_type,
+                min_pts_in_chull)
 
         if not cont_opt_flag:
             break

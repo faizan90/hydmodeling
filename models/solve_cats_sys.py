@@ -895,12 +895,16 @@ def _solve_k_cats_sys(
                 n_uvecs = int(
                     bounds_arr.shape[0] ** opt_schm_vars_dict['n_uvecs_exp'])
                 max_chull_tries = opt_schm_vars_dict['max_chull_tries']
+                depth_ftn_type = opt_schm_vars_dict['depth_ftn_type']
+                min_pts_in_chull = opt_schm_vars_dict['min_pts_in_chull']
 
                 _opt_list.extend([
                     n_temp_rope_prm_vecs,
                     n_acc_prm_vecs,
                     n_uvecs,
-                    max_chull_tries])
+                    max_chull_tries,
+                    depth_ftn_type,
+                    min_pts_in_chull])
 
                 print(f'n_temp_rope_prm_vecs: {n_temp_rope_prm_vecs}')
                 print(f'n_acc_prm_vecs: {n_acc_prm_vecs}')
