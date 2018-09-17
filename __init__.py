@@ -24,6 +24,10 @@ from .models import (
 
     hbv_opt,
 
+    depth_ftn_cy,
+    pre_depth_cy,
+    post_depth_cy,
+
     hbv_loop_py,
     hbv_c_loop_py,
     hbv_mult_cat_loop_py,

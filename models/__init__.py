@@ -25,6 +25,8 @@ from .miscs.misc_ftns_partial import (
 
 from .opts.hbv_opt import hbv_opt
 
+from .opts.test_depth_ftns import depth_ftn_cy, pre_depth_cy, post_depth_cy
+
 from .hyds.py_ftns import (
     hbv_loop_py,
     hbv_c_loop_py,

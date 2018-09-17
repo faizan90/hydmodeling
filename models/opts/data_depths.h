@@ -220,6 +220,7 @@ void depth_ftn_c(
 			  double *dot_test_sort,
 			  long *temp_mins,
 			  long *mins,
+			  long *depths_arr,
 		const long n_ref,
 		const long n_test,
 		const long n_uvecs,
@@ -228,12 +229,14 @@ void depth_ftn_c(
 
 	int even = (n_test % 2) == 0;
 
+	long long i;
+
 	double inc_mult = (double) (1 - (double) (1e-15));
 
 	omp_set_num_threads(n_cpus);
 
 	#pragma omp parallel for schedule(dynamic)
-	for (long long i = 0; i < n_uvecs; ++i) {
+	for (i = 0; i < n_uvecs; ++i) {
 		size_t tid, j, k;
 
 		double *uvec, *sdot_ref, *sdot_test, *sdot_test_sort;
@@ -313,6 +316,18 @@ void depth_ftn_c(
 		}
 	}
 
+	for (i = 0; i < n_test; ++i) {
+		depths_arr[i] = mins[i];
+
+		for (size_t j = 1; j < n_cpus; ++j) {
+			if (mins[(j * n_test) + i] >= depths_arr[i]) {
+				continue;
+			}
+
+			depths_arr[i] = mins[(j * n_test) + i];
+		}
+	}
+
 	return;
 }
 
@@ -364,11 +379,12 @@ void pre_depth_c(
 void post_depth_c(
 		const double *test,
 		const double *uvecs,
-			  double *dot_ref_sort, // should be sorted
+		const double *dot_ref_sort, // should be sorted
 			  double *dot_test,
 			  double *dot_test_sort,
 			  long *temp_mins,
 			  long *mins,
+			  long *depths_arr,
 		const long n_ref,
 		const long n_test,
 		const long n_uvecs,
@@ -380,12 +396,14 @@ void post_depth_c(
 
 	int even = (n_test % 2) == 0;
 
+	long long i;
+
 	double inc_mult = (double) (1 - (double) (1e-15));
 
 	omp_set_num_threads(n_cpus);
 
 	#pragma omp parallel for schedule(dynamic)
-	for (long long i = 0; i < n_uvecs; ++i) {
+	for (i = 0; i < n_uvecs; ++i) {
 		size_t tid, j, k;
 
 		double *uvec, *sdot_ref_sort, *sdot_test, *sdot_test_sort;
@@ -398,7 +416,7 @@ void post_depth_c(
 
 		uvec = (double *) &uvecs[i * n_dims];
 
-		sdot_ref_sort = &dot_ref_sort[i * n_ref];
+		sdot_ref_sort = (double *) &dot_ref_sort[i * n_ref];
 
 		sdot_test = &dot_test[tid * n_test];
 		sdot_test_sort = &dot_test_sort[tid * n_test];
@@ -449,6 +467,18 @@ void post_depth_c(
 			if (idx < smins[j]) {
 				smins[j] = stemp_mins[j];
 			}
+		}
+	}
+
+	for (i = 0; i < n_test; ++i) {
+		depths_arr[i] = mins[i];
+
+		for (size_t j = 1; j < n_cpus; ++j) {
+			if (mins[(j * n_test) + i] >= depths_arr[i]) {
+				continue;
+			}
+
+			depths_arr[i] = mins[(j * n_test) + i];
 		}
 	}
 

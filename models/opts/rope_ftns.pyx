@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=False
+# cython: boundscheck=True
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -10,9 +10,11 @@ import numpy as np
 cimport numpy as np
 
 from ..miscs.dtypes cimport fc_i, pwp_i
+from .data_depths cimport depth_ftn, pre_depth, post_depth
 
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
+cdef DT_UL use_c = 0
 
 
 cdef extern from "cmath":
@@ -40,19 +42,20 @@ cdef extern from "data_depths.h" nogil:
             const long arr_size)
 
         void depth_ftn_c(
-            const double *ref,
-            const double *test,
-            const double *uvecs,
-                  double *dot_ref,
-                  double *dot_test,
-                  double *dot_test_sort,
-                  long *temp_mins,
-                  long *mins,
-            const long n_ref,
-            const long n_test,
-            const long n_uvecs,
-            const long n_dims,
-            const long n_cpus)
+                const double *ref,
+                const double *test,
+                const double *uvecs,
+                      double *dot_ref,
+                      double *dot_test,
+                      double *dot_test_sort,
+                      long *temp_mins,
+                      long *mins,
+                      long *depths_arr,
+                const long n_ref,
+                const long n_test,
+                const long n_uvecs,
+                const long n_dims,
+                const long n_cpus)
 
         void pre_depth_c(
             const double *ref,
@@ -64,39 +67,40 @@ cdef extern from "data_depths.h" nogil:
             const long n_cpus)
 
         void post_depth_c(
-            const double *test,
-            const double *uvecs,
-                  double *dot_ref_sort,
-                  double *dot_test,
-                  double *dot_test_sort,
-                  long *temp_mins,
-                  long *mins,
-            const long n_ref,
-            const long n_test,
-            const long n_uvecs,
-            const long n_dims,
-            const long n_cpus)
+                const double *test,
+                const double *uvecs,
+                      double *dot_ref_sort,
+                      double *dot_test,
+                      double *dot_test_sort,
+                      long *temp_mins,
+                      long *mins,
+                      long *depths_arr,
+                const long n_ref,
+                const long n_test,
+                const long n_uvecs,
+                const long n_dims,
+                const long n_cpus)
 
 
 cdef void get_new_chull_vecs(
-          DT_UL[::1] depths_arr,
-          DT_UL[:, ::1] temp_mins,
-          DT_UL[:, ::1] mins,
+              DT_UL[::1] depths_arr,
+              DT_UL[:, ::1] temp_mins,
+              DT_UL[:, ::1] mins,
 
-    const DT_D[::1] pre_obj_vals,
-          DT_D[::1] sort_obj_vals,
+        const DT_D[::1] pre_obj_vals,
+              DT_D[::1] sort_obj_vals,
 
-          DT_D[:, ::1] acc_vecs,
-    const DT_D[:, ::1] prm_vecs,
-    const DT_D[:, ::1] uvecs,
-          DT_D[:, ::1] dot_ref,
-          DT_D[:, ::1] dot_test,
-          DT_D[:, ::1] dot_test_sort,
-          DT_D[:, ::1] chull_vecs,
+              DT_D[:, ::1] acc_vecs,
+        const DT_D[:, ::1] prm_vecs,
+        const DT_D[:, ::1] uvecs,
+              DT_D[:, ::1] dot_ref,
+              DT_D[:, ::1] dot_test,
+              DT_D[:, ::1] dot_test_sort,
+              DT_D[:, ::1] chull_vecs,
 
-    const DT_UL n_cpus,
-          DT_UL *chull_vecs_ctr,
-    ) nogil except +:
+        const DT_UL n_cpus,
+              DT_UL *chull_vecs_ctr,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t i, j, ctr
@@ -126,31 +130,39 @@ cdef void get_new_chull_vecs(
             temp_mins[j, i] = n_acc_vecs
             mins[j, i] = n_acc_vecs
 
-    depth_ftn_c(
-        &acc_vecs[0, 0],
-        &acc_vecs[0, 0],
-        &uvecs[0, 0],
-        &dot_ref[0, 0],
-        &dot_test[0, 0],
-        &dot_test_sort[0, 0],
-        &temp_mins[0, 0],
-        &mins[0, 0],
-        n_acc_vecs,
-        n_acc_vecs,
-        n_uvecs,
-        n_prms,
-        n_cpus)
+    if use_c:
+        depth_ftn_c(
+            &acc_vecs[0, 0],
+            &acc_vecs[0, 0],
+            &uvecs[0, 0],
+            &dot_ref[0, 0],
+            &dot_test[0, 0],
+            &dot_test_sort[0, 0],
+            &temp_mins[0, 0],
+            &mins[0, 0],
+            &depths_arr[0],
+            n_acc_vecs,
+            n_acc_vecs,
+            n_uvecs,
+            n_prms,
+            n_cpus)
+
+    else:
+        depth_ftn(
+            acc_vecs,
+            acc_vecs,
+            uvecs,
+            dot_ref,
+            dot_test,
+            dot_test_sort,
+            temp_mins,
+            mins,
+            depths_arr,
+            n_acc_vecs,
+            n_cpus)
 
     ctr = 0
     for i in range(n_acc_vecs):
-        depths_arr[i] = mins[0, i]
-
-        for j in range(1, n_cpus):
-            if mins[j, i] >= depths_arr[i]:
-                continue
-
-            depths_arr[i] = mins[j, i]
-
         if depths_arr[i] != 1:
             continue
 
@@ -169,10 +181,10 @@ cdef void get_new_chull_vecs(
 
 
 cdef void adjust_rope_bds(
-    const DT_D[:, ::1] chull_vecs,
-          DT_D[:, ::1] rope_bds_dfs,
-    const DT_UL chull_vecs_ctr,
-    ) nogil except +:
+        const DT_D[:, ::1] chull_vecs,
+              DT_D[:, ::1] rope_bds_dfs,
+        const DT_UL chull_vecs_ctr,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t i, j
@@ -196,33 +208,33 @@ cdef void adjust_rope_bds(
 
 
 cdef void gen_vecs_in_chull(
-          DT_UL[::1] depths_arr,
+              DT_UL[::1] depths_arr,
 
-    const DT_UL[:, ::1] prms_flags,
-    const DT_UL[:, ::1] prms_span_idxs,
-          DT_UL[:, ::1] temp_mins,
-          DT_UL[:, ::1] mins,
+        const DT_UL[:, ::1] prms_flags,
+        const DT_UL[:, ::1] prms_span_idxs,
+              DT_UL[:, ::1] temp_mins,
+              DT_UL[:, ::1] mins,
 
-    const DT_UL[:, :, ::1] prms_idxs,
+        const DT_UL[:, :, ::1] prms_idxs,
 
-    const DT_D[:, ::1] rope_bds_dfs,
-    const DT_D[:, ::1] chull_vecs,
-    const DT_D[:, ::1] uvecs,
+        const DT_D[:, ::1] rope_bds_dfs,
+        const DT_D[:, ::1] chull_vecs,
+        const DT_D[:, ::1] uvecs,
 
-          DT_D[:, ::1] temp_rope_prm_vecs,
-          DT_D[:, ::1] prm_vecs,
-          DT_D[:, ::1] dot_ref,
-          DT_D[:, ::1] dot_test,
-          DT_D[:, ::1] dot_test_sort,
+              DT_D[:, ::1] temp_rope_prm_vecs,
+              DT_D[:, ::1] prm_vecs,
+              DT_D[:, ::1] dot_ref,
+              DT_D[:, ::1] dot_test,
+              DT_D[:, ::1] dot_test_sort,
 
-    const DT_UL n_hbv_prms,
-    const DT_UL chull_vecs_ctr,
-    const DT_UL n_cpus,
-    const DT_UL max_chull_tries,
-          DT_UL *cont_opt_flag,
-    const DT_UL depth_ftn_type,
-    const DT_UL min_pts_in_chull,
-    ) nogil except +:
+        const DT_UL n_hbv_prms,
+        const DT_UL chull_vecs_ctr,
+        const DT_UL n_cpus,
+        const DT_UL max_chull_tries,
+              DT_UL *cont_opt_flag,
+        const DT_UL depth_ftn_type,
+        const DT_UL min_pts_in_chull,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t i, j, k, m, cfc_i, cpwp_i
@@ -235,14 +247,18 @@ cdef void gen_vecs_in_chull(
     with gil: print('\n')
 
     if depth_ftn_type == 2:
-        pre_depth_c(
-            &chull_vecs[0, 0],
-            &uvecs[0, 0],
-            &dot_ref[0, 0],
-            chull_vecs_ctr,
-            n_uvecs,
-            n_prms,
-            n_cpus)
+        if use_c:
+            pre_depth_c(
+                &chull_vecs[0, 0],
+                &uvecs[0, 0],
+                &dot_ref[0, 0],
+                chull_vecs_ctr,
+                n_uvecs,
+                n_prms,
+                n_cpus)
+
+        else:
+            pre_depth(chull_vecs, uvecs, dot_ref, chull_vecs_ctr, n_cpus)
 
     ctr = 0
     tries_ctr = 0
@@ -285,52 +301,72 @@ cdef void gen_vecs_in_chull(
 
         for j in range(n_cpus):
             for i in range(n_temp_rope_prm_vecs):
-                temp_mins[j, i] = n_temp_rope_prm_vecs
-                mins[j, i] = n_temp_rope_prm_vecs
+                temp_mins[j, i] = chull_vecs_ctr
+                mins[j, i] = chull_vecs_ctr
 
         if depth_ftn_type == 1:
-            depth_ftn_c(
-                &chull_vecs[0, 0],
-                &temp_rope_prm_vecs[0, 0],
-                &uvecs[0, 0],
-                &dot_ref[0, 0],
-                &dot_test[0, 0],
-                &dot_test_sort[0, 0],
-                &temp_mins[0, 0],
-                &mins[0, 0],
-                chull_vecs_ctr,
-                n_temp_rope_prm_vecs,
-                n_uvecs,
-                n_prms,
-                n_cpus)
+            if use_c:
+                depth_ftn_c(
+                    &chull_vecs[0, 0],
+                    &temp_rope_prm_vecs[0, 0],
+                    &uvecs[0, 0],
+                    &dot_ref[0, 0],
+                    &dot_test[0, 0],
+                    &dot_test_sort[0, 0],
+                    &temp_mins[0, 0],
+                    &mins[0, 0],
+                    &depths_arr[0],
+                    chull_vecs_ctr,
+                    n_temp_rope_prm_vecs,
+                    n_uvecs,
+                    n_prms,
+                    n_cpus)
+
+            else:
+                depth_ftn(
+                    chull_vecs,
+                    temp_rope_prm_vecs,
+                    uvecs,
+                    dot_ref,
+                    dot_test,
+                    dot_test_sort,
+                    temp_mins,
+                    mins,
+                    depths_arr,
+                    chull_vecs_ctr,
+                    n_cpus)
 
         elif depth_ftn_type == 2:
-            post_depth_c(
-                &temp_rope_prm_vecs[0, 0],
-                &uvecs[0, 0],
-                &dot_ref[0, 0],
-                &dot_test[0, 0],
-                &dot_test_sort[0, 0],
-                &temp_mins[0, 0],
-                &mins[0, 0],
-                chull_vecs_ctr,
-                n_temp_rope_prm_vecs,
-                n_uvecs,
-                n_prms,
-                n_cpus)
+            if use_c:
+                post_depth_c(
+                    &temp_rope_prm_vecs[0, 0],
+                    &uvecs[0, 0],
+                    &dot_ref[0, 0],
+                    &dot_test[0, 0],
+                    &dot_test_sort[0, 0],
+                    &temp_mins[0, 0],
+                    &mins[0, 0],
+                    &depths_arr[0],
+                    chull_vecs_ctr,
+                    n_temp_rope_prm_vecs,
+                    n_uvecs,
+                    n_prms,
+                    n_cpus)
+
+            else:
+                post_depth(
+                    temp_rope_prm_vecs,
+                    uvecs,
+                    dot_ref,
+                    dot_test,
+                    dot_test_sort,
+                    temp_mins,#
+                    mins,
+                    depths_arr,
+                    chull_vecs_ctr,
+                    n_cpus)
 
         for i in range(n_temp_rope_prm_vecs):
-            depths_arr[i] = mins[0, i]
-
-            for j in range(1, n_cpus):
-                if mins[j, i] >= depths_arr[i]:
-                    continue
-
-                depths_arr[i] = mins[j, i]
-
-            if not depths_arr[i]:
-                continue
-
             if ctr >= n_prm_vecs:
                 break
 
