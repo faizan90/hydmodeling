@@ -601,6 +601,7 @@ cpdef dict hbv_opt(args):
                     iter_prm_vecs[iter_curr + 1, i, j] = u_j_gs[i, j]
 
         elif opt_schm == 2:
+            print(iter_curr)
             for i in range(n_prm_vecs):
                 for j in range(n_prms):
                     iter_prm_vecs[iter_curr + 1, i, j] = prm_vecs[i, j]

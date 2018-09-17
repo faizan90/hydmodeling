@@ -1,6 +1,6 @@
-# cython: nonecheck=False
+# cython: nonecheck=True
 # cython: boundscheck=True
-# cython: wraparound=False
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -32,14 +32,14 @@ warm_up()
 cdef extern from "data_depths.h" nogil:
     cdef:
         void quick_sort(
-            double *arr,
-            long first_index,
-            long last_index)
+                double *arr,
+                long first_index,
+                long last_index)
 
         long searchsorted(
-            const double *arr,
-            const double value,
-            const long arr_size)
+                const double *arr,
+                const double value,
+                const long arr_size)
 
         void depth_ftn_c(
                 const double *ref,
@@ -58,13 +58,13 @@ cdef extern from "data_depths.h" nogil:
                 const long n_cpus)
 
         void pre_depth_c(
-            const double *ref,
-            const double *uvecs,
-                  double *dot_ref_sort,
-            const long n_ref,
-            const long n_uvecs,
-            const long n_dims,
-            const long n_cpus)
+                const double *ref,
+                const double *uvecs,
+                      double *dot_ref_sort,
+                const long n_ref,
+                const long n_uvecs,
+                const long n_dims,
+                const long n_cpus)
 
         void post_depth_c(
                 const double *test,
@@ -177,6 +177,7 @@ cdef void get_new_chull_vecs(
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
         for j in range(n_prms):
             chull_vecs[i, j] = NaN
+
     return
 
 
@@ -204,6 +205,7 @@ cdef void adjust_rope_bds(
 
         rope_bds_dfs[j, 0] = min_prm_val
         rope_bds_dfs[j, 1] = max_prm_val - min_prm_val
+
     return
 
 
@@ -272,7 +274,8 @@ cdef void gen_vecs_in_chull(
                     rope_bds_dfs[j, 0] + (rand_c() * rope_bds_dfs[j, 1]))
 
             # check constraints
-            for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
+            for j in range(
+                prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
 
                 cfc_i = prms_span_idxs[fc_i, 0] + j
                 cpwp_i = prms_span_idxs[pwp_i, 0] + j
@@ -281,8 +284,9 @@ cdef void gen_vecs_in_chull(
                 while (temp_rope_prm_vecs[i, cpwp_i] >
                        temp_rope_prm_vecs[i, cfc_i]):
 
-                    temp_rope_prm_vecs[i, cpwp_i] = rope_bds_dfs[cpwp_i, 0] + (
-                        rand_c() * rope_bds_dfs[cpwp_i, 1])
+                    temp_rope_prm_vecs[i, cpwp_i] = (
+                        rope_bds_dfs[cpwp_i, 0] + (
+                        rand_c() * rope_bds_dfs[cpwp_i, 1]))
 
             for j in range(n_hbv_prms):
                 for m in range(3, 6):
@@ -293,8 +297,9 @@ cdef void gen_vecs_in_chull(
 
                     # TODO: verify this
                     # TODO: guarantee that it will break eventually
-                    while (temp_rope_prm_vecs[i, k + 1] <
-                           temp_rope_prm_vecs[i, k]):
+                    while (
+                        temp_rope_prm_vecs[i, k + 1] <
+                        temp_rope_prm_vecs[i, k]):
 
                         temp_rope_prm_vecs[i, k] = rope_bds_dfs[k, 0] + (
                             rand_c() * rope_bds_dfs[k, 1])
@@ -370,6 +375,9 @@ cdef void gen_vecs_in_chull(
             if ctr >= n_prm_vecs:
                 break
 
+            if depths_arr[i] != 1:
+                continue
+
             for j in range(n_prms):
                 prm_vecs[ctr, j] = temp_rope_prm_vecs[i, j]
 
@@ -385,40 +393,41 @@ cdef void gen_vecs_in_chull(
             cont_opt_flag[0] = 0
 
             break
+
     return
 
 
 cdef void pre_rope(
-    const DT_UL[:, ::1] prms_flags,
-    const DT_UL[:, ::1] prms_span_idxs,
-          DT_UL[::1] depths_arr,
-          DT_UL[:, ::1] temp_mins,
-          DT_UL[:, ::1] mins,
+        const DT_UL[:, ::1] prms_flags,
+        const DT_UL[:, ::1] prms_span_idxs,
+              DT_UL[::1] depths_arr,
+              DT_UL[:, ::1] temp_mins,
+              DT_UL[:, ::1] mins,
 
-    const DT_UL[:, :, ::1] prms_idxs,
+        const DT_UL[:, :, ::1] prms_idxs,
 
-    const DT_D[::1] pre_obj_vals,
-          DT_D[::1] sort_obj_vals,
+        const DT_D[::1] pre_obj_vals,
+              DT_D[::1] sort_obj_vals,
 
-          DT_D[:, ::1] prm_vecs,
-    const DT_D[:, ::1] uvecs,
-          DT_D[:, ::1] temp_rope_prm_vecs,
-          DT_D[:, ::1] acc_vecs,
-          DT_D[:, ::1] rope_bds_dfs,
-          DT_D[:, ::1] dot_ref,
-          DT_D[:, ::1] dot_test,
-          DT_D[:, ::1] dot_test_sort,
-          DT_D[:, ::1] chull_vecs,
+              DT_D[:, ::1] prm_vecs,
+        const DT_D[:, ::1] uvecs,
+              DT_D[:, ::1] temp_rope_prm_vecs,
+              DT_D[:, ::1] acc_vecs,
+              DT_D[:, ::1] rope_bds_dfs,
+              DT_D[:, ::1] dot_ref,
+              DT_D[:, ::1] dot_test,
+              DT_D[:, ::1] dot_test_sort,
+              DT_D[:, ::1] chull_vecs,
 
-    const DT_UL n_hbv_prms,
-    const DT_UL n_cpus,
-          DT_UL *chull_vecs_ctr,
-          DT_UL *cont_iter,
-    const DT_UL max_chull_tries,
-          DT_UL *cont_opt_flag,
-    const DT_UL depth_ftn_type,
-    const DT_UL min_pts_in_chull,
-    ) nogil except +:
+        const DT_UL n_hbv_prms,
+        const DT_UL n_cpus,
+              DT_UL *chull_vecs_ctr,
+              DT_UL *cont_iter,
+        const DT_UL max_chull_tries,
+              DT_UL *cont_opt_flag,
+        const DT_UL depth_ftn_type,
+        const DT_UL min_pts_in_chull,
+        ) nogil except +:
 
     get_new_chull_vecs(
         depths_arr,
@@ -468,21 +477,21 @@ cdef void pre_rope(
 
 
 cdef void post_rope(
-    const DT_D[::1] pre_obj_vals,
-          DT_D[::1] best_prm_vec,
+        const DT_D[::1] pre_obj_vals,
+              DT_D[::1] best_prm_vec,
 
-    const DT_D[:, ::1] prm_vecs,
+        const DT_D[:, ::1] prm_vecs,
 
-    const DT_UL max_iters,
-    const DT_UL max_cont_iters,
-          DT_UL *iter_curr,
-          DT_UL *last_succ_i,
-          DT_UL *n_succ,
-          DT_UL *cont_iter,
-          DT_UL *cont_opt_flag,
+        const DT_UL max_iters,
+        const DT_UL max_cont_iters,
+              DT_UL *iter_curr,
+              DT_UL *last_succ_i,
+              DT_UL *n_succ,
+              DT_UL *cont_iter,
+              DT_UL *cont_opt_flag,
 
-          DT_D *fval_pre_global,
-    ) nogil except +:
+              DT_D *fval_pre_global,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t j, k
@@ -498,7 +507,6 @@ cdef void post_rope(
         if isnan(fval_pre):
             with gil: raise RuntimeError('fval_pre is Nan!')
 
-        # check for global minimum and best vector
         if fval_pre >= fval_pre_global[0]:
             continue
 
@@ -519,4 +527,5 @@ cdef void post_rope(
     if cont_opt_flag[0] and (cont_iter[0] > max_cont_iters):
         with gil: print('***max_cont_iters reached!***')
         cont_opt_flag[0] = 0
+
     return

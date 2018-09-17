@@ -18,9 +18,9 @@ def main():
     main_dir = Path(os.getcwd())
     os.chdir(main_dir)
 
-    n_ref = int(1e3)
-    n_test = int(1e2)
-    n_dims = 3
+    n_ref = int(1e4)
+    n_test = int(1e4)
+    n_dims = 6
     n_uvecs = int(1e4)
     n_cpus = 7
 
@@ -36,11 +36,11 @@ def main():
     dot_ref_sort_cy = np.empty((n_uvecs, n_ref), dtype=np.float64)
     dot_ref_sort_c = np.empty((n_uvecs, n_ref), dtype=np.float64)
 
-    dot_test_post_cy = np.empty((n_uvecs, n_test), dtype=np.float64)
-    dot_test_post_c = np.empty((n_uvecs, n_test), dtype=np.float64)
+    dot_test_post_cy = np.empty((n_cpus, n_test), dtype=np.float64)
+    dot_test_post_c = np.empty((n_cpus, n_test), dtype=np.float64)
 
-    dot_test_sort_post_cy = np.empty((n_uvecs, n_test), dtype=np.float64)
-    dot_test_sort_post_c = np.empty((n_uvecs, n_test), dtype=np.float64)
+    dot_test_sort_post_cy = np.empty((n_cpus, n_test), dtype=np.float64)
+    dot_test_sort_post_c = np.empty((n_cpus, n_test), dtype=np.float64)
 
     temp_mins_cy = np.full((n_cpus, n_test), n_ref, dtype=np.int32)
     mins_cy = np.full((n_cpus, n_test), n_ref, dtype=np.int32)
@@ -89,6 +89,7 @@ def main():
         1)
 
     assert np.all(np.isclose(depths_arr_c, depths_arr_cy))
+    print('Pass: depth_ftn mp equality')
 
     depth_ftn_cy(
         ref,
@@ -104,6 +105,7 @@ def main():
         0)
 
     assert np.all(np.isclose(depths_arr_st, depths_arr_cy))
+    print('Pass: depth_ftn sp equality')
 
     pre_depth_cy(
         ref,
@@ -120,6 +122,7 @@ def main():
         1)
 
     assert np.all(np.isclose(dot_ref_sort_cy, dot_ref_sort_c))
+    print('Pass: pre_depth dot_ref_sort equality')
 
     post_depth_cy(
         test,
@@ -133,6 +136,10 @@ def main():
         n_cpus,
         0)
 
+    if n_cpus == 1:
+        assert np.all(np.isclose(dot_test, dot_test_post_cy))
+        assert np.all(np.isclose(dot_test_sort, dot_test_sort_post_cy))
+
     post_depth_cy(
         test,
         uvecs,
@@ -145,20 +152,26 @@ def main():
         n_cpus,
         1)
 
-    assert np.all(np.isclose(dot_test_post_cy, dot_test_post_c))
-    assert np.all(np.isclose(dot_test_sort_post_c, dot_test_sort_post_cy))
+    if n_cpus == 1:
+        assert np.all(np.isclose(dot_test, dot_test_post_c))
+        assert np.all(np.isclose(dot_test_sort, dot_test_sort_post_c))
 
-    assert np.all(np.isclose(temp_mins_cy, temp_mins_post_c))
-    assert np.all(np.isclose(temp_mins_post_cy, temp_mins_cy))
+        assert np.all(np.isclose(dot_test_post_cy, dot_test_post_c))
+        assert np.all(np.isclose(dot_test_sort_post_c, dot_test_sort_post_cy))
 
-    assert np.all(np.isclose(temp_mins_post_cy, temp_mins_post_c))
-
-    assert np.all(np.isclose(mins_post_cy, mins_post_c))
+        assert np.all(np.isclose(temp_mins_cy, temp_mins_post_c))
+        assert np.all(np.isclose(temp_mins_post_cy, temp_mins_cy))
+#
+        assert np.all(np.isclose(temp_mins_post_cy, temp_mins_post_c))
+#
+        assert np.all(np.isclose(mins_post_cy, mins_post_c))
 
     assert np.all(np.isclose(depths_arr_st, depths_arr_post_cy))
     assert np.all(np.isclose(depths_arr_post_c, depths_arr_st))
 
     assert np.all(np.isclose(depths_arr_post_c, depths_arr_post_cy))
+
+    print('Pass: post_depth equality')
     return
 
 

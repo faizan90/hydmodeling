@@ -1,6 +1,6 @@
-# cython: nonecheck=False
+# cython: nonecheck=True
 # cython: boundscheck=True
-# cython: wraparound=False
+# cython: wraparound=True
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -104,6 +104,7 @@ cdef void depth_ftn(
                 continue
 
             depths_arr[i] = mins[j, i]
+
     return
 
 

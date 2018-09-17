@@ -460,11 +460,11 @@ void post_depth_c(
 		for (j = 0; j < n_test; ++j) {
 			idx = n_ref - stemp_mins[j];
 
-			if (idx > stemp_mins[j]) {
-				idx = stemp_mins[j];
+			if (idx < stemp_mins[j]) {
+				stemp_mins[j] = idx;
 			}
 
-			if (idx < smins[j]) {
+			if (stemp_mins[j] < smins[j]) {
 				smins[j] = stemp_mins[j];
 			}
 		}
