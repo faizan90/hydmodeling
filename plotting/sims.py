@@ -436,7 +436,7 @@ def plot_opt_evo_kf(
     chull_min = 0
     chull_max = 1
     n_dims = iter_prm_vecs.shape[-1]
-    for opt_iter in iter_prm_vecs.shape[0]:
+    for opt_iter in range(iter_prm_vecs.shape[0]):
 
         plt.figure(figsize=(15, 15))
         grid_axes = GridSpec(n_dims, n_dims)
@@ -457,7 +457,7 @@ def plot_opt_evo_kf(
                     iter_prm_vecs[opt_iter, :, j],
                     s=2,
                     color='k',
-                    alpha=0.005)
+                    alpha=0.05)
 
                 ax.set_xticks([])
                 ax.set_xticklabels([])
@@ -485,7 +485,7 @@ def plot_opt_evo_kf(
             f'hbv_prm_vecs_chull_{cat}_kf_{kf_i:02d}_iter_{opt_iter:02d}.png')
 
         plt.savefig(
-            str(out_dir / out_fig_name),
+            str(Path(out_dir, out_fig_name)),
             bbox_inches='tight')
         plt.close('all')
     return
