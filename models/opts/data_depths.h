@@ -231,7 +231,7 @@ void depth_ftn_c(
 
 	long long i;
 
-	double inc_mult = (double) (1 - (double) (1e-15));
+	double inc_mult = (double) (1 - (double) (1e-10));
 
 	omp_set_num_threads(n_cpus);
 
@@ -398,7 +398,7 @@ void post_depth_c(
 
 	long long i;
 
-	double inc_mult = (double) (1 - (double) (1e-15));
+	double inc_mult = (double) (1 - (double) (1e-10));
 
 	omp_set_num_threads(n_cpus);
 

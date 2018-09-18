@@ -89,15 +89,15 @@ def main():
 #     get_stms_flag = True
 #     create_stms_rels_flag = True
 #     create_cumm_cats_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
+#     optimize_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
     plot_opt_evo_flag = True
-    plot_hbv_vars_flag = True
+#     plot_hbv_vars_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -549,7 +549,7 @@ def main():
 
         print('\n\n')
         print('#' * 10)
-        print('Plotting optimization parameters evolution...')
+        print('Plotting optimization parameters\' evolution...')
 
         plot_opt_evos(dbs_dir, n_cpus)
 

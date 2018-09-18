@@ -101,6 +101,7 @@ cpdef depth_ftn_cy(
             mins,
             depths_arr,
             n_ref,
+            n_ref,
             n_cpus)
 
     return

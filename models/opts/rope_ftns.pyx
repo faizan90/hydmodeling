@@ -1,6 +1,6 @@
-# cython: nonecheck=True
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: nonecheck=False
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -14,7 +14,7 @@ from .data_depths cimport depth_ftn, pre_depth, post_depth
 
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
-cdef DT_UL use_c = 0
+cdef DT_UL use_c = 1
 
 
 cdef extern from "cmath":
@@ -126,7 +126,7 @@ cdef void get_new_chull_vecs(
             acc_vecs[prm_vec_rank, j] = prm_vecs[i, j]
 
     for j in range(n_cpus):
-        for i in range(n_acc_vecs):
+        for i in range(mins.shape[1]):
             temp_mins[j, i] = n_acc_vecs
             mins[j, i] = n_acc_vecs
 
@@ -159,10 +159,15 @@ cdef void get_new_chull_vecs(
             mins,
             depths_arr,
             n_acc_vecs,
+            n_acc_vecs,
             n_cpus)
 
     ctr = 0
     for i in range(n_acc_vecs):
+#         with gil: print(f'd[{i}]: {depths_arr[i]}')
+
+        with gil: assert depths_arr[i] != 0, 'Impossible depth of zero!'
+
         if depths_arr[i] != 1:
             continue
 
@@ -173,6 +178,9 @@ cdef void get_new_chull_vecs(
 
     chull_vecs_ctr[0] = ctr
 
+    with gil: print(
+        f'Out of {n_acc_vecs}, {chull_vecs_ctr[0]} points on the new chull')
+
     # just to be sure
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
         for j in range(n_prms):
@@ -182,15 +190,25 @@ cdef void get_new_chull_vecs(
 
 
 cdef void adjust_rope_bds(
+        const DT_UL[:, ::1] prms_flags,
+        const DT_UL[:, ::1] prms_span_idxs,
+        const DT_UL[:, :, ::1] prms_idxs,
         const DT_D[:, ::1] chull_vecs,
               DT_D[:, ::1] rope_bds_dfs,
+
         const DT_UL chull_vecs_ctr,
+        const DT_UL n_hbv_prms,
         ) nogil except +:
 
     cdef:
-        Py_ssize_t i, j
+        Py_ssize_t i, j, m, k, cfc_i, cpwp_i
+
         DT_UL n_prms = chull_vecs.shape[1]
+
         DT_D min_prm_val, max_prm_val
+        DT_D min_cfc, max_cfc
+        DT_D min_cpwp, max_cpwp
+        DT_D min_fvar, max_fvar
 
     for j in range(n_prms):
         min_prm_val = +INF
@@ -205,6 +223,34 @@ cdef void adjust_rope_bds(
 
         rope_bds_dfs[j, 0] = min_prm_val
         rope_bds_dfs[j, 1] = max_prm_val - min_prm_val
+
+    # check if fc, pwp, aspect and slope bounds are as expected
+    for j in range(
+        prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
+
+        cfc_i = prms_span_idxs[fc_i, 0] + j
+        cpwp_i = prms_span_idxs[pwp_i, 0] + j
+
+        min_cfc = rope_bds_dfs[cfc_i, 0]
+        max_cfc = min_cfc + rope_bds_dfs[cfc_i, 1]
+
+        min_cpwp = rope_bds_dfs[cpwp_i, 0]
+        max_cpwp = min_cpwp + rope_bds_dfs[cpwp_i, 1]
+
+        with gil: assert min_cpwp <= min_cfc
+        with gil: assert max_cpwp <= max_cfc
+
+    for j in range(n_hbv_prms):
+        for m in range(3, 6):
+            if not prms_flags[j, m]:
+                continue
+
+            k = prms_idxs[j, m, 0]
+
+            min_fvar = rope_bds_dfs[k, 0]
+            max_fvar = min_fvar + rope_bds_dfs[k, 1]
+
+            with gil: assert min_fvar <= max_fvar
 
     return
 
@@ -246,8 +292,6 @@ cdef void gen_vecs_in_chull(
         DT_UL n_temp_rope_prm_vecs = temp_rope_prm_vecs.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
 
-    with gil: print('\n')
-
     if depth_ftn_type == 2:
         if use_c:
             pre_depth_c(
@@ -280,7 +324,7 @@ cdef void gen_vecs_in_chull(
                 cfc_i = prms_span_idxs[fc_i, 0] + j
                 cpwp_i = prms_span_idxs[pwp_i, 0] + j
 
-                # TODO: guarantee that it will break eventually
+                # break is guaranteed by adjust_rope_bds
                 while (temp_rope_prm_vecs[i, cpwp_i] >
                        temp_rope_prm_vecs[i, cfc_i]):
 
@@ -295,8 +339,7 @@ cdef void gen_vecs_in_chull(
 
                     k = prms_idxs[j, m, 0]
 
-                    # TODO: verify this
-                    # TODO: guarantee that it will break eventually
+                    # break is guaranteed by adjust_rope_bds
                     while (
                         temp_rope_prm_vecs[i, k + 1] <
                         temp_rope_prm_vecs[i, k]):
@@ -339,6 +382,7 @@ cdef void gen_vecs_in_chull(
                     mins,
                     depths_arr,
                     chull_vecs_ctr,
+                    n_temp_rope_prm_vecs,
                     n_cpus)
 
         elif depth_ftn_type == 2:
@@ -383,7 +427,9 @@ cdef void gen_vecs_in_chull(
 
             ctr += 1
 
-        if (ctr - pre_ctr) < min_pts_in_chull:
+        if ((ctr < n_prm_vecs) and 
+            ((ctr - pre_ctr) < min_pts_in_chull)):
+  
             tries_ctr += 1
 
         if tries_ctr >= max_chull_tries:
@@ -447,7 +493,14 @@ cdef void pre_rope(
 
     with gil: assert chull_vecs_ctr[0] >= 3, chull_vecs_ctr[0]
 
-    adjust_rope_bds(chull_vecs, rope_bds_dfs, chull_vecs_ctr[0])
+    adjust_rope_bds(
+        prms_flags,
+        prms_span_idxs,
+        prms_idxs,
+        chull_vecs,
+        rope_bds_dfs,
+        chull_vecs_ctr[0],
+        n_hbv_prms)
 
     gen_vecs_in_chull(
         depths_arr,

@@ -23,7 +23,7 @@ from ..miscs.dtypes cimport (
     err_val_i,
     min_q_thresh_i)
 
-cdef DT_UL use_c = 0
+cdef DT_UL use_c = 1
 
 
 cdef extern from "hbv_c_loop.h" nogil:

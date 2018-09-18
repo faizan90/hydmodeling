@@ -1,6 +1,6 @@
-# cython: nonecheck=True
-# cython: boundscheck=True
-# cython: wraparound=True
+# cython: nonecheck=False
+# cython: boundscheck=False
+# cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
 # cython: infer_types=False
@@ -33,19 +33,20 @@ cdef void depth_ftn(
               DT_UL[:, ::1] mins,
               DT_UL[::1] depths_arr,
         const DT_UL n_ref,
+        const DT_UL n_test,
         const DT_UL n_cpus,
         ) nogil except +:
 
     cdef:
         Py_ssize_t i, j, k, idx
+
         DT_UL tid
         DT_UL n_dims = ref.shape[1]
-        DT_UL n_test = test.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
 
         int even = (n_test % 2) == 0
 
-        DT_D dy_med, inc_mult = (1 - (1e-15))
+        DT_D dy_med, inc_mult = (1 - (1e-10))
 
     for i in prange(
         n_uvecs, schedule='dynamic', nogil=True, num_threads=n_cpus):
@@ -168,7 +169,7 @@ cdef void post_depth(
 
         int even = (n_test % 2) == 0
 
-        DT_D dy_med, inc_mult = (1 - (1e-15))
+        DT_D dy_med, inc_mult = (1 - (1e-10))
 
     for i in prange(
         n_uvecs, schedule='dynamic', nogil=True, num_threads=n_cpus):

@@ -127,11 +127,12 @@ def _plot_prm_vecs(cat_db):
 
         calib_db = db['calib']
 
+        bounds_arr = db['cdata/bds_arr'][...]
+        prm_syms = db['cdata/use_prms_labs'][...]
+
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
             prm_vecs = calib_db[kf_str + '/prm_vecs'][...]
-            bounds_arr = db['cdata/bds_arr'][...]
-            prm_syms = db['cdata/use_prms_labs'][...]
             cobj_vals = calib_db[kf_str + '/curr_obj_vals'][...]
             pobj_vals = calib_db[kf_str + '/pre_obj_vals'][...]
 
@@ -339,6 +340,8 @@ def plot_opt_evo(cat_db):
 
         calib_db = db['calib']
 
+        prm_syms = db['cdata/use_prms_labs'][...]
+
         for kf_i in range(1, kfolds + 1):
 
             kf_str = f'kf_{kf_i:02d}'
@@ -348,7 +351,8 @@ def plot_opt_evo(cat_db):
                 iter_prm_vecs,
                 cat,
                 kf_i,
-                out_dir)
+                out_dir,
+                prm_syms)
 
     return
 
@@ -357,7 +361,8 @@ def plot_opt_evo_kf(
         iter_prm_vecs,
         cat,
         kf_i,
-        out_dir):
+        out_dir,
+        prm_syms):
 
     prm_cols = 7
     prm_rows = 7
@@ -384,9 +389,9 @@ def plot_opt_evo_kf(
         for i in range(prm_rows):
             for j in range(prm_cols):
 
-                if np.isnan(iter_prm_vecs[prm_iter_ct, 0, 0]):
-                    stop_plotting = True
-                    break
+#                 if np.isnan(iter_prm_vecs[prm_iter_ct, 0, 0]):
+#                     stop_plotting = True
+#                     break
 
                 ax = plt.subplot(axes[i, j])
 
@@ -427,6 +432,62 @@ def plot_opt_evo_kf(
 
         plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
         plt.close()
+
+    chull_min = 0
+    chull_max = 1
+    n_dims = iter_prm_vecs.shape[-1]
+    for opt_iter in iter_prm_vecs.shape[0]:
+
+        plt.figure(figsize=(15, 15))
+        grid_axes = GridSpec(n_dims, n_dims)
+        for i in range(n_dims):
+            for j in range(n_dims):
+                if i >= j:
+                    continue
+
+                ax = plt.subplot(grid_axes[i, j])
+
+                ax.set_aspect('equal', 'datalim')
+
+                ax.set_xlim(chull_min, chull_max)
+                ax.set_ylim(chull_min, chull_max)
+
+                ax.scatter(
+                    iter_prm_vecs[opt_iter, :, i],
+                    iter_prm_vecs[opt_iter, :, j],
+                    s=2,
+                    color='k',
+                    alpha=0.005)
+
+                ax.set_xticks([])
+                ax.set_xticklabels([])
+
+                ax.set_yticks([])
+                ax.set_yticklabels([])
+
+                ax.text(
+                    0.95,
+                    0.95,
+                    f'({prm_syms[i]}, {prm_syms[j]})',
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    transform=ax.transAxes)
+
+        plt.suptitle(
+            f'Convex hull of {n_dims}D in 2D\n'
+            f'Total points: {iter_prm_vecs.shape[1]}',
+            x=0.5,
+            y=0.5,
+            va='bottom',
+            ha='right')
+
+        out_fig_name = (
+            f'hbv_prm_vecs_chull_{cat}_kf_{kf_i:02d}_iter_{opt_iter:02d}.png')
+
+        plt.savefig(
+            str(out_dir / out_fig_name),
+            bbox_inches='tight')
+        plt.close('all')
     return
 
 

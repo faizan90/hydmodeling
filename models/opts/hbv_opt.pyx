@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=True
+# cython: boundscheck=False
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -444,6 +444,7 @@ cpdef dict hbv_opt(args):
         for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
             if (prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] <
                 prm_vecs[i, prms_span_idxs[fc_i, 0] + j]):
+
                 continue
 
             # arbitrary decrease
@@ -565,6 +566,7 @@ cpdef dict hbv_opt(args):
                 &cont_iter)
 
         elif opt_schm == 2:
+            print(f'\niter_curr: {iter_curr}')
             pre_rope(
                 prms_flags,
                 prms_span_idxs,
@@ -601,7 +603,6 @@ cpdef dict hbv_opt(args):
                     iter_prm_vecs[iter_curr + 1, i, j] = u_j_gs[i, j]
 
         elif opt_schm == 2:
-            print(iter_curr)
             for i in range(n_prm_vecs):
                 for j in range(n_prms):
                     iter_prm_vecs[iter_curr + 1, i, j] = prm_vecs[i, j]
@@ -699,22 +700,22 @@ cpdef dict hbv_opt(args):
                 &cont_opt_flag,
                 &fval_pre_global)
 
-    if opt_schm == 2:
-        get_new_chull_vecs(
-            depths_arr,
-            temp_mins,
-            mins,
-            pre_obj_vals,
-            sort_obj_vals,
-            acc_vecs,
-            prm_vecs,
-            uvecs,
-            dot_ref,
-            dot_test,
-            dot_test_sort,
-            chull_vecs,
-            n_cpus,
-            &chull_vecs_ctr)
+#     if opt_schm == 2:
+#         get_new_chull_vecs(
+#             depths_arr,
+#             temp_mins,
+#             mins,
+#             pre_obj_vals,
+#             sort_obj_vals,
+#             acc_vecs,
+#             prm_vecs,
+#             uvecs,
+#             dot_ref,
+#             dot_test,
+#             dot_test_sort,
+#             chull_vecs,
+#             n_cpus,
+#             &chull_vecs_ctr)
 
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. fill arrays with the best parameters
@@ -781,7 +782,7 @@ cpdef dict hbv_opt(args):
         'n_calls': np.asarray(n_calls),
         'qsim_arr': np.asarray(qsim_mult_arr[tid]),
         'pre_obj_vals' : np.asarray(pre_obj_vals),
-        'iter_prm_vecs': np.asarray(iter_prm_vecs)}
+        'iter_prm_vecs': np.asarray(iter_prm_vecs[:iter_curr])}
 
     if opt_schm == 1:
         out_dict['prm_vecs'] = np.asarray(prm_vecs)

@@ -22,7 +22,7 @@ def main():
     n_test = int(1e4)
     n_dims = 6
     n_uvecs = int(1e4)
-    n_cpus = 7
+    n_cpus = 31
 
     ref = np.random.random((n_ref, n_dims))
     test = np.random.random((n_test, n_dims))
@@ -107,6 +107,40 @@ def main():
     assert np.all(np.isclose(depths_arr_st, depths_arr_cy))
     print('Pass: depth_ftn sp equality')
 
+    temp_mins_cy[:] = n_test
+    mins_cy[:] = n_test
+    depth_ftn_cy(
+        test,
+        test,
+        uvecs,
+        dot_ref,
+        dot_test,
+        dot_test_sort,
+        temp_mins_cy,
+        mins_cy,
+        depths_arr_cy,
+        n_cpus,
+        0)
+
+    temp_mins_c[:] = n_test
+    mins_c[:] = n_test
+    depth_ftn_cy(
+        test,
+        test,
+        uvecs,
+        dot_ref,
+        dot_test,
+        dot_test_sort,
+        temp_mins_c,
+        mins_c,
+        depths_arr_c,
+        n_cpus,
+        1)
+
+    assert np.all(np.isclose(depths_arr_c, depths_arr_cy))
+    assert np.all(depths_arr_c >= 1) and np.all(depths_arr_cy >= 1)
+    print('Pass: depth_ftn mp chull')
+
     pre_depth_cy(
         ref,
         uvecs,
@@ -161,9 +195,9 @@ def main():
 
         assert np.all(np.isclose(temp_mins_cy, temp_mins_post_c))
         assert np.all(np.isclose(temp_mins_post_cy, temp_mins_cy))
-#
+
         assert np.all(np.isclose(temp_mins_post_cy, temp_mins_post_c))
-#
+
         assert np.all(np.isclose(mins_post_cy, mins_post_c))
 
     assert np.all(np.isclose(depths_arr_st, depths_arr_post_cy))

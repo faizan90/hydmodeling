@@ -12,6 +12,7 @@ cdef void depth_ftn(
               DT_UL[:, ::1] mins,
               DT_UL[::1] depths_arr,
         const DT_UL n_ref,
+        const DT_UL n_test,
         const DT_UL n_cpus,
         ) nogil except +
 

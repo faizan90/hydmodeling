@@ -1,10 +1,3 @@
-# cython: nonecheck=True
-# cython: boundscheck=True
-# cython: wraparound=True
-# cython: cdivision=True
-# cython: language_level=3
-# cython: infer_types(None)
-
 from ..miscs.dtypes cimport DT_D, DT_UL
 
 
