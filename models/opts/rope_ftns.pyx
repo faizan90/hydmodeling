@@ -419,7 +419,7 @@ cdef void gen_vecs_in_chull(
             if ctr >= n_prm_vecs:
                 break
 
-            if depths_arr[i] != 1:
+            if not depths_arr[i]:
                 continue
 
             for j in range(n_prms):
