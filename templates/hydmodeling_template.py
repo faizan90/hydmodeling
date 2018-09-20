@@ -236,10 +236,10 @@ def main():
     start_date = cfp['OPT_HYD_MODEL']['start_date']
     end_date = cfp['OPT_HYD_MODEL']['end_date']
     if valid_flag == True:
-        start_date_calib = cfp['OPT_HYD_MODEL']['start_date_calib']
-        end_date_calib = cfp['OPT_HYD_MODEL']['end_date_calib']
-        start_date_valid = cfp['OPT_HYD_MODEL']['start_date_valid']
-        end_date_valid = cfp['OPT_HYD_MODEL']['end_date_valid']
+        start_date_calib = pd.to_datetime(cfp['OPT_HYD_MODEL']['start_date_calib'])
+        end_date_calib = pd.to_datetime(cfp['OPT_HYD_MODEL']['end_date_calib'])
+        start_date_valid = pd.to_datetime(cfp['OPT_HYD_MODEL']['start_date_valid'])
+        end_date_valid = pd.to_datetime(cfp['OPT_HYD_MODEL']['end_date_valid'])
         if show_q_shetran == True:
             q_shetran_dir = cfp['OPT_HYD_MODEL']['in_q_shetran_file']
             q_shetran =  pd.read_csv(q_shetran_dir, sep=str(sep), index_col=0)
@@ -379,20 +379,6 @@ def main():
                              in_use_step_ser.index >= end_date_calib], axis=0)
             in_use_step_ser.loc[cal_sel_idx] = 0
 
-            in_index = in_q_df.index[in_q_df.index >= start_date]
-            in_index = in_index[in_index <= end_date]
-            valid_step_ser = pd.Series(
-                index=in_index,
-                data=np.ones(in_index.shape[0], dtype=np.int32))
-            valid_sel_idx = np.any([valid_step_ser.index <= start_date_valid,
-                             valid_step_ser.index >= end_date_valid], axis=0)
-            valid_step_ser.loc[valid_sel_idx] = 0
-
-            if show_q_shetran:
-                q_shetran.index = pd.date_range(start = shetran_start, periods = len(q_shetran))
-                q_she = q_shetran[q_shetran.index >= start_date]
-                q_she = q_she[q_she.index <= end_date]
-
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
 
@@ -462,57 +448,82 @@ def main():
 
         hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
 
+    if valid_flag == True:
         dbs = os.path.join(dbs_dir, r'cat_411.hdf5')
         db = h5py.File(dbs, 'r+')
 
-        if valid_flag == True:
-            # manipulate dbs_dir
-            val_time = db.create_group('valid_time')
-            vali_data = val_time.create_dataset("val_data",
-                                                data=valid_step_ser)
-            if show_q_shetran:
-                shetran = db.create_group('shetran')
-                shetran_q = shetran.create_group('Q')
-                shetran_q.create_dataset("q", data=q_she.values[:,0])
+        in_q_df = pd.read_csv(in_q_file, sep=str(sep), index_col=0)
+        in_q_df.index = pd.to_datetime(in_q_df.index,
+                                       format=in_date_fmt)
 
-                shetran_out = open(shetran_dir, 'r')
-                shetran_val = pd.read_csv(shetran_out, delimiter=',', header=1, index_col=0)
+        in_index = in_q_df.index[in_q_df.index >= start_date]
+        in_index = in_index[in_index <= end_date]
 
-                # #shetran.create_dataset("time", data=q_she.index.values.astype('datetime64[D]'))
-                # shetran_db = h5py.File(shetran_dir, 'r')
-                snow = shetran.create_group('snow')
-                ET_she = shetran.create_group('ET')
-                #
-                # value = np.asarray(
-                #             shetran_db['VARIABLES']['  6 snow_dep']['value'])
-                # times = np.asarray(
-                #             shetran_db['VARIABLES']['  6 snow_dep']['time'])
-                #
-                # value[value == -1.0] = np.nan
-                # value = np.nanmean(value, axis=(0,1))
-                # value = pd.DataFrame(value)
-                #
-                # value.index =  pd.to_datetime(times, unit='h',
-                #                origin=pd.Timestamp('1960-01-01')).values.astype('datetime64[D]')
-                shetran_val.index = pd.to_datetime(shetran_val.index, unit='h',
-                                origin=pd.Timestamp('1960-01-01')).values.astype('datetime64[D]')
-                # value = value[value.index >= start_date]
-                # value = value[value.index <= end_date]
-                shetran_crop = shetran_val[shetran_val.index >= start_date]
-                shetran_crop = shetran_crop[
-                    shetran_crop.index <= end_date]
-                snow.create_dataset('depth', data=shetran_crop['    Snow Storage'].values)
-                ET_she_cum = shetran_crop[' Cum. Can. Evap.'].values \
-                             + shetran_crop[' Cum. Soil Evap.'].values
-                ET_she_tot = ET_she_cum.copy()
-                ET_she_tot[0] = 0
-                for i in range(1,ET_she_tot.shape[0]):
-                    ET_she_tot[i] = (ET_she_cum[i] - ET_she_cum[i-1])
+        valid_step_ser = pd.Series(
+            index=in_index,
+            data=np.ones(in_index.shape[0], dtype=np.int32))
+        assert min(valid_step_ser.index) < start_date_valid
+        assert max(valid_step_ser.index) > end_date_valid
+        valid_sel_idx = np.any(
+            [valid_step_ser.index <= start_date_valid,
+             valid_step_ser.index >= end_date_valid], axis=0)
+        valid_step_ser.loc[valid_sel_idx] = 0
 
-                ET_she.create_dataset('total_ET', data=ET_she_tot)
+        if show_q_shetran:
+            q_shetran.index = pd.date_range(start=shetran_start,
+                                            periods=len(q_shetran))
+            q_she = q_shetran[q_shetran.index >= start_date]
+            q_she = q_she[q_she.index <= end_date]
 
-                # snow.create_dataset('depth', data=value.values[:,0])
-                # #snow.create_dataset('time', data=value.index)
+        # manipulate dbs_dir
+        if 'valid_time' in db.keys():
+            del db['valid_time']
+        val_time = db.create_group('valid_time')
+        val_time.create_dataset("val_data",
+                                data=valid_step_ser)
+        if show_q_shetran and ('shetran' not in db.keys()):
+            shetran = db.create_group('shetran')
+            shetran_q = shetran.create_group('Q')
+            shetran_q.create_dataset("q", data=q_she.values[:,0])
+
+            shetran_out = open(shetran_dir, 'r')
+            shetran_val = pd.read_csv(shetran_out, delimiter=',', header=1, index_col=0)
+
+            # #shetran.create_dataset("time", data=q_she.index.values.astype('datetime64[D]'))
+            # shetran_db = h5py.File(shetran_dir, 'r')
+            snow = shetran.create_group('snow')
+            ET_she = shetran.create_group('ET')
+            #
+            # value = np.asarray(
+            #             shetran_db['VARIABLES']['  6 snow_dep']['value'])
+            # times = np.asarray(
+            #             shetran_db['VARIABLES']['  6 snow_dep']['time'])
+            #
+            # value[value == -1.0] = np.nan
+            # value = np.nanmean(value, axis=(0,1))
+            # value = pd.DataFrame(value)
+            #
+            # value.index =  pd.to_datetime(times, unit='h',
+            #                origin=pd.Timestamp('1960-01-01')).values.astype('datetime64[D]')
+            shetran_val.index = pd.to_datetime(shetran_val.index, unit='h',
+                            origin=pd.Timestamp('1960-01-01')).values.astype('datetime64[D]')
+            # value = value[value.index >= start_date]
+            # value = value[value.index <= end_date]
+            shetran_crop = shetran_val[shetran_val.index >= start_date]
+            shetran_crop = shetran_crop[
+                shetran_crop.index <= end_date]
+            snow.create_dataset('depth', data=shetran_crop['    Snow Storage'].values)
+            ET_she_cum = shetran_crop[' Cum. Can. Evap.'].values \
+                         + shetran_crop[' Cum. Soil Evap.'].values
+            ET_she_tot = ET_she_cum.copy()
+            ET_she_tot[0] = 0
+            for i in range(1,ET_she_tot.shape[0]):
+                ET_she_tot[i] = (ET_she_cum[i] - ET_she_cum[i-1])
+
+            ET_she.create_dataset('total_ET', data=ET_she_tot)
+
+            # snow.create_dataset('depth', data=value.values[:,0])
+            # #snow.create_dataset('time', data=value.index)
 
     #=========================================================================
     # Plot the k-fold results

@@ -215,7 +215,7 @@ def plot_error_stats(dbs_dir,
 
     assert cats_dbs
 
-    plot_gen = ((cat_db) for cat_db in cats_dbs)
+    plot_gen = ((cat_db, valid_flag) for cat_db in cats_dbs)
 
     if n_cpus > 1:
         mp_pool = ProcessPool(n_cpus)

@@ -55,23 +55,21 @@ def plot_hbv(plot_args):
             kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
 
             if valid_flags[1] == True:
-                kf_dict['q_she_arr'] = np.asarray(db['shetran']['Q']['q'])
-                kf_dict['snow_she_arr'] = np.asarray(
-                    db['shetran']['snow']['depth'])
-                kf_dict['evap_she_arr'] = np.asarray(
-                    db['shetran']['ET']['total_ET'])
+                kf_dict['q_she_arr'] = db['shetran']['Q']['q'][...]
+                kf_dict['snow_she_arr'] = db['shetran']['snow']['depth'][...]
+                kf_dict['evap_she_arr'] = db['shetran']['ET']['total_ET'][...]
 
             all_kfs_dict[i] = kf_dict
 
         if valid_flag == True:
             valid_tem_arr = np.concatenate([
-                all_kfs_dict[i]['tem_arr'][:,np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=1)
+                all_kfs_dict[i]['tem_arr'][:,db['valid_time']['val_data'][...] ==1] for i in all_kfs_dict], axis=1)
             valid_ppt_arr = np.concatenate([
-                all_kfs_dict[i]['ppt_arr'][:,np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=1)
+                all_kfs_dict[i]['ppt_arr'][:,db['valid_time']['val_data'][...] ==1] for i in all_kfs_dict], axis=1)
             valid_pet_arr = np.concatenate([
-                all_kfs_dict[i]['pet_arr'][:,np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=1)
+                all_kfs_dict[i]['pet_arr'][:,db['valid_time']['val_data'][...] ==1] for i in all_kfs_dict], axis=1)
             valid_qact_arr = np.concatenate([
-                all_kfs_dict[i]['qact_arr'][np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis=0)
+                all_kfs_dict[i]['qact_arr'][db['valid_time']['val_data'][...] ==1] for i in all_kfs_dict], axis=0)
             if valid_flags[1]== True:
                 valid_q_she_arr = np.concatenate([
                     all_kfs_dict[i]['q_she_arr'][np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis = 0)
@@ -89,21 +87,21 @@ def plot_hbv(plot_args):
                     for i in all_kfs_dict], axis=0)
 
             calib_tem_arr = np.concatenate([
-                all_kfs_dict[i]['tem_arr'][:,np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis=1)
+                all_kfs_dict[i]['tem_arr'][:,db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
             calib_ppt_arr = np.concatenate([
-                all_kfs_dict[i]['ppt_arr'][:,np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis=1)
+                all_kfs_dict[i]['ppt_arr'][:,db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
             calib_pet_arr = np.concatenate([
-                all_kfs_dict[i]['pet_arr'][:,np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis=1)
+                all_kfs_dict[i]['pet_arr'][:,db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
             calib_qact_arr = np.concatenate([
-                all_kfs_dict[i]['qact_arr'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis=0)
+                all_kfs_dict[i]['qact_arr'][db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=0)
             if valid_flags[1]== True:
                 calib_q_she_arr = np.concatenate([
-                    all_kfs_dict[i]['q_she_arr'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis = 0)
+                    all_kfs_dict[i]['q_she_arr'][db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis = 0)
                 calib_snow_she_arr = np.concatenate([
-                    all_kfs_dict[i]['snow_she_arr'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis = 0)
+                    all_kfs_dict[i]['snow_she_arr'][db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis = 0)
                 calib_evap_she_arr = np.concatenate([
-                    all_kfs_dict[i]['evap_she_arr'][np.asarray(
-                        db['calib']['kf_01']['use_step_arr']) == 1] for
+                    all_kfs_dict[i]['evap_she_arr'][
+                        db['calib']['kf_01']['use_step_arr'][...] == 1] for
                     i in all_kfs_dict], axis=0)
             if 'extra_us_inflow' in kf_dict:
                 calib_us_inflow_arr = np.concatenate([
@@ -230,9 +228,10 @@ def plot_hbv(plot_args):
 
 def plot_error(plot_args):
 
-    cat_db = plot_args
+    (cat_db, valid_flag) = plot_args
 
     with h5py.File(cat_db, 'r') as db:
+        qshe = db['shetran']['Q']['q'][...]
         out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'10_error')
         if not os.path.exists(out_dir):
@@ -267,6 +266,20 @@ def plot_error(plot_args):
             plt.savefig(str(
                 Path(out_dir, f'tem_error_{cat}_kf_{i:02d}.png')),
                         bbox_inches='tight', dpi=600)
+            if valid_flag[1] == True:
+                error_she = qshe - qact
+                tem_error_she = np.vstack((tem[0,:], error_she))
+                sort_idxs = np.argsort(tem)
+                tem_error_sort_she = tem_error_she[:, sort_idxs]
+                plt.scatter(tem_error_sort_she[0, :],
+                            tem_error_sort_she[1, :], label='Shetran',
+                            alpha=0.01, s=6)
+                plt.xlabel('Temperature [°C]')
+                plt.ylabel('absolute Q error')
+                plt.legend()
+                plt.savefig(str(
+                    Path(out_dir, f'tem_error_she_{cat}_kf_{i:02d}.png')),
+                    bbox_inches='tight', dpi=600)
             plt.close()
     return
 
@@ -289,7 +302,7 @@ def plot_hull(plot_args):
         for k in range(1, kfolds + 1):
             kf_str = f'kf_{k:02d}'
             cd_db = db[f'calib/{kf_str}']
-            chull_pts = cd_db['prm_vecs'][...]
+            chull_pts = cd_db['all_prm_vecs'][...]
             n_dims = chull_pts.shape[1]
             plt.figure(figsize=(15, 15))
             grid_axes = GridSpec(n_dims, n_dims)

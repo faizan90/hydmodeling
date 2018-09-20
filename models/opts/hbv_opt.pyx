@@ -733,6 +733,7 @@ cpdef dict hbv_opt(args):
         out_dict['fin_tol'] = 0.5 * (tol_pre + tol_curr)
         out_dict['curr_obj_vals'] = np.asarray(curr_obj_vals)
     elif opt_schm == 2:
+        out_dict['all_prm_vecs'] = np.asarray(prm_vecs)
         out_dict['prm_vecs'] = np.asarray(acc_vecs)
         out_dict['curr_obj_vals'] = np.asarray(
             sort_obj_vals[:acc_vecs.shape[0]])
