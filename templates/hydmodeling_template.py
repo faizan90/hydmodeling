@@ -30,7 +30,9 @@ from hydmodeling import (
     plot_kfolds_best_prms,
     plot_kfolds_best_hbv_prms_2d,
     plot_ann_cycs_fdcs_comp,
-    plot_prm_trans_perfs)
+    plot_prm_trans_perfs,
+    plot_error_stats,
+    plot_conv_hull)
 
 #raise Exception
 
@@ -62,7 +64,7 @@ def load_pickle(in_file, mode='rb'):
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template.ini')
+    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template_faizdata.ini')
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
@@ -85,6 +87,8 @@ def main():
     plot_ann_cys_fdcs_flag = False
     plot_prm_trans_comp_flag = False
     plot_hbv_vars_flag = False
+    plot_error_statistics = False
+    plot_convex_hull = False
 
     valid_flag= False
     show_q_shetran = False
@@ -93,16 +97,18 @@ def main():
     #get_stms_flag = True
     #create_stms_rels_flag = True
     #create_cumm_cats_flag = True
-    optimize_flag = True
+    #optimize_flag = True
     #plot_kfold_perfs_flag = True
     #plot_best_kfold_prms_flag = True
     #plot_prm_vecs_flag = True
     #plot_2d_kfold_prms_flag = True
     #plot_ann_cys_fdcs_flag = True
     #plot_prm_trans_comp_flag = True
-    plot_hbv_vars_flag = True
+    #plot_hbv_vars_flag = True
+    #plot_error_statistics = True
+    plot_convex_hull = True
 
-    valid_flag = True
+    #valid_flag = True
     show_q_shetran = True
 
     # =============================================================================
@@ -475,6 +481,7 @@ def main():
                 # #shetran.create_dataset("time", data=q_she.index.values.astype('datetime64[D]'))
                 # shetran_db = h5py.File(shetran_dir, 'r')
                 snow = shetran.create_group('snow')
+                ET_she = shetran.create_group('ET')
                 #
                 # value = np.asarray(
                 #             shetran_db['VARIABLES']['  6 snow_dep']['value'])
@@ -495,6 +502,15 @@ def main():
                 shetran_crop = shetran_crop[
                     shetran_crop.index <= end_date]
                 snow.create_dataset('depth', data=shetran_crop['    Snow Storage'].values)
+                ET_she_cum = shetran_crop[' Cum. Can. Evap.'].values \
+                             + shetran_crop[' Cum. Soil Evap.'].values
+                ET_she_tot = ET_she_cum.copy()
+                ET_she_tot[0] = 0
+                for i in range(1,ET_she_tot.shape[0]):
+                    ET_she_tot[i] = (ET_she_cum[i] - ET_she_cum[i-1])
+
+                ET_she.create_dataset('total_ET', data=ET_she_tot)
+
                 # snow.create_dataset('depth', data=value.values[:,0])
                 # #snow.create_dataset('time', data=value.index)
 
@@ -665,6 +681,47 @@ def main():
         _tot_t = _end_t - _beg_t
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
+
+    #=========================================================================
+    # plot error statistics
+    #=========================================================================
+
+    if plot_error_statistics == True:
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting error statistics...')
+        _beg_t = timeit.default_timer()
+
+        plot_error_stats(
+            dbs_dir,
+            valid_flags,
+            n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #=========================================================================
+    # plot convex hull plot
+    #=========================================================================
+
+    if in_opt_schm_vars_dict['opt_schm'] == 'ROPE':
+        if plot_convex_hull == True:
+            print('\n\n')
+            print('#' * 10)
+            print('Plotting convex hull...')
+            _beg_t = timeit.default_timer()
+
+            plot_conv_hull(
+                dbs_dir,
+                valid_flags,
+                n_cpus)
+
+            _end_t = timeit.default_timer()
+            _tot_t = _end_t - _beg_t
+            print(f'Took {_tot_t:0.4f} seconds!')
+            print('#' * 10)
 
 if __name__ == '__main__':
     _save_log_ = False

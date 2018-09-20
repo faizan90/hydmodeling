@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties as f_props
+from matplotlib.gridspec import GridSpec
 from scipy.stats import t
 
 from ..models import (
@@ -57,6 +58,8 @@ def plot_hbv(plot_args):
                 kf_dict['q_she_arr'] = np.asarray(db['shetran']['Q']['q'])
                 kf_dict['snow_she_arr'] = np.asarray(
                     db['shetran']['snow']['depth'])
+                kf_dict['evap_she_arr'] = np.asarray(
+                    db['shetran']['ET']['total_ET'])
 
             all_kfs_dict[i] = kf_dict
 
@@ -74,6 +77,10 @@ def plot_hbv(plot_args):
                     all_kfs_dict[i]['q_she_arr'][np.asarray(db['valid_time']['val_data']) ==1] for i in all_kfs_dict], axis = 0)
                 valid_snow_she_arr = np.concatenate([
                     all_kfs_dict[i]['snow_she_arr'][
+                        np.asarray(db['valid_time']['val_data']) == 1]
+                    for i in all_kfs_dict], axis=0)
+                valid_evap_she_arr = np.concatenate([
+                    all_kfs_dict[i]['evap_she_arr'][
                         np.asarray(db['valid_time']['val_data']) == 1]
                     for i in all_kfs_dict], axis=0)
             if 'extra_us_inflow' in kf_dict:
@@ -94,6 +101,10 @@ def plot_hbv(plot_args):
                     all_kfs_dict[i]['q_she_arr'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis = 0)
                 calib_snow_she_arr = np.concatenate([
                     all_kfs_dict[i]['snow_she_arr'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1] for i in all_kfs_dict], axis = 0)
+                calib_evap_she_arr = np.concatenate([
+                    all_kfs_dict[i]['evap_she_arr'][np.asarray(
+                        db['calib']['kf_01']['use_step_arr']) == 1] for
+                    i in all_kfs_dict], axis=0)
             if 'extra_us_inflow' in kf_dict:
                 calib_us_inflow_arr = np.concatenate([
                     all_kfs_dict[i]['extra_us_inflow'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1]
@@ -141,8 +152,10 @@ def plot_hbv(plot_args):
             kf_dict['ppt_arr'] = calib_ppt_arr
             kf_dict['pet_arr'] = calib_pet_arr
             kf_dict['qact_arr'] = calib_qact_arr
-            kf_dict['q_she_arr'] = calib_q_she_arr
-            kf_dict['snow_she_arr'] = calib_snow_she_arr
+            if valid_flags[1] == True:
+                kf_dict['q_she_arr'] = calib_q_she_arr
+                kf_dict['snow_she_arr'] = calib_snow_she_arr
+                kf_dict['evap_she_arr'] = calib_evap_she_arr
             if 'extra_us_inflow' in kf_dict:
                 kf_dict['extra_us_inflow'] = calib_us_inflow_arr
 
@@ -166,8 +179,10 @@ def plot_hbv(plot_args):
             kf_dict['ppt_arr'] = valid_ppt_arr
             kf_dict['pet_arr'] = valid_pet_arr
             kf_dict['qact_arr'] = valid_qact_arr
-            kf_dict['q_she_arr'] = valid_q_she_arr
-            kf_dict['snow_she_arr'] = valid_snow_she_arr
+            if valid_flags[1] == True:
+                kf_dict['q_she_arr'] = valid_q_she_arr
+                kf_dict['snow_she_arr'] = valid_snow_she_arr
+                kf_dict['evap_she_arr'] = valid_evap_she_arr
             if 'extra_us_inflow' in kf_dict:
                 kf_dict['extra_us_inflow'] = valid_us_inflow_arr
 
@@ -213,6 +228,115 @@ def plot_hbv(plot_args):
 
     return
 
+def plot_error(plot_args):
+
+    cat_db = plot_args
+
+    with h5py.File(cat_db, 'r') as db:
+        out_dir = db['data'].attrs['main']
+        out_dir = os.path.join(out_dir, r'10_error')
+        if not os.path.exists(out_dir):
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
+
+        kfolds = db['data'].attrs['kfolds']
+        cat = db.attrs['cat']
+
+        for i in range(1, kfolds + 1):
+            kf_str = f'kf_{i:02d}'
+            cd_db = db[f'calib/{kf_str}']
+            qsim = cd_db['qsim_arr'][...]
+            qact = cd_db['qact_arr'][...]
+            tem = cd_db['tem_arr'][...]
+
+            error = qsim - qact
+            tem_error = np.vstack((tem[0,:],error))
+            sort_idxs = np.argsort(tem)
+            #tem_error_sort = np.sort(tem_error, axis = 1)
+            tem_error_sort = tem_error[:,sort_idxs]
+
+            plt.scatter(tem_error_sort[0, :],
+                        tem_error_sort[1, :],
+                        label='HBV', alpha=0.1,
+                        s=6)  # tem_error_sort[1,:]
+            plt.xlabel('Temperature [°C]')
+            plt.ylabel('absolute Q error')
+
+            plt.savefig(str(
+                Path(out_dir, f'tem_error_{cat}_kf_{i:02d}.png')),
+                        bbox_inches='tight', dpi=600)
+            plt.close()
+    return
+
+def plot_hull(plot_args):
+
+    cat_db = plot_args
+
+    with h5py.File(cat_db, 'r') as db:
+        out_dir = db['data'].attrs['main']
+        out_dir = os.path.join(out_dir, r'11_chull')
+        if not os.path.exists(out_dir):
+            try:
+                os.mkdir(out_dir)
+            except:
+                pass
+
+        kfolds = db['data'].attrs['kfolds']
+        cat = db.attrs['cat']
+
+        for k in range(1, kfolds + 1):
+            kf_str = f'kf_{k:02d}'
+            cd_db = db[f'calib/{kf_str}']
+            chull_pts = cd_db['prm_vecs'][...]
+            n_dims = chull_pts.shape[1]
+            plt.figure(figsize=(15, 15))
+            grid_axes = GridSpec(n_dims, n_dims)
+            chull_min = np.min(chull_pts)
+            chull_max = np.max(chull_pts)
+            for i in range(n_dims):
+                for j in range(n_dims):
+                    if i >= j:
+                        continue
+
+                    ax = plt.subplot(grid_axes[i, j])
+
+                    ax.set_aspect('equal', 'box')
+
+                    ax.set_xlim(chull_min, chull_max)
+                    ax.set_ylim(chull_min, chull_max)
+
+                    ax.scatter(chull_pts[:, i], chull_pts[:, j], s=2, alpha=0.6)
+
+                    ax.set_xticks([])
+                    ax.set_xticklabels([])
+
+                    ax.set_yticks([])
+                    ax.set_yticklabels([])
+
+                    ax.text(
+                        0.95,
+                        0.95,
+                        f'({i}, {j})',
+                        horizontalalignment='right',
+                        verticalalignment='top',
+                        transform=ax.transAxes)
+
+                    plt.suptitle(
+                        f'Convex hull of {n_dims}D Params in 2D\n'
+                        f'Total points: {chull_pts.shape[0]}',
+                        x=0.5,
+                        y=0.5,
+                        va='bottom',
+                        ha='right')
+
+            plt.savefig(str(
+                Path(out_dir,
+                     f'chull_in_2D_{cat}_kf_{k:02d}.png')),
+                bbox_inches='tight')
+            plt.close('all')
+    return
 
 def _plot_prm_vecs(cat_db):
     with h5py.File(cat_db, 'r') as db:
@@ -465,6 +589,7 @@ def _plot_hbv_kf(
     if valid_flags[1] == True:
         q_she_arr = kf_dict['q_she_arr']
         snow_she_arr = kf_dict['snow_she_arr']
+        evap_she_arr = kf_dict['evap_she_arr']
 
     n_recs = temp_dist_arr.shape[1]
     n_cells = temp_dist_arr.shape[0]
@@ -536,6 +661,7 @@ def _plot_hbv_kf(
     if valid_flags[1] == True:
         q_she_arr = kf_dict['q_she_arr']
         snow_she_arr = kf_dict['snow_she_arr']
+        evap_she_arr = kf_dict['evap_she_arr']
         q_she_arr_diff = q_she_arr.copy()
     q_act_arr_diff = q_act_arr.copy()
 
@@ -586,12 +712,13 @@ def _plot_hbv_kf(
     if valid_flags[1] == True:
         ns_she = get_ns_cy(q_act_arr, q_she_arr, off_idx)
         print("NS Shetran {}: {:f}".format(kf_str, ns_she))
+    else:
+        ns_she = 0
 
     for i in range(all_sims.shape[0]):
         ns = get_ns_cy(q_act_arr, all_sims[i,:], off_idx)
         print(ns)
-    else:
-        ns_she = 0
+
     ln_ns = get_ln_ns_cy(q_act_arr, q_sim_arr, off_idx)
     kge = get_kge_cy(q_act_arr, q_sim_arr, off_idx)
     q_correl = get_pcorr_cy(q_act_arr, q_sim_arr, off_idx)
@@ -691,6 +818,9 @@ def _plot_hbv_kf(
 
             _curr_prec_sum = np.sum(prec_arr[bal_idxs[i]:bal_idxs[i + 1]])
             _curr_evap_sum = np.sum(evap_arr[bal_idxs[i]:bal_idxs[i + 1]])
+            if valid_flags[1]== True:
+                _curr_evap_she_sum = np.sum(
+                    evap_she_arr[bal_idxs[i]:bal_idxs[i + 1]])
 
             _curr_comb_sum = np.sum(comb_run_arr[bal_idxs[i]:bal_idxs[i + 1]])
 
@@ -738,6 +868,10 @@ def _plot_hbv_kf(
 
         et_trend, et_corr, et_slope, *_ = lin_regsn_cy(
             steps_range, evap_arr.copy(order='c'), 0)
+
+        if valid_flags[1] == True:
+            et_she_trend, et_corr, et_slope, *_ = lin_regsn_cy(
+                steps_range, evap_she_arr.copy(order='c'), 0)
 
         pet_stats_str += f'ET correlation: {et_corr:0.5f}, '
         pet_stats_str += f'ET slope: {et_slope:0.5f}'
@@ -938,8 +1072,16 @@ def _plot_hbv_kf(
                     lw=0.5,
                     label='Evapotranspiration',
                     alpha=0.5)
+        if valid_flags[1] == True:
+            pet_ax.plot(evap_she_arr,
+                        'darkgrey',
+                        lw=0.5,
+                        label='Evapotranspiration Shetran',
+                        alpha=0.5)
         pet_ax.plot(pet_trend, 'r-.', lw=0.9, label='PET Trend')
         pet_ax.plot(et_trend, 'b-.', lw=0.9, label='ET Trend')
+        if valid_flags[1] == True:
+            pet_ax.plot(et_she_trend, color='darkgrey', linestyle='-.', lw=0.9, label='ET Trend')
         pet_ax.text(pet_ax.get_xlim()[1] * 0.02,
                     (pet_ax.get_ylim()[1] -
                      (pet_ax.get_ylim()[1] - pet_ax.get_ylim()[0]) * 0.1),

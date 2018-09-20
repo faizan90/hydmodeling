@@ -5,7 +5,12 @@ import h5py
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
-from .sims import plot_hbv, _plot_prm_vecs, _plot_hbv_kf
+from .sims import plot_hbv, \
+    _plot_prm_vecs, \
+    _plot_hbv_kf, \
+    plot_error, \
+    plot_hull
+
 from .k_folds import (
     plot_cat_kfold_effs,
     _kfold_best_prms,
@@ -201,4 +206,56 @@ def plot_prm_trans_perfs(dbs_dir, n_cpus=1):
     else:
         for plot_args in plot_gen:
             plot_prm_trans(plot_args)
+    return
+
+def plot_error_stats(dbs_dir,
+                          valid_flag,
+                          n_cpus=1):
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+
+    assert cats_dbs
+
+    plot_gen = ((cat_db) for cat_db in cats_dbs)
+
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            print(list(
+                mp_pool.uimap(plot_prm_trans, plot_gen)))
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in plot_prm_trans:', msg)
+    else:
+        for plot_args in plot_gen:
+            plot_error(plot_args)
+
+    return
+
+def plot_conv_hull(dbs_dir,
+                     valid_flag,
+                     n_cpus=1):
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+
+    assert cats_dbs
+
+    plot_gen = ((cat_db) for cat_db in cats_dbs)
+
+    if n_cpus > 1:
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+        try:
+            print(list(
+                mp_pool.uimap(plot_prm_trans, plot_gen)))
+            mp_pool.clear()
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in plot_prm_trans:', msg)
+    else:
+        for plot_args in plot_gen:
+            plot_hull(plot_args)
+
     return

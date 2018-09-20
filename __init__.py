@@ -49,4 +49,7 @@ from .plotting import (
     plot_kfolds_best_prms,
     plot_kfolds_best_hbv_prms_2d,
     plot_ann_cycs_fdcs_comp,
-    plot_prm_trans_perfs)
+    plot_prm_trans_perfs,
+    plot_error_stats,
+    plot_conv_hull
+)
