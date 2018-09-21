@@ -99,14 +99,14 @@ def main():
     #create_cumm_cats_flag = True
     #optimize_flag = True
     plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_hbv_vars_flag = True
-    plot_error_statistics = True
-    plot_convex_hull = True
+    #plot_best_kfold_prms_flag = True
+    #plot_prm_vecs_flag = True
+    #plot_2d_kfold_prms_flag = True
+    #plot_ann_cys_fdcs_flag = True
+    #plot_prm_trans_comp_flag = True
+    #plot_hbv_vars_flag = True
+    #plot_error_statistics = True
+    #plot_convex_hull = True
 
     valid_flag = True
     show_q_shetran = True
@@ -257,6 +257,8 @@ def main():
     compare_ann_cyc_flag = cfp['OPT_HYD_MODEL'].getboolean(
         'compare_ann_cyc_flag')
     use_obs_flow_flag = cfp['OPT_HYD_MODEL'].getboolean('use_obs_flow_flag')
+    if valid_flag == True:
+        use_obs_flow_flag = True
 
     min_q_thresh = cfp['OPT_HYD_MODEL'].getfloat('min_q_thresh')
     run_as_lump_flag = cfp['OPT_HYD_MODEL'].getboolean('run_as_lump_flag')
@@ -351,6 +353,8 @@ def main():
          k_ll_flags], dtype=np.int32)
 
     dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
+    hgs_db_path = os.path.join(in_hyd_mod_dir,
+                               r'02_hydrographs/hgs_dfs')
 
     if optimize_flag:
         in_cats_prcssed_df = pd.read_csv(in_cats_prcssed_file,

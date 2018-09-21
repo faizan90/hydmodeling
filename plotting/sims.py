@@ -117,26 +117,52 @@ def plot_hbv(plot_args):
                     all_kfs_dict[i]['extra_us_inflow'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1]
                     for i in all_kfs_dict], axis=0)
 
-        if valid_flag == False:
-            all_tem_arr = np.concatenate([
-                all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
-            all_ppt_arr = np.concatenate([
-                all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
-            all_pet_arr = np.concatenate([
-                all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
-            all_qact_arr = np.concatenate([
-                all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
+        all_tem_arr = np.concatenate([
+            all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
+        all_ppt_arr = np.concatenate([
+            all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
+        all_pet_arr = np.concatenate([
+            all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
+        all_qact_arr = np.concatenate([
+            all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
 
-            if 'extra_us_inflow' in kf_dict:
-                all_us_inflow_arr = np.concatenate([
-                    all_kfs_dict[i]['extra_us_inflow']
-                    for i in all_kfs_dict], axis=0)
+        if 'extra_us_inflow' in kf_dict:
+            all_us_inflow_arr = np.concatenate([
+                all_kfs_dict[i]['extra_us_inflow']
+                for i in all_kfs_dict], axis=0)
 
-        if kfolds > 1:
-            for i in range(1, kfolds + 1):
-                kf_dict = all_kfs_dict[i]
-                kf_i = f'{i:02d}'
+        for i in range(1, kfolds + 1):
+            kf_dict = all_kfs_dict[i]
+            kf_i = f'{i:02d}'
 
+            _plot_hbv_kf(
+                kf_i,
+                cat,
+                kf_dict,
+                area_arr,
+                conv_ratio,
+                prm_syms,
+                off_idx,
+                out_dir,
+                wat_bal_stps,
+                plot_simple_flag,
+                plot_wat_bal_flag,
+                valid_flags,
+                bds_arr)
+
+            if valid_flags[0] == True:
+                kf_dict['tem_arr'] = calib_tem_arr
+                kf_dict['ppt_arr'] = calib_ppt_arr
+                kf_dict['pet_arr'] = calib_pet_arr
+                kf_dict['qact_arr'] = calib_qact_arr
+                if valid_flags[1] == True:
+                    kf_dict['q_she_arr'] = calib_q_she_arr
+                    kf_dict['snow_she_arr'] = calib_snow_she_arr
+                    kf_dict['evap_she_arr'] = calib_evap_she_arr
+                if 'extra_us_inflow' in kf_dict:
+                    kf_dict['extra_us_inflow'] = calib_us_inflow_arr
+
+                kf_i = f'{i:02d}' + '_calib'
                 _plot_hbv_kf(
                     kf_i,
                     cat,
@@ -152,84 +178,57 @@ def plot_hbv(plot_args):
                     valid_flags,
                     bds_arr)
 
-                if valid_flags[0] == True:
-                    kf_dict['tem_arr'] = calib_tem_arr
-                    kf_dict['ppt_arr'] = calib_ppt_arr
-                    kf_dict['pet_arr'] = calib_pet_arr
-                    kf_dict['qact_arr'] = calib_qact_arr
-                    if valid_flags[1] == True:
-                        kf_dict['q_she_arr'] = calib_q_she_arr
-                        kf_dict['snow_she_arr'] = calib_snow_she_arr
-                        kf_dict['evap_she_arr'] = calib_evap_she_arr
-                    if 'extra_us_inflow' in kf_dict:
-                        kf_dict['extra_us_inflow'] = calib_us_inflow_arr
+                kf_dict['tem_arr'] = valid_tem_arr
+                kf_dict['ppt_arr'] = valid_ppt_arr
+                kf_dict['pet_arr'] = valid_pet_arr
+                kf_dict['qact_arr'] = valid_qact_arr
+                if valid_flags[1] == True:
+                    kf_dict['q_she_arr'] = valid_q_she_arr
+                    kf_dict['snow_she_arr'] = valid_snow_she_arr
+                    kf_dict['evap_she_arr'] = valid_evap_she_arr
+                if 'extra_us_inflow' in kf_dict:
+                    kf_dict['extra_us_inflow'] = valid_us_inflow_arr
 
-                    kf_i = f'{i:02d}' + '_calib'
-                    _plot_hbv_kf(
-                        kf_i,
-                        cat,
-                        kf_dict,
-                        area_arr,
-                        conv_ratio,
-                        prm_syms,
-                        off_idx,
-                        out_dir,
-                        wat_bal_stps,
-                        plot_simple_flag,
-                        plot_wat_bal_flag,
-                        valid_flags,
-                        bds_arr)
+                kf_i = f'{i:02d}' + '_valid'
+                _plot_hbv_kf(
+                    kf_i,
+                    cat,
+                    kf_dict,
+                    area_arr,
+                    conv_ratio,
+                    prm_syms,
+                    off_idx,
+                    out_dir,
+                    wat_bal_stps,
+                    plot_simple_flag,
+                    plot_wat_bal_flag,
+                    valid_flags,
+                    bds_arr)
 
-                    kf_dict['tem_arr'] = valid_tem_arr
-                    kf_dict['ppt_arr'] = valid_ppt_arr
-                    kf_dict['pet_arr'] = valid_pet_arr
-                    kf_dict['qact_arr'] = valid_qact_arr
-                    if valid_flags[1] == True:
-                        kf_dict['q_she_arr'] = valid_q_she_arr
-                        kf_dict['snow_she_arr'] = valid_snow_she_arr
-                        kf_dict['evap_she_arr'] = valid_evap_she_arr
-                    if 'extra_us_inflow' in kf_dict:
-                        kf_dict['extra_us_inflow'] = valid_us_inflow_arr
+            if kfolds>1:
+                kf_dict['tem_arr'] = all_tem_arr
+                kf_dict['ppt_arr'] = all_ppt_arr
+                kf_dict['pet_arr'] = all_pet_arr
+                kf_dict['qact_arr'] = all_qact_arr
 
-                    kf_i = f'{i:02d}' + '_valid'
-                    _plot_hbv_kf(
-                        kf_i,
-                        cat,
-                        kf_dict,
-                        area_arr,
-                        conv_ratio,
-                        prm_syms,
-                        off_idx,
-                        out_dir,
-                        wat_bal_stps,
-                        plot_simple_flag,
-                        plot_wat_bal_flag,
-                        valid_flags,
-                        bds_arr)
-        else:
-            kf_dict['tem_arr'] = all_tem_arr
-            kf_dict['ppt_arr'] = all_ppt_arr
-            kf_dict['pet_arr'] = all_pet_arr
-            kf_dict['qact_arr'] = all_qact_arr
+                if 'extra_us_inflow' in kf_dict:
+                    kf_dict['extra_us_inflow'] = all_us_inflow_arr
 
-            if 'extra_us_inflow' in kf_dict:
-                kf_dict['extra_us_inflow'] = all_us_inflow_arr
-
-            kf_i = f'all'
-            _plot_hbv_kf(
-                kf_i,
-                cat,
-                kf_dict,
-                area_arr,
-                conv_ratio,
-                prm_syms,
-                off_idx,
-                out_dir,
-                wat_bal_stps,
-                plot_simple_flag,
-                plot_wat_bal_flag,
-                valid_flags,
-                bds_arr)
+                kf_i = f'all'
+                _plot_hbv_kf(
+                    kf_i,
+                    cat,
+                    kf_dict,
+                    area_arr,
+                    conv_ratio,
+                    prm_syms,
+                    off_idx,
+                    out_dir,
+                    wat_bal_stps,
+                    plot_simple_flag,
+                    plot_wat_bal_flag,
+                    valid_flags,
+                    bds_arr)
 
     return
 
@@ -656,7 +655,7 @@ def _plot_hbv_kf(
         conf_level = 0.95
         t_bounds = t.interval(conf_level, all_sims.shape[0] - 1)
 
-        ci = [sim_mean + critval * sim_std / np.sqrt(all_sims.shape[0]) for critval in
+        ci = [sim_mean +  critval * sim_std / np.sqrt(all_sims.shape[0]) for critval in
               t_bounds]
 
     assert all_outputs_dict['loop_ret'] == 0.0
@@ -1343,6 +1342,8 @@ def _plot_hbv_kf(
 
             _prec_sum = np.sum(prec_arr[bal_idxs[i]:bal_idxs[i + 1]])
             _evap_sum = np.sum(evap_arr[bal_idxs[i]:bal_idxs[i + 1]])
+            if valid_flags[1]==True:
+                _evap_she_sum = np.sum(evap_she_arr[bal_idxs[i]:bal_idxs[i + 1]])
 
             _curr_comb_sum = np.sum(comb_run_arr[bal_idxs[i]:bal_idxs[i + 1]])
 
@@ -1351,7 +1352,7 @@ def _plot_hbv_kf(
             sim_bal_w_et_arr.append(_curr_comb_sum / (_prec_sum - _evap_sum))
             if valid_flags[1] == True:
                 sim_bal_she_w_et_arr.append(
-                    _curr_q_she_sum / (_prec_sum - _evap_sum))
+                    _curr_q_she_sum / (_prec_sum -_evap_she_sum))
 
             # ET not accounted for
             act_bal_wo_et_arr.append(_curr_q_act_sum / _prec_sum)
