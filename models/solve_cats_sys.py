@@ -55,8 +55,6 @@ def solve_cats_sys(
         in_pet_dfs_dict,
         aux_cell_vars_dict,
         in_date_fmt,
-        beg_date,
-        end_date,
         time_freq,
         warm_up_steps,
         n_cpus,
@@ -70,7 +68,8 @@ def solve_cats_sys(
         kfolds,
         use_obs_flow_flag,
         run_as_lump_flag,
-        opt_schm_vars_dict):
+        opt_schm_vars_dict,
+        cv_list):
 
     '''Optimize parameters for a given catchment
 
@@ -101,8 +100,6 @@ def solve_cats_sys(
     assert isinstance(aux_cell_vars_dict, dict)
 
     assert isinstance(in_date_fmt, str)
-    assert isinstance(beg_date, str)
-    assert isinstance(end_date, str)
     assert isinstance(time_freq, str)
 
     assert isinstance(warm_up_steps, int)
@@ -132,39 +129,76 @@ def solve_cats_sys(
 
     assert isinstance(sep, str)
 
-    assert isinstance(kfolds, int)
-    assert kfolds >= 1, 'kfolds can only be 1 or greater!'
-
     assert isinstance(use_obs_flow_flag, bool)
     assert isinstance(run_as_lump_flag, bool)
 
     assert isinstance(opt_schm_vars_dict, dict)
 
-    date_range = pd.date_range(beg_date, end_date, freq=time_freq)
-    sel_idxs_arr = np.linspace(
-        0,
-        date_range.shape[0],
-        kfolds + 1,
-        dtype=np.int64,
-        endpoint=True)
+    assert isinstance(cv_list, list)
+    assert (len(cv_list) == 2) or (len(cv_list) == 4)
+    for tstamp in cv_list:
+        assert isinstance(tstamp, pd.Timestamp)
 
-    n_sel_idxs = sel_idxs_arr.shape[0]
-    uni_sel_idxs_arr = np.unique(sel_idxs_arr)
+    sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
+    assert np.all(np.isfinite(sel_cats))
 
-    assert n_sel_idxs >= 2, 'kfolds too high or data points too low!'
-    assert sel_idxs_arr.shape[0] == uni_sel_idxs_arr.shape[0], (
-        'kfolds too high or data points too low!')
+    in_q_df.columns = pd.to_numeric(in_q_df.columns)
+
+    assert (
+        in_ppt_dfs_dict.keys() ==
+        in_tem_dfs_dict.keys() ==
+        in_pet_dfs_dict.keys())
+
+    if len(cv_list) == 2:
+        assert isinstance(kfolds, int)
+        assert kfolds >= 1, 'kfolds can only be 1 or greater!'
+        assert cv_list[0] > cv_list[1]
+
+        date_range = pd.date_range(cv_list[0], cv_list[1], freq=time_freq)
+
+        sel_idxs_arr = np.linspace(
+            0,
+            date_range.shape[0],
+            kfolds + 1,
+            dtype=np.int64,
+            endpoint=True)
+
+        cv_flag = False
+
+        n_sel_idxs = sel_idxs_arr.shape[0]
+
+        uni_sel_idxs_arr = np.unique(sel_idxs_arr)
+
+        assert n_sel_idxs >= 2, 'kfolds too high or data points too low!'
+        assert sel_idxs_arr.shape[0] == uni_sel_idxs_arr.shape[0], (
+            'kfolds too high or data points too low!')
+
+    elif len(cv_list) == 4:
+        assert cv_list[0] < cv_list[1]
+        assert cv_list[2] < cv_list[3]
+
+        cdate_range = pd.date_range(cv_list[0], cv_list[1], freq=time_freq)
+        vdate_range = pd.date_range(cv_list[2], cv_list[3], freq=time_freq)
+
+        date_range = cdate_range.append(vdate_range)
+
+        uni_sel_idxs_arr = np.array([
+            0,
+            cdate_range.shape[0],
+            cdate_range.shape[0] + vdate_range.shape[0],
+            ])
+
+        n_sel_idxs = uni_sel_idxs_arr.shape[0]
+
+        cv_flag = True
+
+    else:
+        raise ValueError(f'cv_list has incorrect number of values!')
 
     print('Optimizing...')
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-
-    sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
-    assert np.all(np.isfinite(sel_cats))
-
-    beg_date, end_date = pd.to_datetime(
-        [beg_date, end_date], format=in_date_fmt)
 
     n_steps = date_range.shape[0]
 
@@ -187,49 +221,28 @@ def solve_cats_sys(
     else:
         raise NotImplementedError(f'Invalid time-freq: {time_freq}')
 
-    assert beg_date >= in_q_df.index[0]
+    assert date_range.intersection(in_q_df.index).shape[0] == n_steps
+
+    in_q_df = in_q_df.loc[date_range, sel_cats]
+
+    in_q_df[in_q_df.values < min_q_thresh] = min_q_thresh
 
     assert all(
-        [beg_date >= _df.index[0]
+        [date_range.intersection(_df.index).shape[0] == n_steps
         for _df in in_ppt_dfs_dict.values()])
 
     assert all(
-        [beg_date >= _df.index[0]
+        [date_range.intersection(_df.index).shape[0] == n_steps
         for _df in in_tem_dfs_dict.values()])
 
     assert all(
-        [beg_date >= _df.index[0]
+        [date_range.intersection(_df.index).shape[0] == n_steps
         for _df in in_pet_dfs_dict.values()])
-
-    assert end_date <= in_q_df.index[-1]
-
-    assert all(
-        [end_date <= _df.index[-1]
-        for _df in in_ppt_dfs_dict.values()])
-
-    assert all(
-        [end_date <= _df.index[-1]
-        for _df in in_tem_dfs_dict.values()])
-
-    assert all(
-        [end_date <= _df.index[-1]
-        for _df in in_pet_dfs_dict.values()])
-
-    assert (
-        in_ppt_dfs_dict.keys() ==
-        in_tem_dfs_dict.keys() ==
-        in_pet_dfs_dict.keys())
-
-    in_q_df.columns = pd.to_numeric(in_q_df.columns)
-    in_q_df = in_q_df.loc[beg_date:end_date, sel_cats]
 
     if np.any(np.isnan(in_q_df.values)):
         raise RuntimeError('NaNs in in_q_df')
 
-    in_q_df[in_q_df.values < min_q_thresh] = min_q_thresh
-    assert in_q_df.shape[0] == n_steps
-
-    k_aux_cell_vars_dict = _get_k_aux_vars_dict(
+    k_aux_cell_vars_dict = get_k_aux_vars_dict(
         aux_cell_vars_dict,
         sel_cats,
         all_prms_flags,
@@ -253,19 +266,19 @@ def solve_cats_sys(
 
     (fin_ppt_dfs_dict,
      fin_tem_dfs_dict,
-     fin_pet_dfs_dict) = _get_var_dicts(
+     fin_pet_dfs_dict) = get_var_dicts(
         in_ppt_dfs_dict,
         in_tem_dfs_dict,
         in_pet_dfs_dict,
         aux_cell_vars_dict['area_ratios'],
         sel_cats,
-        beg_date,
-        end_date,
+        date_range,
         run_as_lump_flag)
 
     del in_ppt_dfs_dict, in_tem_dfs_dict, in_pet_dfs_dict
 
     assert all([fin_ppt_dfs_dict, fin_tem_dfs_dict, fin_pet_dfs_dict])
+
     for cat in sel_cats:
         assert (
             n_steps ==
@@ -281,15 +294,6 @@ def solve_cats_sys(
         assert np.all(fin_ppt_dfs_dict[cat].values >= 0)
         assert np.all(fin_pet_dfs_dict[cat].values >= 0)
 
-        if np.any(np.isnan(fin_ppt_dfs_dict[cat].values)):
-            raise RuntimeError('NaNs in precipiation!')
-
-        if np.any(np.isnan(fin_tem_dfs_dict[cat].values)):
-            raise RuntimeError('NaNs in temperature!')
-
-        if np.any(np.isnan(fin_pet_dfs_dict[cat].values)):
-            raise RuntimeError('NaNs in PET!')
-
     ini_arrs_dict = {
         sel_cat:
         np.zeros(
@@ -302,8 +306,8 @@ def solve_cats_sys(
     dumm_dict = None
     kfold_prms_dict = {}
 
-    k_in_use_step_ser = in_use_step_ser.loc[beg_date:end_date]
-    assert k_in_use_step_ser.shape[0] == n_steps
+    k_in_use_step_ser = in_use_step_ser.loc[date_range]
+
     assert np.all(
         (k_in_use_step_ser.values >= 0) & (k_in_use_step_ser.values <= 1))
 
@@ -322,7 +326,8 @@ def solve_cats_sys(
         'run_as_lump_flag': run_as_lump_flag,
         'use_step_flag': use_step_flag,
         'min_q_thresh': min_q_thresh,
-        'time_freq': time_freq}
+        'time_freq': time_freq,
+        'cv_flag': cv_flag}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -330,11 +335,13 @@ def solve_cats_sys(
     out_db_dir = os.path.join(out_dir, '01_database')
     if os.path.exists(out_db_dir):
         shutil.rmtree(out_db_dir)
+
     os.mkdir(out_db_dir)
 
     out_hgs_dir = os.path.join(out_dir, '02_hydrographs')
     if os.path.exists(out_hgs_dir):
         shutil.rmtree(out_hgs_dir)
+
     os.mkdir(out_hgs_dir)
 
     dirs_dict = {}
@@ -343,26 +350,27 @@ def solve_cats_sys(
     dirs_dict['hgs'] = out_hgs_dir
 
     for kf_i in range(n_sel_idxs - 1):
-        _beg_i = uni_sel_idxs_arr[kf_i]
-        _end_i = uni_sel_idxs_arr[kf_i + 1]
+        beg_i = uni_sel_idxs_arr[kf_i]
+        end_i = uni_sel_idxs_arr[kf_i + 1]
 
         k_ppt_dfs_dict = {
-            sel_cat: fin_ppt_dfs_dict[sel_cat].iloc[_beg_i:_end_i]
+            sel_cat: fin_ppt_dfs_dict[sel_cat].iloc[beg_i:end_i]
             for sel_cat in sel_cats}
 
         k_tem_dfs_dict = {
-            sel_cat: fin_tem_dfs_dict[sel_cat].iloc[_beg_i:_end_i]
+            sel_cat: fin_tem_dfs_dict[sel_cat].iloc[beg_i:end_i]
             for sel_cat in sel_cats}
 
         k_pet_dfs_dict = {
-            sel_cat: fin_pet_dfs_dict[sel_cat].iloc[_beg_i:_end_i]
+            sel_cat: fin_pet_dfs_dict[sel_cat].iloc[beg_i:end_i]
             for sel_cat in sel_cats}
 
         # one time for calibration period only
         calib_run = True
-        _ = _solve_k_cats_sys(
-            k_in_use_step_ser.iloc[_beg_i:_end_i],
-            in_q_df.iloc[_beg_i:_end_i],
+
+        prms_dict = solve_cat(
+            k_in_use_step_ser.iloc[beg_i:end_i],
+            in_q_df.iloc[beg_i:end_i],
             k_ppt_dfs_dict,
             k_tem_dfs_dict,
             k_pet_dfs_dict,
@@ -388,43 +396,92 @@ def solve_cats_sys(
             kfolds,
             kwargs=kwargs)
 
-        kfold_prms_dict[kf_i + 1] = _
+        kfold_prms_dict[kf_i + 1] = prms_dict
 
-        # for the calibrated params, run for all the time steps
         calib_run = False
-        _solve_k_cats_sys(
-            k_in_use_step_ser,
-            in_q_df,
-            fin_ppt_dfs_dict,
-            fin_tem_dfs_dict,
-            fin_pet_dfs_dict,
-            k_aux_cell_vars_dict,
-            in_cats_prcssed_df,
-            in_stms_prcssed_df,
-            in_dem_net_df,
-            bounds_dict,
-            all_prms_flags,
-            route_type,
-            obj_ftn_wts,
-            warm_up_steps,
-            n_cpus,
-            dirs_dict,
-            sep,
-            kf_i + 1,
-            ini_arrs_dict,
-            opt_schm_vars_dict,
-            cat_to_idx_dict,
-            stm_to_idx_dict,
-            kfold_prms_dict[kf_i + 1],
-            calib_run,
-            kfolds,
-            kwargs=kwargs)
+
+        if cv_flag:
+            beg_i = uni_sel_idxs_arr[kf_i + 1]
+            end_i = uni_sel_idxs_arr[kf_i + 2]
+
+            k_ppt_dfs_dict = {
+                sel_cat: fin_ppt_dfs_dict[sel_cat].iloc[beg_i:end_i]
+                for sel_cat in sel_cats}
+
+            k_tem_dfs_dict = {
+                sel_cat: fin_tem_dfs_dict[sel_cat].iloc[beg_i:end_i]
+                for sel_cat in sel_cats}
+
+            k_pet_dfs_dict = {
+                sel_cat: fin_pet_dfs_dict[sel_cat].iloc[beg_i:end_i]
+                for sel_cat in sel_cats}
+
+            # for the calibrated params, run for all validation time steps
+            prms_dict = solve_cat(
+                k_in_use_step_ser.iloc[beg_i:end_i],
+                in_q_df.iloc[beg_i:end_i],
+                k_ppt_dfs_dict,
+                k_tem_dfs_dict,
+                k_pet_dfs_dict,
+                k_aux_cell_vars_dict,
+                in_cats_prcssed_df,
+                in_stms_prcssed_df,
+                in_dem_net_df,
+                bounds_dict,
+                all_prms_flags,
+                route_type,
+                obj_ftn_wts,
+                warm_up_steps,
+                n_cpus,
+                dirs_dict,
+                sep,
+                kf_i + 1,
+                ini_arrs_dict,
+                opt_schm_vars_dict,
+                cat_to_idx_dict,
+                stm_to_idx_dict,
+                kfold_prms_dict[kf_i + 1],
+                calib_run,
+                kfolds,
+                kwargs=kwargs)
+
+            break
+
+        else:
+            # for the calibrated params, run for all the time steps
+            solve_cat(
+                k_in_use_step_ser,
+                in_q_df,
+                fin_ppt_dfs_dict,
+                fin_tem_dfs_dict,
+                fin_pet_dfs_dict,
+                k_aux_cell_vars_dict,
+                in_cats_prcssed_df,
+                in_stms_prcssed_df,
+                in_dem_net_df,
+                bounds_dict,
+                all_prms_flags,
+                route_type,
+                obj_ftn_wts,
+                warm_up_steps,
+                n_cpus,
+                dirs_dict,
+                sep,
+                kf_i + 1,
+                ini_arrs_dict,
+                opt_schm_vars_dict,
+                cat_to_idx_dict,
+                stm_to_idx_dict,
+                kfold_prms_dict[kf_i + 1],
+                calib_run,
+                kfolds,
+                kwargs=kwargs)
 
     os.chdir(old_wd)
     return
 
 
-def _solve_k_cats_sys(
+def solve_cat(
         in_use_step_ser,
         in_q_df,
         in_ppt_dfs_dict,
@@ -475,6 +532,7 @@ def _solve_k_cats_sys(
 
     if calib_run:
         calib_valid_suff = 'calib'
+
     else:
         calib_valid_suff = 'valid'
 
@@ -483,6 +541,7 @@ def _solve_k_cats_sys(
     use_step_flag = int(kwargs['use_step_flag'])
     min_q_thresh = float(kwargs['min_q_thresh'])
     time_freq = str(kwargs['time_freq'])
+    cv_flag = int(kwargs['cv_flag'])
 
     assert in_use_step_ser.shape[0] == in_q_df.shape[0]
 
@@ -1077,13 +1136,14 @@ def _solve_k_cats_sys(
             if 'cat' not in db:
                 db.attrs['cat'] = cat
 
-            if calib_run:
+            if calib_run or cv_flag:
                 out_db_dict['tem_arr'] = tem_arr
                 out_db_dict['ppt_arr'] = ppt_arr
                 out_db_dict['pet_arr'] = pet_arr
                 out_db_dict['qact_arr'] = q_arr
                 out_db_dict['ini_arr'] = ini_arr
 
+            if calib_run:
                 for key in out_db_dict:
                     db[f'calib/kf_{kf_i:02d}/{key}'] = out_db_dict[key]
 
@@ -1104,6 +1164,7 @@ def _solve_k_cats_sys(
                 data_sb.attrs['off_idx'] = warm_up_steps
                 data_sb.attrs['run_as_lump_flag'] = run_as_lump_flag
                 data_sb.attrs['route_type'] = route_type
+                data_sb.attrs['cv_flag'] = cv_flag
 
                 dt = h5py.special_dtype(vlen=str)
                 _prms_ds = data_sb.create_dataset(
@@ -1299,13 +1360,15 @@ def _solve_k_cats_sys(
     return prms_dict
 
 
-def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
+def get_k_aux_dict(aux_dict, area_dict, cats, lf):
 
     out_dict = {cat: aux_dict[cat] for cat in cats}
 
     if lf:
         out_dict = {
-            cat: np.array([((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
+            cat: np.array([
+                ((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
+
             for cat in cats}
 
     for cat in cats:
@@ -1315,7 +1378,7 @@ def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
     return out_dict
 
 
-def _get_k_aux_vars_dict(
+def get_k_aux_vars_dict(
         in_dict,
         cats,
         all_prms_flags,
@@ -1358,23 +1421,23 @@ def _get_k_aux_vars_dict(
     out_dict['rows'] = cats_rows_idxs
     out_dict['cols'] = cats_cols_idxs
 
-    _get_aux_dict_p = partial(
-        _get_k_aux_dict,
+    get_aux_dict_p = partial(
+        get_k_aux_dict,
         area_dict=area_dict,
         cats=cats,
         lf=run_as_lump_flag)
 
     if np.any(all_prms_flags[:, 1]):
-        out_dict['lulc_ratios'] = _get_aux_dict_p(in_dict['lulc_ratios'])
+        out_dict['lulc_ratios'] = get_aux_dict_p(in_dict['lulc_ratios'])
 
     if np.any(all_prms_flags[:, 2]):
-        out_dict['soil_ratios'] = _get_aux_dict_p(in_dict['soil_ratios'])
+        out_dict['soil_ratios'] = get_aux_dict_p(in_dict['soil_ratios'])
 
     if np.any(all_prms_flags[:, 3] | all_prms_flags[:, 5]):
-        out_dict['aspect'] = _get_aux_dict_p(in_dict['aspect'])
+        out_dict['aspect'] = get_aux_dict_p(in_dict['aspect'])
 
     if np.any(all_prms_flags[:, 4] | all_prms_flags[:, 5]):
-        out_dict['slope'] = _get_aux_dict_p(in_dict['slope'])
+        out_dict['slope'] = get_aux_dict_p(in_dict['slope'])
 
     if run_as_lump_flag:
         out_dict['area_ratios'] = {
@@ -1383,44 +1446,49 @@ def _get_k_aux_vars_dict(
     return out_dict
 
 
-def _get_var_dict(in_df_dict, cats, area_dict, db, de, lf):
+def get_var_dict(in_df_dict, cats, area_dict, date_range, lf):
 
     out_dict = {}
 
     for cat in cats:
-        _df_1 = in_df_dict[cat].loc[db:de]
+        df_1 = in_df_dict[cat].loc[date_range]
 
         if lf:
-            _df_2 = pd.DataFrame(index=_df_1.index, dtype=float, columns=[0])
-            _vals = _df_1.values * area_dict[cat]
-            _df_2.values[:] = _vals.sum(axis=1).reshape(-1, 1)
-            _df_1 = _df_2
+            df_2 = pd.DataFrame(index=df_1.index, dtype=float, columns=[0])
 
-        out_dict[cat] = _df_1
+            vals = df_1.values * area_dict[cat]
+
+            df_2.values[:] = vals.sum(axis=1).reshape(-1, 1)
+
+            df_1 = df_2
+
+        out_dict[cat] = df_1
+
+    for cat in cats:
+        assert not np.any(np.isnan(out_dict[cat]))
+        assert out_dict[cat].ndim == 2
 
     return out_dict
 
 
-def _get_var_dicts(
+def get_var_dicts(
         in_ppts,
         in_tems,
         in_pets,
         area_dict,
         cats,
-        db,
-        de,
+        date_range,
         lf):
 
-    _get_var_dict_p = partial(
-        _get_var_dict,
+    get_var_dict_p = partial(
+        get_var_dict,
         cats=cats,
         area_dict=area_dict,
-        db=db,
-        de=de,
+        date_range=date_range,
         lf=lf)
 
-    out_ppts = _get_var_dict_p(in_ppts)
-    out_tems = _get_var_dict_p(in_tems)
-    out_pets = _get_var_dict_p(in_pets)
+    out_ppts = get_var_dict_p(in_ppts)
+    out_tems = get_var_dict_p(in_tems)
+    out_pets = get_var_dict_p(in_pets)
 
     return (out_ppts, out_tems, out_pets)

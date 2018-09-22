@@ -30,16 +30,19 @@ def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
     const_args = (compare_ann_cyc_flag, hgs_db_path)
     cats_paths_gen = ((cat_db, const_args) for cat_db in cats_dbs)
 
-    if n_cpus > 1:
+    if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
+
         try:
             print(list(mp_pool.uimap(plot_cat_kfold_effs, cats_paths_gen)))
             mp_pool.clear()
+
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
             print('Error in plot_k_fold_effs:', msg)
+
     else:
         for cat_paths in cats_paths_gen:
             plot_cat_kfold_effs(cat_paths)
@@ -56,16 +59,19 @@ def plot_kfolds_best_prms(dbs_dir, n_cpus):
 
     cats_paths_gen = (cat_db for cat_db in cats_dbs)
 
-    if n_cpus > 1:
+    if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
+
         try:
             print(list(mp_pool.uimap(_kfold_best_prms, cats_paths_gen)))
             mp_pool.clear()
+
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
             print('Error in plot_kfolds_best_prms:', msg)
+
     else:
         for cat_paths in cats_paths_gen:
             _kfold_best_prms(cat_paths)
@@ -85,7 +91,7 @@ def plot_prm_vecs(dbs_dir, n_cpus):
 
     opt_res_gen = (cat_db for cat_db in cats_dbs)
 
-    if n_cpus > 1:
+    if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
         try:
@@ -101,7 +107,8 @@ def plot_prm_vecs(dbs_dir, n_cpus):
     return
 
 
-def plot_opt_evos(dbs_dir, n_cpus):
+def plot_opt_evos(
+        dbs_dir, save_png_flag, save_gif_flag, anim_secs, n_cpus=1):
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -112,9 +119,11 @@ def plot_opt_evos(dbs_dir, n_cpus):
 
     n_cpus = min(n_cats, n_cpus)
 
-    opt_res_gen = (cat_db for cat_db in cats_dbs)
+    opt_res_gen = (
+        (cat_db, save_png_flag, save_gif_flag, anim_secs)
+        for cat_db in cats_dbs)
 
-    if n_cpus > 1:
+    if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
@@ -129,7 +138,7 @@ def plot_opt_evos(dbs_dir, n_cpus):
 
     else:
         for opt_res in opt_res_gen:
-            plot_opt_evo(opt_res)
+            plot_opt_evo(*opt_res)
     return
 
 
@@ -154,7 +163,7 @@ def plot_vars(
 
     plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
 
-    if n_cpus > 1:
+    if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
         try:
@@ -188,6 +197,12 @@ def plot_prm_trans_perfs(dbs_dir, n_cpus=1):
             kfolds = db['data'].attrs['kfolds']
             cat = db.attrs['cat']
 
+            cv_flag = db['data'].attrs['cv_flag']
+
+            if cv_flag:
+                print('plot_prm_trans_perfs not possible with cv_flag!')
+                return
+
             f_var_infos = db['cdata/aux_var_infos'][...]
             prms_idxs = db['cdata/use_prms_idxs'][...]
             f_vars = db['cdata/aux_vars'][...]
@@ -219,7 +234,7 @@ def plot_prm_trans_perfs(dbs_dir, n_cpus=1):
     const_args = (kf_prms_dict, cats_vars_dict)
     plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
 
-    if n_cpus > 1:
+    if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
         try:

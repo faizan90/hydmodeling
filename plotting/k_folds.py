@@ -257,10 +257,16 @@ def plot_cat_kfold_effs(args):
         cat = db.attrs['cat']
 
         off_idx = db['data'].attrs['off_idx']
+        cv_flag = db['data'].attrs['cv_flag']
 
-        use_step_flag = db['valid/kf_01/use_step_flag'][()]
-        if use_step_flag:
-            use_step_arr = db['valid/kf_01/use_step_arr'][...]
+        if cv_flag:
+            print('plot_cat_kfold_effs not possible with cv_flag!')
+            return
+
+        else:
+            use_step_flag = db['valid/kf_01/use_step_flag'][()]
+            if use_step_flag:
+                use_step_arr = db['valid/kf_01/use_step_arr'][...]
 
     kfold_q_sers_dict = {}
     with shelve.open(hgs_db_path, 'r') as db:
@@ -268,6 +274,7 @@ def plot_cat_kfold_effs(args):
             kf_str = f'kf_{i:02d}'
             kfold_q_sers_dict[i] = (
                 db['valid'][kf_str]['out_cats_flow_df'][cat].values.copy(order='c'))
+
         else:
             date_idx = db['valid'][kf_str]['qact_df'][cat].index
             qact_arr = db['valid'][kf_str]['qact_df'][cat].values.copy(order='c')
@@ -284,6 +291,7 @@ def plot_cat_kfold_effs(args):
             print('Annual cycle comparision available only for daily series!')
             ann_cyc_flag = False
             q_cyc_arr = None
+
     else:
         q_cyc_arr = None
 
@@ -313,6 +321,7 @@ def plot_cat_kfold_effs(args):
                                get_ln_ns_prt_cy,
                                get_kge_prt_cy,
                                get_pcorr_prt_cy]
+
         assert len(perfo_ftns_list) == len(prt_perfo_ftns_list)
 
         prt_calib_step_arr = use_step_arr
@@ -322,6 +331,7 @@ def plot_cat_kfold_effs(args):
         arr_str_len += ((prec_len * 2) + 2)
         key_str_left += '\nprt_calib_eff\nprt_valid_eff'
         key_str_right += '\nprt_calib_eff\nprt_valid_eff'
+
     else:
         prt_perfo_ftns_list = []
 
@@ -331,6 +341,7 @@ def plot_cat_kfold_effs(args):
 
         arr_str_len += ((prec_len * 2) + 2)
         key_str_left += '\nres_eff\nann_cyc_eff'
+
     else:
         res_perfo_ftns_list = []
         n_cyc_perfs = 0
@@ -878,7 +889,12 @@ def _kfold_best_prms(cat_db):
         bds_arr = db['cdata/bds_arr'][...]
         best_prms_labs = db['cdata/use_prms_labs'][...]
 
+        cv_flag = db['data'].attrs['cv_flag']
+        if cv_flag:
+            kfolds = 1
+
         out_dir = db['data'].attrs['main']
+
         out_dir = os.path.join(out_dir, r'05_kfolds_perf')
         if not os.path.exists(out_dir):
             try:

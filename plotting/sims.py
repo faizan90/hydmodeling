@@ -11,6 +11,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pandas as pd
+from numpngw import write_apng
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.font_manager import FontProperties as f_props
@@ -27,6 +28,7 @@ plt.ioff()
 
 
 def plot_hbv(plot_args):
+
     cat_db, (wat_bal_stps,
              plot_simple_flag,
              plot_wat_bal_flag) = plot_args
@@ -41,6 +43,17 @@ def plot_hbv(plot_args):
         prm_syms = db['data/all_prms_labs'][...]
         use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
         area_arr = db['data/area_arr'][...]
+
+        cv_flag = db['data'].attrs['cv_flag']
+
+        if cv_flag:
+            cv_kf_dict = {}
+            for i in range(1, kfolds + 1):
+                cd_db = db[f'valid/kf_{i:02d}']
+                kf_dict = {key: cd_db[key][...] for key in cd_db}
+                kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
+
+            cv_kf_dict[i] = kf_dict
 
         all_kfs_dict = {}
         for i in range(1, kfolds + 1):
@@ -67,7 +80,7 @@ def plot_hbv(plot_args):
 
         for i in range(1, kfolds + 1):
             kf_dict = all_kfs_dict[i]
-            kf_i = f'{i:02d}'
+            kf_i = f'{i:02d}_calib'
 
             _plot_hbv_kf(
                 kf_i,
@@ -82,17 +95,32 @@ def plot_hbv(plot_args):
                 plot_simple_flag,
                 plot_wat_bal_flag)
 
-            if kfolds == 1:
+            if (kfolds == 1) and (not cv_flag):
                 continue
 
-            kf_dict['tem_arr'] = all_tem_arr
-            kf_dict['ppt_arr'] = all_ppt_arr
-            kf_dict['pet_arr'] = all_pet_arr
-            kf_dict['qact_arr'] = all_qact_arr
-            if 'extra_us_inflow' in kf_dict:
-                kf_dict['extra_us_inflow'] = all_us_inflow_arr
+            if cv_flag:
+                kf_i = f'{i:02d}_valid'
 
-            kf_i = f'{kf_i}_all'
+                kf_dict['tem_arr'] = cv_kf_dict[i]['tem_arr']
+                kf_dict['ppt_arr'] = cv_kf_dict[i]['ppt_arr']
+                kf_dict['pet_arr'] = cv_kf_dict[i]['pet_arr']
+                kf_dict['qact_arr'] = cv_kf_dict[i]['qact_arr']
+
+                if 'extra_us_inflow' in kf_dict:
+                    kf_dict['extra_us_inflow'] = (
+                        cv_kf_dict[i]['extra_us_inflow'])
+
+            else:
+                kf_i = f'{i:02d}_all'
+
+                kf_dict['tem_arr'] = all_tem_arr
+                kf_dict['ppt_arr'] = all_ppt_arr
+                kf_dict['pet_arr'] = all_pet_arr
+                kf_dict['qact_arr'] = all_qact_arr
+
+                if 'extra_us_inflow' in kf_dict:
+                    kf_dict['extra_us_inflow'] = all_us_inflow_arr
+
             _plot_hbv_kf(
                 kf_i,
                 cat,
@@ -105,6 +133,7 @@ def plot_hbv(plot_args):
                 wat_bal_stps,
                 plot_simple_flag,
                 plot_wat_bal_flag)
+
     return
 
 
@@ -322,7 +351,9 @@ def _plot_k_prm_vecs(
     return
 
 
-def plot_opt_evo(cat_db):
+def plot_opt_evo(cat_db, save_png_flag, save_gif_flag, anim_secs=5):
+
+    assert save_png_flag or save_gif_flag
 
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
@@ -352,7 +383,10 @@ def plot_opt_evo(cat_db):
                 cat,
                 kf_i,
                 out_dir,
-                prm_syms)
+                prm_syms,
+                save_png_flag,
+                save_gif_flag,
+                anim_secs)
 
     return
 
@@ -362,7 +396,10 @@ def plot_opt_evo_kf(
         cat,
         kf_i,
         out_dir,
-        prm_syms):
+        prm_syms,
+        save_png_flag,
+        save_gif_flag,
+        anim_secs):
 
     prm_cols = 7
     prm_rows = 7
@@ -379,19 +416,20 @@ def plot_opt_evo_kf(
     prm_iter_ct = 0
     stop_plotting = False
 
+    if save_gif_flag:
+        opt_vecs_fig_arrs_list = []
+
+        blines = 10  # buffer lines on all sides for gifs
+
     for fig_no in range(tot_figs):
         if stop_plotting:
             break
 
-        plt.figure(figsize=(19, 9))
+        fig = plt.figure(figsize=(19, 9), dpi=200)
         axes = GridSpec(prm_rows, prm_cols)
 
         for i in range(prm_rows):
             for j in range(prm_cols):
-
-#                 if np.isnan(iter_prm_vecs[prm_iter_ct, 0, 0]):
-#                     stop_plotting = True
-#                     break
 
                 ax = plt.subplot(axes[i, j])
 
@@ -427,18 +465,64 @@ def plot_opt_evo_kf(
             f'Parameter vector evolution per iteration\n'
             f'Vectors per iteration: {iter_prm_vecs.shape[1]}')
 
-        out_fig_name = (
-            f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_fig_{fig_no:02d}.png')
+        if save_png_flag:
+            out_fig_name = (
+                f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_fig_{fig_no:02d}.png')
 
-        plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
+            plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
+
+        if save_gif_flag:
+            fig.canvas.draw()  # calling draw is important here
+
+            fig_arr = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            fig_arr = fig_arr.reshape(
+                fig.canvas.get_width_height()[::-1] + (3,))
+
+            mins_arr = fig_arr[:, :, :].min(axis=2)
+
+            not_white_idxs = np.where(mins_arr < 255)
+
+            r_top = not_white_idxs[0].min()
+            r_bot = not_white_idxs[0].max()
+
+            c_left = not_white_idxs[1].min()
+            c_rght = not_white_idxs[1].max()
+
+            r_top -= min(blines, r_top)
+            r_bot += min(blines, mins_arr.shape[0] - r_bot)
+
+            c_left -= min(blines, c_left)
+            c_rght += min(blines, mins_arr.shape[1] - c_rght)
+
+            fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1, :]
+
+            opt_vecs_fig_arrs_list.append(fig_arr)
+
         plt.close()
+
+    if save_gif_flag:
+        out_fig_name = (
+            f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_anim.png')
+
+        write_apng(
+            str(Path(out_dir, out_fig_name)),
+            opt_vecs_fig_arrs_list,
+            delay=1000,
+            use_palette=True,
+            num_plays=1)
+
+        del opt_vecs_fig_arrs_list
+
+    ##########################################################################
+    if save_gif_flag:
+        chull_fig_arrs_list = []
 
     chull_min = 0
     chull_max = 1
     n_dims = iter_prm_vecs.shape[-1]
     for opt_iter in range(iter_prm_vecs.shape[0]):
 
-        plt.figure(figsize=(15, 15))
+        fig = plt.figure(figsize=(15, 15), dpi=200)
         grid_axes = GridSpec(n_dims, n_dims)
         for i in range(n_dims):
             for j in range(n_dims):
@@ -475,19 +559,63 @@ def plot_opt_evo_kf(
 
         plt.suptitle(
             f'Convex hull of {n_dims}D in 2D\n'
-            f'Total points: {iter_prm_vecs.shape[1]}',
-            x=0.5,
+            f'Total points: {iter_prm_vecs.shape[1]}\n'
+            f'Iteration no.: {opt_iter} out of {iter_prm_vecs.shape[0]}',
+            x=0.4,
             y=0.5,
             va='bottom',
             ha='right')
 
-        out_fig_name = (
-            f'hbv_prm_vecs_chull_{cat}_kf_{kf_i:02d}_iter_{opt_iter:02d}.png')
+        if save_png_flag:
+            out_fig_name = (
+                f'hbv_prm_vecs_chull_{cat}_kf_{kf_i:02d}_iter_{opt_iter:02d}.png')
 
-        plt.savefig(
-            str(Path(out_dir, out_fig_name)),
-            bbox_inches='tight')
+            plt.savefig(
+                str(Path(out_dir, out_fig_name)), bbox_inches='tight')
+
+        if save_gif_flag:
+            fig.canvas.draw()  # calling draw is important here
+
+            fig_arr = np.frombuffer(
+                fig.canvas.tostring_rgb(), dtype=np.uint8)
+
+            fig_arr = fig_arr.reshape(
+                fig.canvas.get_width_height()[::-1] + (3,))
+
+            mins_arr = fig_arr[:, :, :].min(axis=2)
+
+            not_white_idxs = np.where(mins_arr < 255)
+
+            r_top = not_white_idxs[0].min()
+            r_bot = not_white_idxs[0].max()
+
+            c_left = not_white_idxs[1].min()
+            c_rght = not_white_idxs[1].max()
+
+            r_top -= min(blines, r_top)
+            r_bot += min(blines, mins_arr.shape[0] - r_bot)
+
+            c_left -= min(blines, c_left)
+            c_rght += min(blines, mins_arr.shape[1] - c_rght)
+
+            fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1, :]
+
+            chull_fig_arrs_list.append(fig_arr)
+
         plt.close('all')
+
+    if save_gif_flag:
+        out_fig_name = (
+            f'hbv_prm_vecs_chull_{cat}_kf_{kf_i:02d}_anim.png')
+
+        write_apng(
+            str(Path(out_dir, out_fig_name)),
+            chull_fig_arrs_list,
+            delay=(1000 * anim_secs) / (opt_iter + 1),
+            use_palette=True,
+            num_plays=1)
+
+        del chull_fig_arrs_list
     return
 
 
@@ -506,6 +634,7 @@ def _plot_hbv_kf(
 
     if 'use_obs_flow_flag' in kf_dict:
         use_obs_flow_flag = bool(kf_dict['use_obs_flow_flag'])
+
     else:
         use_obs_flow_flag = False
 
