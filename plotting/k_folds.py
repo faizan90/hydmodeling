@@ -18,6 +18,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 from pathos.multiprocessing import ProcessPool
+
 from ..models import (
     hbv_loop_py,
     tfm_opt_to_hbv_prms_py,
@@ -34,6 +35,7 @@ from ..models import (
 
 
 def plot_prm_trans(plot_args):
+
     cat_db, (kf_prm_dict, cats_vars_dict) = plot_args
 
     with h5py.File(cat_db, 'r') as db:
@@ -71,9 +73,12 @@ def plot_prm_trans(plot_args):
         ln_ns_arr = ns_arr.copy()
 
         if (kfolds < 6) and (ns_arr.shape[1] < 6):
+
             eff_strs_arr = np.full(
                 ns_arr.shape, fill_value='', dtype='|U13')
+
             plot_val_strs = True
+
         else:
             plot_val_strs = False
 
@@ -82,6 +87,7 @@ def plot_prm_trans(plot_args):
 
             for rno, j in enumerate(kf_prm_dict):
                 trans_cat_dict = kf_prm_dict[j]
+
                 for cno, trans_cat in enumerate(trans_cat_dict):
                     trans_opt_prms = trans_cat_dict[trans_cat]
                     kf_dict['hbv_prms'] = tfm_opt_to_hbv_prms_py(
@@ -120,6 +126,7 @@ def plot_prm_trans(plot_args):
             titls_list = ['NS', 'Ln_NS']
             _col_i = 0
             _cspan = 4
+
             for p_i in range(n_perfs):
                 ax = plt.subplot2grid(
                     (plot_rows, plot_cols),
@@ -273,11 +280,11 @@ def plot_cat_kfold_effs(args):
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
             kfold_q_sers_dict[i] = (
-                db['valid'][kf_str]['out_cats_flow_df'][cat].values.copy(order='c'))
+                db['valid'][kf_str]['out_cats_flow_df'][cat].values.copy('c'))
 
         else:
             date_idx = db['valid'][kf_str]['qact_df'][cat].index
-            qact_arr = db['valid'][kf_str]['qact_df'][cat].values.copy(order='c')
+            qact_arr = db['valid'][kf_str]['qact_df'][cat].values.copy('c')
 
     assert kfolds >= 1, 'kfolds can be 1 or greater only!'
 
@@ -295,14 +302,12 @@ def plot_cat_kfold_effs(args):
     else:
         q_cyc_arr = None
 
-    sel_idxs_arr = np.linspace(0,
-                               qact_arr.shape[0],
-                               kfolds + 1,
-                               dtype=np.int64,
-                               endpoint=True)
+    sel_idxs_arr = np.linspace(
+        0, qact_arr.shape[0], kfolds + 1, dtype=np.int64, endpoint=True)
 
     uni_sel_idxs_list = np.unique(sel_idxs_arr).tolist()
     n_sel_idxs = len(uni_sel_idxs_list)
+
     assert n_sel_idxs >= 2, 'kfolds too high or data points too low!'
 
     uni_sel_idxs_list.extend([0, uni_sel_idxs_list[-1]])
@@ -317,10 +322,8 @@ def plot_cat_kfold_effs(args):
     arr_str_len = prec_len
 
     if use_step_flag:
-        prt_perfo_ftns_list = [get_ns_prt_cy,
-                               get_ln_ns_prt_cy,
-                               get_kge_prt_cy,
-                               get_pcorr_prt_cy]
+        prt_perfo_ftns_list = [
+            get_ns_prt_cy, get_ln_ns_prt_cy, get_kge_prt_cy, get_pcorr_prt_cy]
 
         assert len(perfo_ftns_list) == len(prt_perfo_ftns_list)
 
@@ -347,16 +350,19 @@ def plot_cat_kfold_effs(args):
         n_cyc_perfs = 0
 
     n_perfs = len(perfo_ftns_names)
-    over_all_perf_arr = np.full(shape=(n_perfs, kfolds),
-                                fill_value=np.nan)
-    over_all_perf_str_arr = np.full(shape=(n_perfs, kfolds),
-                                    fill_value='',
-                                    dtype=f'|U{arr_str_len}')
-    kfold_perfos_arr = np.full(shape=(n_perfs, kfolds, kfolds),
-                               fill_value=np.nan)
-    kfold_perfos_str_arr = np.full(shape=(n_perfs, kfolds, kfolds),
-                                   fill_value='',
-                                   dtype=f'|U{arr_str_len}')
+    over_all_perf_arr = np.full(
+        shape=(n_perfs, kfolds), fill_value=np.nan)
+
+    over_all_perf_str_arr = np.full(
+        shape=(n_perfs, kfolds), fill_value='', dtype=f'|U{arr_str_len}')
+
+    kfold_perfos_arr = np.full(
+        shape=(n_perfs, kfolds, kfolds), fill_value=np.nan)
+
+    kfold_perfos_str_arr = np.full(
+        shape=(n_perfs, kfolds, kfolds),
+        fill_value='',
+        dtype=f'|U{arr_str_len}')
 
     for iter_no in range(kfolds):
         for kf_i in range(n_sel_idxs + 1):
@@ -375,9 +381,10 @@ def plot_cat_kfold_effs(args):
             if use_step_flag:
                 curr_prt_calib_arr = prt_calib_step_arr[cst_idx:cen_idx]
                 curr_prt_valid_arr = prt_valid_step_arr[cst_idx:cen_idx]
-                assert (qsim_arr.shape[0] ==
-                        curr_qact_arr.shape[0] ==
-                        curr_prt_calib_arr.shape[0]), 'Unequal shapes!'
+                assert (
+                    qsim_arr.shape[0] ==
+                    curr_qact_arr.shape[0] ==
+                    curr_prt_calib_arr.shape[0]), 'Unequal shapes!'
 
             for i, perfo_ftn in enumerate(perfo_ftns_list):
                 perf_val = perfo_ftn(curr_qact_arr, qsim_arr, off_idx)
@@ -385,9 +392,11 @@ def plot_cat_kfold_effs(args):
                 if kf_i < kfolds:
                     kfold_perfos_arr[i, iter_no, kf_i] = perf_val
                     kfold_perfos_str_arr[i, iter_no, kf_i] = f'{perf_val:0.4f}'
+
                 elif kf_i > kfolds:
                     over_all_perf_arr[i, iter_no] = perf_val
                     over_all_perf_str_arr[i, iter_no] = f'{perf_val:0.4f}'
+
                 else:
                     raise RuntimeError('Fucked up!')
 
@@ -396,15 +405,19 @@ def plot_cat_kfold_effs(args):
                     curr_qact_arr, qsim_arr, curr_prt_calib_arr, off_idx)
                 valid_perf_val = perfo_ftn(
                     curr_qact_arr, qsim_arr, curr_prt_valid_arr, off_idx)
+
                 _cstr = f'\n{calib_perf_val:0.4f}'
                 _vstr = f'\n{valid_perf_val:0.4f}'
+
                 if kf_i < kfolds:
                     kfold_perfos_arr[i, iter_no, kf_i] = perf_val
                     kfold_perfos_str_arr[i, iter_no, kf_i] += _cstr
                     kfold_perfos_str_arr[i, iter_no, kf_i] += _vstr
+
                 elif kf_i > kfolds:
                     over_all_perf_str_arr[i, iter_no] += _cstr
                     over_all_perf_str_arr[i, iter_no] += _vstr
+
                 else:
                     raise RuntimeError('Fucked up!')
 
@@ -413,14 +426,12 @@ def plot_cat_kfold_effs(args):
 
             curr_q_cyc_arr = q_cyc_arr[cst_idx:cen_idx]
             for i, res_perfo_ftn in enumerate(res_perfo_ftns_list):
-                res_perf_val = res_perfo_ftn(curr_qact_arr,
-                                             qsim_arr,
-                                             curr_q_cyc_arr,
-                                             off_idx)
+                res_perf_val = res_perfo_ftn(
+                    curr_qact_arr, qsim_arr, curr_q_cyc_arr, off_idx)
 
-                cyc_perf_val = perfo_ftns_list[i](curr_qact_arr,
-                                                  curr_q_cyc_arr,
-                                                  off_idx)
+                cyc_perf_val = perfo_ftns_list[i](
+                    curr_qact_arr, curr_q_cyc_arr, off_idx)
+
                 _rstr = f'\n{res_perf_val:0.4f}'
                 _ystr = f'\n{cyc_perf_val:0.4f}'
 
@@ -428,8 +439,10 @@ def plot_cat_kfold_effs(args):
                     kfold_perfos_str_arr[i, iter_no, kf_i] += _rstr
                     kfold_perfos_str_arr[i, iter_no, kf_i] += _ystr
 
-                    if ((cyc_perf_val > kfold_perfos_arr[i, iter_no, kf_i]) and
+                    if ((cyc_perf_val > kfold_perfos_arr[i, iter_no, kf_i])
+                        and
                         (res_perf_val > 0)):
+
                         print('1 Impossible:', cat, i, iter_no)
 
                 elif kf_i > kfolds:
@@ -437,7 +450,8 @@ def plot_cat_kfold_effs(args):
                     over_all_perf_str_arr[i, iter_no] += _ystr
 
                     if ((cyc_perf_val > over_all_perf_arr[i, iter_no]) and
-                            (res_perf_val > 0)):
+                        (res_perf_val > 0)):
+
                         print('2 Impossible:', cat, i, iter_no)
 
                 else:
@@ -446,11 +460,13 @@ def plot_cat_kfold_effs(args):
     n_rows = 5
     n_cols = n_perfs
     plt.figure(figsize=(13, 5.5))
+
     top_xs = np.arange(0.5, kfolds, 1)
     top_ys = np.repeat(0.5, kfolds)
 
-    bot_xx, bot_yy = np.meshgrid(np.arange(0.5, kfolds, 1),
-                                 np.arange(0.5, kfolds, 1))
+    bot_xx, bot_yy = np.meshgrid(
+        np.arange(0.5, kfolds, 1), np.arange(0.5, kfolds, 1))
+
     bot_xx = bot_xx.ravel()
     bot_yy = bot_yy.ravel()
 
@@ -477,32 +493,37 @@ def plot_cat_kfold_effs(args):
 
     for i in range(n_perfs):
         top_ax = plt.subplot2grid((n_rows, n_cols), (0, i), 1, 1)
-        top_ax.pcolormesh(np.atleast_2d(over_all_perf_arr[i]),
-                          cmap=plt.get_cmap('Blues'),
-                          vmin=0,
-                          vmax=1)
 
-        [top_ax.text(top_xs[j],
-                     top_ys[j],
-                     over_all_perf_str_arr[i, j],
-                     va='center',
-                     ha='center',
-                     size=fts)
+        top_ax.pcolormesh(
+            np.atleast_2d(over_all_perf_arr[i]),
+            cmap=plt.get_cmap('Blues'),
+            vmin=0,
+            vmax=1)
+
+        [top_ax.text(
+            top_xs[j],
+            top_ys[j],
+            over_all_perf_str_arr[i, j],
+            va='center',
+            ha='center',
+            size=fts)
          for j in range(kfolds)]
 
         bot_ax = plt.subplot2grid((n_rows, n_cols), (1, i), 3, 1)
-        _ps = bot_ax.pcolormesh(kfold_perfos_arr[i],
-                                cmap=plt.get_cmap('Blues'),
-                                vmin=0,
-                                vmax=1)
+        _ps = bot_ax.pcolormesh(
+            kfold_perfos_arr[i],
+            cmap=plt.get_cmap('Blues'),
+            vmin=0,
+            vmax=1)
 
         _ravel = kfold_perfos_str_arr[i].ravel()
-        [bot_ax.text(bot_xx[j],
-                     bot_yy[j],
-                     _ravel[j],
-                     va='center',
-                     ha='center',
-                     size=fts)
+        [bot_ax.text(
+            bot_xx[j],
+            bot_yy[j],
+            _ravel[j],
+            va='center',
+            ha='center',
+            size=fts)
          for j in range(kfolds ** 2)]
 
         top_ax.set_xticks([])
@@ -519,18 +540,21 @@ def plot_cat_kfold_effs(args):
             bot_ax.set_yticklabels(bot_xy_ticklabels)
             bot_ax.set_ylabel('Split Efficiency')
             top_ax.set_ylabel('Overall\nEfficiency')
+
         else:
             bot_ax.set_yticks([])
             bot_ax.set_yticklabels([])
 
     cb_ax = plt.subplot2grid((n_rows, n_cols), (n_rows - 1, 0), 1, n_cols)
     cb_ax.set_axis_off()
-    cb = plt.colorbar(_ps,
-                      ax=cb_ax,
-                      fraction=0.4,
-                      aspect=20,
-                      orientation='horizontal',
-                      extend='min')
+    cb = plt.colorbar(
+        _ps,
+        ax=cb_ax,
+        fraction=0.4,
+        aspect=20,
+        orientation='horizontal',
+        extend='min')
+
     cb.set_ticks(np.arange(0, 1.01, 0.2))
     cb.set_label('Efficiency')
 
@@ -1044,6 +1068,7 @@ def get_daily_annual_cycle(in_data_df, n_cpus=1):
                                    dtype=float)
 
     cat_ser_gen = (in_data_df[col].copy() for col in in_data_df.columns)
+
     if n_cpus > 1:
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
@@ -1055,10 +1080,12 @@ def get_daily_annual_cycle(in_data_df, n_cpus=1):
                 annual_cycle_df.update(col_ser)
 
             mp_pool.clear()
+
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
             print('Error in get_daily_annual_cycle:', msg)
+
     else:
         for col_ser in cat_ser_gen:
             annual_cycle_df.update(_get_daily_annual_cycle(col_ser))
