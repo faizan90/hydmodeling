@@ -5,18 +5,21 @@ import h5py
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
-from .sims import plot_hbv, _plot_prm_vecs, _plot_hbv_kf, plot_opt_evo
-from .k_folds import (
+from .sims import plot_cat_hbv_sim
+from .prms import (
+    plot_cat_prm_vecs,
+    plot_cat_prm_vecs_evo,
+    plot_cat_best_prms_1d,
+    plot_cats_best_prms_2d,)
+from .perfs import (
     plot_cat_kfold_effs,
-    _kfold_best_prms,
-    plot_kfolds_best_hbv_prms_2d,
-    plot_ann_cycs_fdcs_comp,
-    plot_prm_trans)
+    plot_cats_ann_cycs_fdcs_comp,
+    plot_cat_prms_transfer_perfs)
 
 
-def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
-    '''Plot the k-fold efficiency results
-    '''
+def plot_cats_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
+
+    '''Plot the k-fold efficiency results.'''
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -46,10 +49,13 @@ def plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
     else:
         for cat_paths in cats_paths_gen:
             plot_cat_kfold_effs(cat_paths)
+
     return
 
 
-def plot_kfolds_best_prms(dbs_dir, n_cpus):
+def plot_cats_best_prms_1d(dbs_dir, n_cpus):
+
+    '''Plot every best kfold parameter set for all catchments.'''
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -64,7 +70,7 @@ def plot_kfolds_best_prms(dbs_dir, n_cpus):
         mp_pool.restart(True)
 
         try:
-            print(list(mp_pool.uimap(_kfold_best_prms, cats_paths_gen)))
+            print(list(mp_pool.uimap(plot_cat_best_prms_1d, cats_paths_gen)))
             mp_pool.clear()
 
         except Exception as msg:
@@ -74,11 +80,16 @@ def plot_kfolds_best_prms(dbs_dir, n_cpus):
 
     else:
         for cat_paths in cats_paths_gen:
-            _kfold_best_prms(cat_paths)
+            plot_cat_best_prms_1d(cat_paths)
+
     return
 
 
-def plot_prm_vecs(dbs_dir, n_cpus):
+def plot_cats_prm_vecs(dbs_dir, n_cpus):
+
+    '''Plot final parameter set from kfold for every catchments along with
+    objective function value distribution.
+    '''
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -94,21 +105,29 @@ def plot_prm_vecs(dbs_dir, n_cpus):
     if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
+
         try:
-            print(list(mp_pool.uimap(_plot_prm_vecs, opt_res_gen)))
+            print(list(mp_pool.uimap(plot_cat_prm_vecs, opt_res_gen)))
             mp_pool.clear()
+
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
-            print('Error in _plot_prm_vecs:', msg)
+            print('Error in plot_cat_prm_vecs:', msg)
+
     else:
         for opt_res in opt_res_gen:
-            _plot_prm_vecs(opt_res)
+            plot_cat_prm_vecs(opt_res)
+
     return
 
 
-def plot_opt_evos(
+def plot_cats_prm_vecs_evo(
         dbs_dir, save_png_flag, save_gif_flag, anim_secs, n_cpus=1):
+
+    '''Plot the evolution of parameter vectors and convex hull for every
+    catchment for every kfold.
+    '''
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -128,29 +147,29 @@ def plot_opt_evos(
         mp_pool.restart(True)
 
         try:
-            print(list(mp_pool.uimap(plot_opt_evo, opt_res_gen)))
+            print(list(mp_pool.uimap(plot_cat_prm_vecs_evo, opt_res_gen)))
             mp_pool.clear()
 
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
-            print('Error in plot_opt_evo:', msg)
+            print('Error in plot_cat_prm_vecs_evo:', msg)
 
     else:
         for opt_res in opt_res_gen:
-            plot_opt_evo(*opt_res)
+            plot_cat_prm_vecs_evo(*opt_res)
+
     return
 
 
-def plot_vars(
+def plot_cats_hbv_sim(
         dbs_dir,
         water_bal_step_size,
-        plot_simple_opt_flag=False,
-        plot_wat_bal_flag=False,
+        full_flag=False,
+        wat_bal_flag=False,
         n_cpus=1):
 
-    '''Plot the optimization results
-    '''
+    '''Plot hbv simulations for every catchment for every kfold.'''
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -159,28 +178,34 @@ def plot_vars(
     n_cats = len(cats_dbs)
     n_cpus = min(n_cats, n_cpus)
 
-    const_args = (water_bal_step_size, plot_simple_opt_flag, plot_wat_bal_flag)
+    const_args = (water_bal_step_size, full_flag, wat_bal_flag)
 
     plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
 
     if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
+
         try:
-            print(list(mp_pool.uimap(plot_hbv, plot_gen)))
+            print(list(mp_pool.uimap(plot_cat_hbv_sim, plot_gen)))
             mp_pool.clear()
+
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
-            print('Error in plot_vars:', msg)
+            print('Error in plot_cat_hbv_sim:', msg)
+
     else:
         for plot_args in plot_gen:
-            plot_hbv(plot_args)
+            plot_cat_hbv_sim(plot_args)
+
     return
 
 
-def plot_prm_trans_perfs(dbs_dir, n_cpus=1):
-    '''Plot the optimization results
+def plot_cats_prms_transfer_perfs(dbs_dir, n_cpus=1):
+
+    '''Plot catchments performances' by using parameters from other
+    catchment.
     '''
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
@@ -237,14 +262,18 @@ def plot_prm_trans_perfs(dbs_dir, n_cpus=1):
     if (n_cpus > 1) and (n_cats > 1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
+
         try:
-            print(list(mp_pool.uimap(plot_prm_trans, plot_gen)))
+            print(list(mp_pool.uimap(plot_cat_prms_transfer_perfs, plot_gen)))
             mp_pool.clear()
+
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
-            print('Error in plot_prm_trans:', msg)
+            print('Error in plot_cat_prms_transfer_perfs:', msg)
+
     else:
         for plot_args in plot_gen:
-            plot_prm_trans(plot_args)
+            plot_cat_prms_transfer_perfs(plot_args)
+
     return

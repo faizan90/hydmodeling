@@ -1205,7 +1205,7 @@ def solve_cat(
 
                 opt_sb = cdata_sb.create_group('opt_schm_vars_dict')
                 for key in opt_schm_vars_dict:
-                    opt_sb[key] = opt_schm_vars_dict[key]
+                    opt_sb.attrs[key] = opt_schm_vars_dict[key]
 
                 dt = h5py.special_dtype(vlen=str)
                 _prms_ds = cdata_sb.create_dataset(

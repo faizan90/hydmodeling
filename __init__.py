@@ -45,12 +45,13 @@ from .models import (
     get_ln_ns_var_res_prt_cy)
 
 from .plotting import (
-    _plot_hbv_kf,
-    plot_vars,
-    plot_prm_vecs,
-    plot_kfold_effs,
-    plot_kfolds_best_prms,
-    plot_kfolds_best_hbv_prms_2d,
-    plot_ann_cycs_fdcs_comp,
-    plot_prm_trans_perfs,
-    plot_opt_evos)
+    plot_cats_hbv_sim,
+
+    plot_cats_kfold_effs,
+    plot_cats_prms_transfer_perfs,
+    plot_cats_ann_cycs_fdcs_comp,
+
+    plot_cats_prm_vecs,
+    plot_cats_prm_vecs_evo,
+    plot_cats_best_prms_1d,
+    plot_cats_best_prms_2d)

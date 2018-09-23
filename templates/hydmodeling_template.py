@@ -22,15 +22,14 @@ from hydmodeling import (
     plot_strm_rltn,
     get_cumm_cats,
     solve_cats_sys,
-    plot_vars,
-    plot_prm_vecs,
-    plot_kfold_effs,
-    plot_kfolds_best_prms,
-    plot_kfolds_best_hbv_prms_2d,
-    plot_ann_cycs_fdcs_comp,
-    plot_prm_trans_perfs,
-    plot_opt_evos,
-#     plot_error_stats,
+    plot_cats_hbv_sim,
+    plot_cats_prm_vecs,
+    plot_cats_kfold_effs,
+    plot_cats_best_prms_1d,
+    plot_cats_best_prms_2d,
+    plot_cats_ann_cycs_fdcs_comp,
+    plot_cats_prms_transfer_perfs,
+    plot_cats_prm_vecs_evo,
     )
 
 
@@ -96,14 +95,14 @@ def main():
 #     optimize_flag = True
 #     plot_kfold_perfs_flag = True
 #     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
     plot_opt_evo_flag = True
-#     plot_hbv_vars_flag = True
-#     use_cv_time_flag = True
-#     ext_mod_cmp_flag = True
+    plot_hbv_vars_flag = True
+    use_cv_time_flag = True
+    ext_mod_cmp_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -491,7 +490,8 @@ def main():
         print('#' * 10)
         print('Plotting kfold results...')
 
-        plot_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus)
+        plot_cats_kfold_effs(
+            dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -510,7 +510,7 @@ def main():
         print('#' * 10)
         print('Plotting best kfold prms...')
 
-        plot_kfolds_best_prms(dbs_dir, n_cpus)
+        plot_cats_best_prms_1d(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -529,7 +529,7 @@ def main():
         print('#' * 10)
         print('Plotting parameter vectors...')
 
-        plot_prm_vecs(dbs_dir, n_cpus)
+        plot_cats_prm_vecs(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -548,7 +548,7 @@ def main():
         print('#' * 10)
         print('Plotting HBV prms in 2D...')
 
-        plot_kfolds_best_hbv_prms_2d(dbs_dir)
+        plot_cats_best_prms_2d(dbs_dir)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -570,7 +570,7 @@ def main():
         ann_cyc_fdc_plot_dir = os.path.join(
             in_hyd_mod_dir, r'08_ann_cycs_fdc_comparison')
 
-        plot_ann_cycs_fdcs_comp(
+        plot_cats_ann_cycs_fdcs_comp(
             hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
 
         _end_t = timeit.default_timer()
@@ -590,7 +590,7 @@ def main():
         print('#' * 10)
         print('Plotting catchment parameter comparison...')
 
-        plot_prm_trans_perfs(dbs_dir, n_cpus)
+        plot_cats_prms_transfer_perfs(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -605,14 +605,16 @@ def main():
     if plot_opt_evo_flag:
 
         if opt_schm_vars_dict['opt_schm'] == 'ROPE':
-            plot_png_flag = cfp['PLOT_OPT_RES'].getboolean('plot_png_flag')
+            plot_evo_png_flag = cfp['PLOT_OPT_RES'].getboolean(
+                'plot_evo_png_flag')
 
         else:
-            plot_png_flag = False
+            plot_evo_png_flag = False
 
-        plot_gif_flag = cfp['PLOT_OPT_RES'].getboolean('plot_gif_flag')
+        plot_evo_gif_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_evo_gif_flag')
 
-        anim_secs = cfp['PLOT_OPT_RES'].getint('anim_secs')
+        evo_anim_secs = cfp['PLOT_OPT_RES'].getint('evo_anim_secs')
 
         _beg_t = timeit.default_timer()
 
@@ -620,13 +622,17 @@ def main():
         print('#' * 10)
         print('Plotting optimization parameters\' evolution...')
 
-        print(f'plot_png_flag: {plot_png_flag}')
-        print(f'plot_gif_flag: {plot_gif_flag}')
-        print(f'anim_secs: {anim_secs}')
+        print(f'plot_evo_png_flag: {plot_evo_png_flag}')
+        print(f'plot_evo_gif_flag: {plot_evo_gif_flag}')
+        print(f'evo_anim_secs: {evo_anim_secs}')
 
-        if plot_png_flag or plot_gif_flag:
-            plot_opt_evos(
-                dbs_dir, plot_png_flag, plot_gif_flag, anim_secs, n_cpus)
+        if plot_evo_png_flag or plot_evo_gif_flag:
+            plot_cats_prm_vecs_evo(
+                dbs_dir,
+                plot_evo_png_flag,
+                plot_evo_gif_flag,
+                evo_anim_secs,
+                n_cpus)
 
         else:
             print('Both flags False, not plotting!')
@@ -648,21 +654,21 @@ def main():
 
         _beg_t = timeit.default_timer()
 
-        plot_simple_opt_flag = cfp['PLOT_OPT_RES'].getboolean(
-            'plot_simple_opt_flag')
+        plot_full_sim_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_full_sim_flag')
 
-        plot_dist_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
+        plot_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
             'plot_wat_bal_flag')
 
-        print(f'plot_simple_opt_flag: {plot_simple_opt_flag}')
-        print(f'plot_dist_wat_bal_flag: {plot_dist_wat_bal_flag}')
+        print(f'plot_full_sim_flag: {plot_full_sim_flag}')
+        print(f'plot_wat_bal_flag: {plot_wat_bal_flag}')
 
-        if plot_simple_opt_flag or plot_dist_wat_bal_flag:
-            plot_vars(
+        if plot_full_sim_flag or plot_wat_bal_flag:
+            plot_cats_hbv_sim(
                 dbs_dir,
                 water_bal_step_size,
-                plot_simple_opt_flag,
-                plot_dist_wat_bal_flag,
+                plot_full_sim_flag,
+                plot_wat_bal_flag,
                 n_cpus)
 
         else:
