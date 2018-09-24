@@ -115,7 +115,7 @@ cpdef dict hbv_opt(args):
         DT_UL[:, :, ::1] prms_idxs
 
         DT_D[::1] pre_obj_vals, best_prm_vec, prms_tmp
-        DT_D[::1] obj_ftn_wts, obj_doubles
+        DT_D[::1] obj_ftn_wts, obj_doubles, iobj_vals, gobj_vals
         DT_D[:, ::1] curr_opt_prms, bounds, bds_dfs
         DT_D[:, ::1] prm_vecs, temp_prm_vecs
         DT_D[:, :, ::1] iter_prm_vecs
@@ -132,8 +132,8 @@ cpdef dict hbv_opt(args):
         DT_D[:, ::1] v_j_g, u_j_gs
 
         # ROPE related parameters
-        DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs, n_uvecs
-        DT_UL max_chull_tries, depth_ftn_type, min_pts_in_chull
+        DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs
+        DT_UL n_uvecs, max_chull_tries, depth_ftn_type, min_pts_in_chull
 
         DT_UL[::1] depths_arr
         DT_UL[:, ::1] temp_mins, mins
@@ -165,8 +165,9 @@ cpdef dict hbv_opt(args):
         DT_D[:, ::1] dem_net_arr
         DT_D[:, ::1] qsim_mult_arr, inflow_mult_arr
         DT_D[:, :, :, ::1] outs_mult_arr
+
         cmap[long, long] cat_to_idx_map, stm_to_idx_map
-        
+
         DT_D[::1, :] cats_outflow_arr, stms_inflow_arr, stms_outflow_arr
         DT_D[::1, :, :] stms_inflow_mult_arr, stms_outflow_mult_arr
         DT_D[::1, :, :] cats_outflow_mult_arr
@@ -176,8 +177,7 @@ cpdef dict hbv_opt(args):
         # All other variables
         DT_UL n_cpus
 
-        DT_D min_q_thresh
-        DT_D mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
+        DT_D min_q_thresh, mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
 
         dict out_dict
 
@@ -228,7 +228,7 @@ cpdef dict hbv_opt(args):
      cats_outflow_arr,
      stms_inflow_arr,
      stms_outflow_arr) = args[5]
-    
+
     (off_idx,
      rnof_q_conv,
      route_type,
@@ -278,6 +278,10 @@ cpdef dict hbv_opt(args):
 
     iter_prm_vecs = np.full(
         (max_iters + 1, n_prm_vecs, n_prms), np.nan, dtype=DT_D_NP)
+
+    iobj_vals = np.full((max_iters + 1), np.nan, dtype=DT_D_NP)
+
+    gobj_vals = np.full((max_iters + 1), np.nan, dtype=DT_D_NP)
 
     hbv_prms = np.zeros((n_cpus, n_cells, n_hbv_prms), dtype=DT_D_NP)
 
@@ -537,6 +541,9 @@ cpdef dict hbv_opt(args):
         for k in range(n_prms):
             best_prm_vec[k] = prm_vecs[i, k]
 
+    iobj_vals[0] = fval_pre_global
+    gobj_vals[0] = fval_pre_global
+
     print('Initial min. obj. value:', fval_pre_global)
 #     raise Exception('Stop!')
 
@@ -670,6 +677,7 @@ cpdef dict hbv_opt(args):
                 curr_obj_vals,
                 pre_obj_vals,
                 best_prm_vec,
+                iobj_vals,
                 u_j_gs,
                 prm_vecs,
                 prms_mean_thrs_arr,
@@ -690,6 +698,7 @@ cpdef dict hbv_opt(args):
             post_rope(
                 pre_obj_vals,
                 best_prm_vec,
+                iobj_vals,
                 prm_vecs,
                 max_iters,
                 max_cont_iters,
@@ -699,6 +708,8 @@ cpdef dict hbv_opt(args):
                 &cont_iter,
                 &cont_opt_flag,
                 &fval_pre_global)
+
+        gobj_vals[iter_curr] = fval_pre_global
 
 #     if opt_schm == 2:
 #         get_new_chull_vecs(
@@ -782,7 +793,9 @@ cpdef dict hbv_opt(args):
         'n_calls': np.asarray(n_calls),
         'qsim_arr': np.asarray(qsim_mult_arr[tid]),
         'pre_obj_vals' : np.asarray(pre_obj_vals),
-        'iter_prm_vecs': np.asarray(iter_prm_vecs[:iter_curr])}
+        'iter_prm_vecs': np.asarray(iter_prm_vecs[:iter_curr]),
+        'gobj_vals': np.asarray(gobj_vals),
+        'iobj_vals': np.asarray(iobj_vals)}
 
     if opt_schm == 1:
         out_dict['prm_vecs'] = np.asarray(prm_vecs)

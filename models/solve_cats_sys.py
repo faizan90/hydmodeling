@@ -152,7 +152,7 @@ def solve_cats_sys(
     if len(cv_list) == 2:
         assert isinstance(kfolds, int)
         assert kfolds >= 1, 'kfolds can only be 1 or greater!'
-        assert cv_list[0] > cv_list[1]
+        assert cv_list[0] < cv_list[1]
 
         date_range = pd.date_range(cv_list[0], cv_list[1], freq=time_freq)
 

@@ -61,6 +61,7 @@ cdef void pre_rope(
 cdef void post_rope(
         const DT_D[::1] pre_obj_vals,
               DT_D[::1] best_prm_vec,
+              DT_D[::1] iobj_vals,
 
         const DT_D[:, ::1] prm_vecs,
 

@@ -532,6 +532,7 @@ cdef void pre_rope(
 cdef void post_rope(
         const DT_D[::1] pre_obj_vals,
               DT_D[::1] best_prm_vec,
+              DT_D[::1] iobj_vals,
 
         const DT_D[:, ::1] prm_vecs,
 
@@ -549,7 +550,7 @@ cdef void post_rope(
     cdef:
         Py_ssize_t j, k
 
-        DT_D fval_pre
+        DT_D fval_pre, iobj = INF
 
         DT_UL n_prms = prm_vecs.shape[1]
         DT_UL n_prm_vecs = prm_vecs.shape[0]
@@ -559,6 +560,9 @@ cdef void post_rope(
 
         if isnan(fval_pre):
             with gil: raise RuntimeError('fval_pre is Nan!')
+
+        if fval_pre < iobj:
+            iobj = fval_pre
 
         if fval_pre >= fval_pre_global[0]:
             continue
@@ -570,6 +574,8 @@ cdef void post_rope(
         last_succ_i[0] = iter_curr[0]
         n_succ[0] += 1
         cont_iter[0] = 0
+
+    iobj_vals[iter_curr[0] + 1] = iobj
 
     iter_curr[0] += 1
 

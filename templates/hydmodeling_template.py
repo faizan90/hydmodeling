@@ -93,16 +93,16 @@ def main():
 #     create_cumm_cats_flag = True
 #     create_stms_rels_flag = True
 #     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
     plot_prm_vecs_flag = True
     plot_2d_kfold_prms_flag = True
     plot_ann_cys_fdcs_flag = True
     plot_prm_trans_comp_flag = True
     plot_opt_evo_flag = True
     plot_hbv_vars_flag = True
-    use_cv_time_flag = True
-    ext_mod_cmp_flag = True
+#     use_cv_time_flag = True
+#     ext_mod_cmp_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -604,15 +604,19 @@ def main():
 
     if plot_opt_evo_flag:
 
+        plot_evo_obj_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'plot_evo_obj_flag')
+
         if opt_schm_vars_dict['opt_schm'] == 'ROPE':
             plot_evo_png_flag = cfp['PLOT_OPT_RES'].getboolean(
                 'plot_evo_png_flag')
 
+            plot_evo_gif_flag = cfp['PLOT_OPT_RES'].getboolean(
+                'plot_evo_gif_flag')
+
         else:
             plot_evo_png_flag = False
-
-        plot_evo_gif_flag = cfp['PLOT_OPT_RES'].getboolean(
-            'plot_evo_gif_flag')
+            plot_evo_gif_flag = False
 
         evo_anim_secs = cfp['PLOT_OPT_RES'].getint('evo_anim_secs')
 
@@ -622,20 +626,22 @@ def main():
         print('#' * 10)
         print('Plotting optimization parameters\' evolution...')
 
+        print(f'plot_evo_obj_flag: {plot_evo_obj_flag}')
         print(f'plot_evo_png_flag: {plot_evo_png_flag}')
         print(f'plot_evo_gif_flag: {plot_evo_gif_flag}')
         print(f'evo_anim_secs: {evo_anim_secs}')
 
-        if plot_evo_png_flag or plot_evo_gif_flag:
+        if plot_evo_obj_flag or plot_evo_png_flag or plot_evo_gif_flag:
             plot_cats_prm_vecs_evo(
                 dbs_dir,
+                plot_evo_obj_flag,
                 plot_evo_png_flag,
                 plot_evo_gif_flag,
                 evo_anim_secs,
                 n_cpus)
 
         else:
-            print('Both flags False, not plotting!')
+            print('All flags False, not plotting!')
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t

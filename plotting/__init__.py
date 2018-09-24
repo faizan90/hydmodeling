@@ -123,7 +123,12 @@ def plot_cats_prm_vecs(dbs_dir, n_cpus):
 
 
 def plot_cats_prm_vecs_evo(
-        dbs_dir, save_png_flag, save_gif_flag, anim_secs, n_cpus=1):
+        dbs_dir,
+        save_obj_flag,
+        save_png_flag,
+        save_gif_flag,
+        anim_secs,
+        n_cpus=1):
 
     '''Plot the evolution of parameter vectors and convex hull for every
     catchment for every kfold.
@@ -139,7 +144,7 @@ def plot_cats_prm_vecs_evo(
     n_cpus = min(n_cats, n_cpus)
 
     opt_res_gen = (
-        (cat_db, save_png_flag, save_gif_flag, anim_secs)
+        (cat_db, save_obj_flag, save_png_flag, save_gif_flag, anim_secs)
         for cat_db in cats_dbs)
 
     if (n_cpus > 1) and (n_cats > 1):

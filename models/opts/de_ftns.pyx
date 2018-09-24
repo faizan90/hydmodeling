@@ -14,6 +14,7 @@ from ..miscs.misc_ftns cimport del_idx
 
 cdef extern from "cmath":
     bint isnan(DT_D x) nogil
+    DT_D INFINITY
 
 
 cdef extern from "../miscs/rand_gen_mp.h" nogil:
@@ -160,6 +161,7 @@ cdef void post_de(
     const DT_D[::1] curr_obj_vals,
           DT_D[::1] pre_obj_vals,
           DT_D[::1] best_prm_vec,
+          DT_D[::1] iobj_vals,
 
     const DT_D[:, ::1] u_j_gs,
           DT_D[:, ::1] prm_vecs,
@@ -186,7 +188,7 @@ cdef void post_de(
         DT_UL n_prms = prm_vecs.shape[1]
         DT_UL n_prm_vecs = prm_vecs.shape[0]
 
-        DT_D fval_pre, fval_curr, ddmv
+        DT_D fval_pre, fval_curr, ddmv, iobj = INFINITY
 
     for j in range(n_prm_vecs):
         fval_pre = pre_obj_vals[j]
@@ -194,6 +196,9 @@ cdef void post_de(
 
         if isnan(fval_curr):
             with gil: raise RuntimeError('fval_curr is Nan!')
+
+        if fval_curr < iobj:
+            iobj = fval_curr
 
         if fval_curr >= fval_pre:
             continue
@@ -217,6 +222,8 @@ cdef void post_de(
         n_succ[0] += 1
         cont_iter[0] = 0
 
+    iobj_vals[iter_curr[0] + 1] = iobj
+
     if (iter_curr[0] >= 300) & ((iter_curr[0] % 20) == 0):
         ddmv = 0.0
         for k in range(n_prms):
@@ -228,15 +235,19 @@ cdef void post_de(
                 prms_mean_thrs_arr[k, 0] += prm_vecs[j, k]
 
             prms_mean_thrs_arr[k, 0] /= n_prm_vecs
+
             prms_mean_thrs_arr[k, 1] = (
                 (1 - prm_pcnt_tol[0]) * prms_mean_thrs_arr[k, 0])
+
             prms_mean_thrs_arr[k, 2] = (
                 (1 + prm_pcnt_tol[0]) * prms_mean_thrs_arr[k, 0])
 
             prm_opt_stop_arr[k] = 1
+
             for j in range(n_prm_vecs):
                 if ((prm_vecs[j, k] < prms_mean_thrs_arr[k, 1]) or
                     (prm_vecs[j, k] > prms_mean_thrs_arr[k, 2])):
+
                     prm_opt_stop_arr[k] = 0
                     break
 

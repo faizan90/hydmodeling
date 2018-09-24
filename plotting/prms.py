@@ -769,11 +769,16 @@ def plot_cat_prm_vecs_kf(
     return
 
 
-def plot_cat_prm_vecs_evo(cat_db, save_png_flag, save_gif_flag, anim_secs=5):
+def plot_cat_prm_vecs_evo(
+        cat_db,
+        save_obj_flag,
+        save_png_flag,
+        save_gif_flag,
+        anim_secs=5):
 
     '''Plot parameter vector evolution for all kfolds.'''
 
-    assert save_png_flag or save_gif_flag
+    assert save_obj_flag or save_png_flag or save_gif_flag
 
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
@@ -796,18 +801,69 @@ def plot_cat_prm_vecs_evo(cat_db, save_png_flag, save_gif_flag, anim_secs=5):
         for kf_i in range(1, kfolds + 1):
 
             kf_str = f'kf_{kf_i:02d}'
-            iter_prm_vecs = calib_db[kf_str + '/iter_prm_vecs'][...]
 
-            plot_cat_prm_vecs_evo_kf(
-                iter_prm_vecs,
-                cat,
-                kf_i,
-                out_dir,
-                prm_syms,
-                save_png_flag,
-                save_gif_flag,
-                anim_secs)
+            if save_obj_flag:
+                gobj_vals = calib_db[kf_str + '/gobj_vals'][...]
+                iobj_vals = calib_db[kf_str + '/iobj_vals'][...]
 
+                plot_cat_obj_evo_kf(
+                    cat,
+                    kf_i,
+                    out_dir,
+                    gobj_vals,
+                    iobj_vals)
+
+            if save_png_flag or save_gif_flag:
+                iter_prm_vecs = calib_db[kf_str + '/iter_prm_vecs'][...]  #
+
+                plot_cat_prm_vecs_evo_kf(
+                    iter_prm_vecs,
+                    cat,
+                    kf_i,
+                    out_dir,
+                    prm_syms,
+                    save_png_flag,
+                    save_gif_flag,
+                    anim_secs)
+
+    return
+
+
+def plot_cat_obj_evo_kf(
+        cat,
+        kf_i,
+        out_dir,
+        gobj_vals,
+        iobj_vals):
+
+    '''Plot the objective function evolution for a given kfold and catchment.
+    '''
+
+    plt.figure(figsize=(20, 10))
+
+    x_rng = np.arange(gobj_vals.shape[0])
+
+    min_gobj = np.nanmin(gobj_vals)
+
+    plt.scatter(
+        x_rng, iobj_vals, marker='o', label='iter', alpha=0.7, color='r')
+
+    plt.plot(x_rng, gobj_vals, label='global', alpha=0.8, color='k')
+
+    plt.xlabel('Iteration number (-)')
+    plt.ylabel('Objective function value(-)')
+
+    plt.grid()
+    plt.legend()
+
+    plt.title(
+        f'Objective function value evolution for the catchment {cat} '
+        f'and kfold no. {kf_i:02d}\n Min. obj. val: {min_gobj:0.5f}')
+
+    out_fig_name = f'obj_val_evo_{cat}_kf_{kf_i:02d}.png'
+
+    plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
+    plt.close()
     return
 
 

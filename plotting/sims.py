@@ -564,15 +564,17 @@ def wat_bal_sim(
 
     q_act_sum_arr = (
         np.concatenate(([np.nan, np.nan], q_act_sum_arr), axis=0))
+
     q_sim_sum_arr = (
         np.concatenate(([np.nan, np.nan], q_sim_sum_arr), axis=0))
 
     font_size = 5
-    plt.figure(figsize=(11, 6), dpi=150)
     t_rows = 8
     t_cols = 1
 
-    plt.suptitle('HBV Flow Simulation - Water Balance')
+    plt.figure(figsize=(11, 6), dpi=150)
+
+    plt.suptitle('HBV Simulation - Water Balance')
 
     i = 0
     params_ax = plt.subplot2grid(
@@ -708,6 +710,7 @@ def wat_bal_sim(
     balance_sum_ax.set_ylim(0, balance_sum_ax.get_ylim()[1])
 
     wat_bal_text = wat_bal_text.reshape(3, 9)
+
     table = params_ax.table(
         cellText=wat_bal_text,
         loc='center',
@@ -721,8 +724,13 @@ def wat_bal_sim(
     leg_font = f_props()
     leg_font.set_size(font_size)
 
-    plot_axes = [discharge_ax, vol_err_ax,
-                 balance_ratio_ax, balance_sum_ax]
+    plot_axes = [
+        discharge_ax,
+        vol_err_ax,
+        balance_ratio_ax,
+        balance_sum_ax
+        ]
+
     for ax in plot_axes:
         for tlab in ax.get_yticklabels():
             tlab.set_fontsize(font_size)
@@ -774,8 +782,7 @@ def full_sim(
         ur_to_lr_run,
         full_sim_text):
 
-    '''Plot time series of all HBV variables
-    '''
+    '''Plot time series of all HBV variables'''
 
     assert np.all(np.isfinite(prms_arr)), 'Invalid HBV parameters!'
     assert q_act_arr.shape[0] == q_sim_arr.shape[0], (
@@ -843,7 +850,7 @@ def full_sim(
     pet_stats_str += f'PET correlation: {pet_corr:0.5f}, '
     pet_stats_str += f'PET slope: {pet_slope:0.5f}, '
 
-    et_trend, et_corr, et_slope, *_ = lin_regsn_cy(
+    et_trend, et_corr, et_slope, *__ = lin_regsn_cy(
         steps_range, evap_arr.copy(order='c'), 0)
 
     pet_stats_str += f'ET correlation: {et_corr:0.5f}, '
@@ -855,9 +862,10 @@ def full_sim(
     t_cols = 1
     font_size = 6
 
-    plt.suptitle('HBV Flow Simulation')
+    plt.suptitle('HBV Simulation')
 
     i = 0
+
     params_ax = plt.subplot2grid(
         (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
     i += 1
