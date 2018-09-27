@@ -7,6 +7,7 @@ Created on Oct 12, 2017
 
 import os
 import shelve
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -27,6 +28,108 @@ from ..models import (
     get_ln_ns_prt_cy,
     get_kge_prt_cy,
     get_pcorr_prt_cy)
+
+
+def plot_cat_vars_errors(plot_args):
+
+    (cat_db, err_var_labs) = plot_args
+
+    ds_labs = ['calib']
+
+    with h5py.File(cat_db, 'r') as db:
+        out_dir = db['data'].attrs['main']
+        out_dir = os.path.join(out_dir, r'11_errors')
+
+        if not os.path.exists(out_dir):
+            try:
+                os.mkdir(out_dir)
+
+            except FileExistsError:
+                pass
+
+        kfolds = db['data'].attrs['kfolds']
+
+        cat = db.attrs['cat']
+
+        area_arr = db['data/area_arr'][...]
+        rarea_arr = area_arr.reshape(-1, 1)
+
+        for ds_lab in ds_labs:
+            for kf_i in range(1, kfolds + 1):
+                kf_str = f'kf_{kf_i:02d}'
+
+                kf_grp = db[f'{ds_lab}/{kf_str}']
+
+                qsim = kf_grp['qsim_arr'][...]
+
+                qact = kf_grp['qact_arr'][...]
+
+                q_errs = np.abs(qsim - qact)
+
+                plot_cat_vars_errors_kf(
+                    kf_grp,
+                    cat,
+                    kf_i,
+                    ds_lab,
+                    q_errs,
+                    err_var_labs,
+                    rarea_arr,
+                    out_dir)
+
+    return
+
+
+def plot_cat_vars_errors_kf(
+        kf_grp,
+        cat,
+        kf_i,
+        ds_lab,
+        q_errs,
+        err_var_labs,
+        rarea_arr,
+        out_dir):
+
+    for err_var_lab in err_var_labs:
+        if err_var_lab == 'temperature':
+            err_var = kf_grp['tem_arr'][...]
+
+            x_lab = 'Temperature (°C)'
+
+        else:
+            raise NotImplementedError(
+                f'Don\'t know what to do with {err_var_lab}!')
+
+        err_var = (rarea_arr * err_var).sum(axis=0)
+
+        sort_idxs = np.argsort(err_var)
+
+        err_var_sort = err_var[sort_idxs]
+        q_errs_sort = q_errs[sort_idxs]
+
+        plt.figure(figsize=(20, 10))
+
+        ax = plt.gca()
+
+        ax.set_yscale('log')
+
+        ax.scatter(err_var_sort, q_errs_sort, alpha=0.1)
+
+        ax.set_xlabel(x_lab)
+        ax.set_ylabel('Abs. discharge difference (sim. - obs.)')
+
+        ax.grid()
+
+        ax.set_title(
+            f'Discharge differences sorted w.r.t {err_var_lab}\n'
+            f'Catchment {cat}, kfold no. {kf_i:02d}')
+
+        out_fig_name = f'{err_var_lab}_error_{cat}_{ds_lab}_kf_{kf_i:02d}.png'
+
+        plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
+
+        plt.close()
+
+    return
 
 
 def plot_cat_prms_transfer_perfs(plot_args):

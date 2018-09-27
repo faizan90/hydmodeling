@@ -14,7 +14,41 @@ from .prms import (
 from .perfs import (
     plot_cat_kfold_effs,
     plot_cats_ann_cycs_fdcs_comp,
-    plot_cat_prms_transfer_perfs)
+    plot_cat_prms_transfer_perfs,
+    plot_cat_vars_errors)
+
+
+def plot_cats_vars_errors(dbs_dir, err_var_labs, n_cpus):
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+
+    assert cats_dbs
+
+    n_cats = len(cats_dbs)
+    n_cpus = min(n_cats, n_cpus)
+
+    n_cpus = min(n_cats, n_cpus)
+
+    cats_paths_gen = ((cat_db, err_var_labs) for cat_db in cats_dbs)
+
+    if (n_cpus > 1) and (n_cats > 1):
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+
+        try:
+            print(list(mp_pool.uimap(plot_cat_vars_errors, cats_paths_gen)))
+            mp_pool.clear()
+
+        except Exception as msg:
+            mp_pool.close()
+            mp_pool.join()
+            print('Error in plot_cat_vars_errors:', msg)
+
+    else:
+        for cat_paths in cats_paths_gen:
+            plot_cat_vars_errors(cat_paths)
+
+    return
 
 
 def plot_cats_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):

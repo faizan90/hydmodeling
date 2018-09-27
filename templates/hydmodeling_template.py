@@ -30,7 +30,7 @@ from hydmodeling import (
     plot_cats_ann_cycs_fdcs_comp,
     plot_cats_prms_transfer_perfs,
     plot_cats_prm_vecs_evo,
-    )
+    plot_cats_vars_errors)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -85,6 +85,7 @@ def main():
     plot_prm_trans_comp_flag = False
     plot_opt_evo_flag = False
     plot_hbv_vars_flag = False
+    plot_var_errors_flag = False
     use_cv_time_flag = False
     ext_mod_cmp_flag = False
 
@@ -93,14 +94,15 @@ def main():
 #     create_cumm_cats_flag = True
 #     create_stms_rels_flag = True
 #     optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_opt_evo_flag = True
-    plot_hbv_vars_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
+#     plot_opt_evo_flag = True
+#     plot_hbv_vars_flag = True
+    plot_var_errors_flag = True
 #     use_cv_time_flag = True
 #     ext_mod_cmp_flag = True
 
@@ -649,6 +651,29 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
+    #==========================================================================
+    # Plot sorted errors w.r.t given variables
+    #==========================================================================
+
+    if plot_var_errors_flag:
+        err_var_labs = cfp['PLOT_OPT_RES']['err_var_labs'].split(sep)
+        assert err_var_labs, err_var_labs
+
+        _beg_t = timeit.default_timer()
+
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting discharge errors...')
+
+        print(f'err_var_labs: {err_var_labs}')
+
+        plot_cats_vars_errors(dbs_dir, err_var_labs, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
     #=========================================================================
     # plot the hbv variables
     #=========================================================================

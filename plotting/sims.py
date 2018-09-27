@@ -103,9 +103,9 @@ def plot_cat_hbv_sim(plot_args):
             if (kfolds == 1) and (not cv_flag):
                 continue
 
-            if cv_flag:
-                kf_i = f'{i:02d}_valid'
+            kf_i = f'{i:02d}_valid'
 
+            if cv_flag:
                 kf_dict['tem_arr'] = cv_kf_dict[i]['tem_arr']
                 kf_dict['ppt_arr'] = cv_kf_dict[i]['ppt_arr']
                 kf_dict['pet_arr'] = cv_kf_dict[i]['pet_arr']
@@ -116,8 +116,6 @@ def plot_cat_hbv_sim(plot_args):
                         cv_kf_dict[i]['extra_us_inflow'])
 
             else:
-                kf_i = f'{i:02d}_all'
-
                 kf_dict['tem_arr'] = all_tem_arr
                 kf_dict['ppt_arr'] = all_ppt_arr
                 kf_dict['pet_arr'] = all_pet_arr
