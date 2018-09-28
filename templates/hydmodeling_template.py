@@ -84,8 +84,8 @@ def main():
     plot_ann_cys_fdcs_flag = False
     plot_prm_trans_comp_flag = False
     plot_opt_evo_flag = False
-    plot_hbv_vars_flag = False
     plot_var_errors_flag = False
+    plot_hbv_vars_flag = False
     use_cv_time_flag = False
     ext_mod_cmp_flag = False
 
@@ -101,8 +101,8 @@ def main():
 #     plot_ann_cys_fdcs_flag = True
 #     plot_prm_trans_comp_flag = True
 #     plot_opt_evo_flag = True
-#     plot_hbv_vars_flag = True
-    plot_var_errors_flag = True
+#     plot_var_errors_flag = True
+    plot_hbv_vars_flag = True
 #     use_cv_time_flag = True
 #     ext_mod_cmp_flag = True
 
