@@ -64,7 +64,7 @@ def load_pickle(in_file, mode='rb'):
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template_faizdata.ini')
+    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template.ini')
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
@@ -91,7 +91,7 @@ def main():
     plot_convex_hull = False
 
     valid_flag= False
-    show_q_shetran = False
+    show_q_extern = False
 
     #hyd_analysis_flag = True
     #get_stms_flag = True
@@ -99,17 +99,17 @@ def main():
     #create_cumm_cats_flag = True
     #optimize_flag = True
     plot_kfold_perfs_flag = True
-    #plot_best_kfold_prms_flag = True
-    #plot_prm_vecs_flag = True
-    #plot_2d_kfold_prms_flag = True
-    #plot_ann_cys_fdcs_flag = True
-    #plot_prm_trans_comp_flag = True
-    #plot_hbv_vars_flag = True
-    #plot_error_statistics = True
-    #plot_convex_hull = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_hbv_vars_flag = True
+    plot_error_statistics = True
+    plot_convex_hull = True
 
     valid_flag = True
-    show_q_shetran = True
+    show_q_extern = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -240,16 +240,13 @@ def main():
         end_date_calib = pd.to_datetime(cfp['OPT_HYD_MODEL']['end_date_calib'])
         start_date_valid = pd.to_datetime(cfp['OPT_HYD_MODEL']['start_date_valid'])
         end_date_valid = pd.to_datetime(cfp['OPT_HYD_MODEL']['end_date_valid'])
-    if show_q_shetran == True:
-        prcss_she_cats_list = cfp['OPT_HYD_MODEL']['prcss_she_cats_list'].split(sep)
-        q_shetran_dir = cfp['OPT_HYD_MODEL']['in_q_shetran_file']
-        q_shetran =  pd.read_csv(q_shetran_dir, sep=str(sep), index_col=0)
-        shetran_start = cfp['OPT_HYD_MODEL']['shetran_start_date']
-        #shetran_dir = cfp['OPT_HYD_MODEL']['shetran_hdf5']
-        shetran_dir = cfp['OPT_HYD_MODEL']['shetran_output']
+    if show_q_extern == True:
+        extern_hdf5 = h5py.File(cfp['OPT_HYD_MODEL']['extern_model_data'], 'r')
+
 
     time_freq = cfp['OPT_HYD_MODEL']['time_freq']
 
+    warm_up_steps = cfp['OPT_HYD_MODEL'].getint('warm_up_steps')
     warm_up_steps = cfp['OPT_HYD_MODEL'].getint('warm_up_steps')
     water_bal_step_size = cfp['OPT_HYD_MODEL'].getint('water_bal_step_size')
     route_type = cfp['OPT_HYD_MODEL'].getint('route_type')
@@ -337,7 +334,7 @@ def main():
     k_d_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_d'].split(sep)]
     k_ll_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ll'].split(sep)]
 
-    valid_flags = [valid_flag, show_q_shetran, in_opt_schm_vars_dict['opt_schm']]
+    valid_flags = [valid_flag, show_q_extern, in_opt_schm_vars_dict['opt_schm']]
 
     all_prms_flags = np.array(
         [tt_flags,
@@ -498,38 +495,30 @@ def main():
                 db['valid'][kf_str].create_dataset("valid_step_arr",
                                         data=k_valid_step_ser)
 
-    if show_q_shetran:
-        for cat in prcss_she_cats_list:
-            q_shetran.index = pd.date_range(start=shetran_start,
-                                            periods=len(q_shetran))
-            q_she = q_shetran[q_shetran.index >= start_date]
-            q_she = q_she[q_she.index <= end_date]
-            shetran_out = open(shetran_dir, 'r')
-            shetran_val = pd.read_csv(shetran_out, delimiter=',',
-                                      header=1, index_col=0)
+    if show_q_extern:
+        prcss_extern_cats = list(extern_hdf5.keys())
+        model_name = extern_hdf5.attrs.get('model')
 
-            # #shetran.create_dataset("time", data=q_she.index.values.astype('datetime64[D]'))
-            # shetran_db = h5py.File(shetran_dir, 'r')
+        for cat in prcss_extern_cats:
+            cat_dbs = extern_hdf5[cat]
+            q_start = cat_dbs['Q'].attrs.get('start_date')
+            q_end = cat_dbs['Q'].attrs.get('end_date')
+            q_extern = pd.DataFrame(cat_dbs['Q'][...])
+            q_extern.index = pd.date_range(start=q_start,
+                                            periods=len(q_extern))
+            q_extern = q_extern.loc[pd.date_range(start=start_date, end=end_date)]
 
+            snow_start = cat_dbs['snow'].attrs.get('start_date')
+            snow_end = cat_dbs['snow'].attrs.get('end_date')
+            snow_extern = pd.DataFrame(cat_dbs['snow'][...])
+            snow_extern.index = pd.date_range(start=snow_start, end=snow_end)
+            snow_extern = snow_extern.loc[pd.date_range(start=start_date, end=end_date)]
 
-
-            shetran_val.index = pd.to_datetime(shetran_val.index,
-                                               unit='h',
-                                               origin=pd.Timestamp(
-                                                   '1960-01-01')).values.astype(
-                'datetime64[D]')
-            # value = value[value.index >= start_date]
-            # value = value[value.index <= end_date]
-            shetran_crop = shetran_val[shetran_val.index >= start_date]
-            shetran_crop = shetran_crop[
-                shetran_crop.index <= end_date]
-            snow_she = shetran_crop['    Snow Storage'].values
-            ET_she_cum = shetran_crop[' Cum. Can. Evap.'].values \
-                         + shetran_crop[' Cum. Soil Evap.'].values
-            ET_she_tot = ET_she_cum.copy()
-            ET_she_tot[0] = 0
-            for i in range(1, ET_she_tot.shape[0]):
-                ET_she_tot[i] = (ET_she_cum[i] - ET_she_cum[i - 1])
+            ET_start = cat_dbs['total_ET'].attrs.get('start_date')
+            ET_end = cat_dbs['total_ET'].attrs.get('end_date')
+            ET_extern = pd.DataFrame(cat_dbs['total_ET'][...])
+            ET_extern.index = pd.date_range(start=ET_start, end=ET_end)
+            ET_extern = ET_extern.loc[pd.date_range(start=start_date, end=end_date)]
 
             dbs = os.path.join(dbs_dir, r'cat_{}.hdf5'.format(cat))
             db = h5py.File(dbs, 'r+')
@@ -537,23 +526,24 @@ def main():
                 kf_str = f'kf_{k:02d}'
                 k_db = db['valid'][kf_str]
 
-                if 'shetran' in k_db.keys():
-                    del k_db['shetran']
-                k_q_she = q_she.iloc[
+                if 'extern_data' in k_db.keys():
+                    del k_db['extern_data']
+                k_q_ext = q_extern.iloc[
                           sel_idxs_arr[k-1]:sel_idxs_arr[k]]
-                shetran = k_db.create_group('shetran')
-                shetran_q = shetran.create_group('Q')
-                snow = shetran.create_group('snow')
-                ET_she = shetran.create_group('ET')
-                shetran_q.create_dataset("q", data=k_q_she.values[:,0])
-                k_snow_she = snow_she[
+                extern_model = k_db.create_group('extern_data')
+                extern_model.attrs['model'] = model_name
+                ext_q = extern_model.create_group('Q')
+                snow = extern_model.create_group('snow')
+                ET_ext = extern_model.create_group('ET')
+                ext_q.create_dataset("q", data=k_q_ext.values[:,0])
+                k_snow_ext = snow_extern[
                           sel_idxs_arr[k-1]:sel_idxs_arr[k]]
-                snow.create_dataset('depth', data=k_snow_she)
+                snow.create_dataset('depth', data=k_snow_ext.values[:,0])
 
-                k_ET_she_tot = ET_she_tot[
+                k_ET_ext_tot = ET_extern[
                           sel_idxs_arr[k-1]:sel_idxs_arr[k]]
 
-                ET_she.create_dataset('total_ET', data=k_ET_she_tot)
+                ET_ext.create_dataset('total_ET', data=k_ET_ext_tot.values[:,0])
 
     #=========================================================================
     # Plot the k-fold results
