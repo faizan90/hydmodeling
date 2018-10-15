@@ -40,8 +40,8 @@ def get_stms(in_dem_net_shp_file,
 
     in_dem_net_reader = shp.Reader(in_dem_net_shp_file)
     in_wat_id_arr = np.loadtxt(in_wat_ids_file,
-                               delimiter=' ',
-                               skiprows=1,
+                               delimiter=';',
+                               #skiprows=1,
                                dtype=int)
     in_wat_id_arr = np.atleast_2d(in_wat_id_arr)
 

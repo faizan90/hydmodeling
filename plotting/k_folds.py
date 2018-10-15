@@ -1053,7 +1053,9 @@ def get_daily_annual_cycle(in_data_df, n_cpus=1):
 def _get_daily_annual_cycle(col_ser):
 
     assert isinstance(col_ser, pd.Series), 'Expected a pd.Series object!'
-    col_ser.dropna(inplace=True)
+    #col_ser.dropna(inplace=True)
+    if np.any(pd.isna(col_ser)):
+        print('NANs in Q! Replaced with day_avg_value')
 
     # For each day of a year, get the days for all year and average them
     # the annual cycle is the average value and is used for every doy of
@@ -1068,8 +1070,8 @@ def _get_daily_annual_cycle(col_ser):
             if not curr_day_vals.shape[0]:
                 continue
 
-            assert not np.any(np.isnan(curr_day_vals)), (
-                'NaNs in curr_day_vals!')
+            # assert not np.any(np.isnan(curr_day_vals)), (
+            #     'NaNs in curr_day_vals!')
 
             curr_day_avg_val = curr_day_vals.mean()
             col_ser.loc[idxs_intersect] = curr_day_avg_val

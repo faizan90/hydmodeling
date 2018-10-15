@@ -192,7 +192,7 @@ def solve_cats_sys(
     in_q_df.columns = pd.to_numeric(in_q_df.columns)
     in_q_df = in_q_df.loc[beg_date:end_date, sel_cats]
     if np.any(np.isnan(in_q_df.values)):
-        raise RuntimeError('NaNs in in_q_df')
+        print('NaNs in in_q_df')
     in_q_df[in_q_df.values < min_q_thresh] = min_q_thresh
     assert in_q_df.shape[0] == n_steps
 

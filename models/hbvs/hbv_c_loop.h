@@ -179,7 +179,6 @@ DT_D hbv_c_loop(
             rel_fc_beta = pow((pre_somo / fc), beta);
             avail_somo = pre_somo + (lppt * (1 - rel_fc_beta));
 
-            if (pre_snow <0){
     		if (pre_somo > pwp) {
     			outs_j_arr[cur_p + evtn_i] = min(avail_somo, petn);
     		}
@@ -187,10 +186,7 @@ DT_D hbv_c_loop(
     			outs_j_arr[cur_p + evtn_i] = min(
     					avail_somo, (pre_somo / fc) * petn);
     		}
-    		}
-    		else{
-    		    outs_j_arr[cur_p + evtn_i] = 0
-    		}
+
 
 			//sometimes somo goes slightly below 0 for certain parameters'
 			//combinations, also this will allow for drought modelling

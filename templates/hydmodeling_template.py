@@ -93,11 +93,11 @@ def main():
     valid_flag= False
     show_q_extern = False
 
-    #hyd_analysis_flag = True
-    #get_stms_flag = True
-    #create_stms_rels_flag = True
-    #create_cumm_cats_flag = True
-    #optimize_flag = True
+    # hyd_analysis_flag = True
+    get_stms_flag = True
+    create_stms_rels_flag = True
+    create_cumm_cats_flag = True
+    optimize_flag = True
     plot_kfold_perfs_flag = True
     plot_best_kfold_prms_flag = True
     plot_prm_vecs_flag = True
@@ -376,9 +376,11 @@ def main():
 #             _bool_idxs = _bool_idxs | (in_use_step_ser.index.month == _month)
 #         in_use_step_ser.loc[_bool_idxs] = 0
 
+        unavailable_q = pd.isna(in_q_df)
+
         if valid_flag == True:
             cal_sel_idx = np.any([in_use_step_ser.index <= start_date_calib,
-                             in_use_step_ser.index >= end_date_calib], axis=0)
+                             in_use_step_ser.index >= end_date_calib, unavailable_q.iloc[:,0].values.ravel()], axis=0)
             in_use_step_ser.loc[cal_sel_idx] = 0
 
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
