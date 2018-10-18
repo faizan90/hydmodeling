@@ -93,11 +93,11 @@ def main():
     valid_flag= False
     show_q_extern = False
 
-    # hyd_analysis_flag = True
-    get_stms_flag = True
-    create_stms_rels_flag = True
-    create_cumm_cats_flag = True
-    optimize_flag = True
+    #hyd_analysis_flag = True
+    # get_stms_flag = True
+    # create_stms_rels_flag = True
+    # create_cumm_cats_flag = True
+    # optimize_flag = True
     plot_kfold_perfs_flag = True
     plot_best_kfold_prms_flag = True
     plot_prm_vecs_flag = True
@@ -105,8 +105,8 @@ def main():
     plot_ann_cys_fdcs_flag = True
     plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
-    plot_error_statistics = True
-    plot_convex_hull = True
+    # plot_error_statistics = True
+    # plot_convex_hull = True
 
     valid_flag = True
     show_q_extern = True
@@ -386,11 +386,12 @@ def main():
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
 
-        # # filter for temperature smaller 1°C
-        # value = np.all([[in_temp_dfs_dict[411].index >= in_q_df.index[0]], [in_temp_dfs_dict[411].index <= in_q_df.index[in_q_df.index.shape[0]-1]]], axis=0)
-        # in_temp_mask = in_temp_dfs_dict[411][value[0,:]]
-        # bigger_one = in_temp_mask.values < 1
-        # _bool_idxs = np.all(bigger_one, axis=1)
+        # filter for temperature smaller 1°C
+        # cat = 23001
+        # value = np.all([[in_temp_dfs_dict[cat].index >= in_q_df.index[0]], [in_temp_dfs_dict[cat].index <= in_q_df.index[in_q_df.index.shape[0]-1]]], axis=0)
+        # in_temp_mask = in_temp_dfs_dict[cat][value[0,:]]
+        # smaller_one = in_temp_mask.values < 1
+        # _bool_idxs = np.all(smaller_one, axis=1)
         # in_use_step_ser.loc[_bool_idxs] = 0
 
         in_pet_dfs_dict = load_pickle(in_pet_file)
@@ -475,8 +476,8 @@ def main():
             valid_step_ser = pd.Series(
                 index=in_index,
                 data=np.ones(in_index.shape[0], dtype=np.int32))
-            assert min(valid_step_ser.index) < start_date_valid
-            assert max(valid_step_ser.index) > end_date_valid
+            assert min(valid_step_ser.index) <= start_date_valid
+            assert max(valid_step_ser.index) >= end_date_valid
             valid_sel_idx = np.any(
                 [valid_step_ser.index <= start_date_valid,
                  valid_step_ser.index >= end_date_valid], axis=0)
