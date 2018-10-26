@@ -19,6 +19,7 @@ plt.ioff()
 
 
 def get_shp_stuff(in_shp, field_id):
+
     '''
     Get every geometry and the layer extents of a given shapefile
 
@@ -26,11 +27,13 @@ def get_shp_stuff(in_shp, field_id):
 
     Geometries are inside a dictionary whose keys are the values of field_id
     '''
+
     assert os.path.exists(in_shp), 'in_shp does not exist!'
 
     in_ds = ogr.Open(in_shp)
 
     lyr_count = in_ds.GetLayerCount()
+
     assert lyr_count, 'No layers in %s!' % in_shp
     assert lyr_count == 1, 'More than one layer in %s' % in_shp
 
@@ -48,12 +51,15 @@ def get_shp_stuff(in_shp, field_id):
 
     if shp_spt_ref is None:
         shp_spt_ref = in_lyr.GetSpatialRef()
+
     assert shp_spt_ref, '%s has no spatial reference!' % in_shp
 
     for j in range(feat_count):
         _curr_feat = in_lyr.GetFeature(j)
+
         if _curr_feat is not None:
             cat_no = _curr_feat.GetFieldAsString(str(field_id))
+
         else:
             continue
 
@@ -61,19 +67,22 @@ def get_shp_stuff(in_shp, field_id):
         geoms_dict[cat_no] = _geom
 
     in_ds.Destroy()
+
     assert geoms_dict, 'No geometries found!'
+
     return geoms_dict, envelope
 
 
-def plot_strm_rltn(in_cat_shp,
-                   in_q_stns_shp,
-                   in_stms_net_shp,
-                   in_dem_net_file,
-                   in_cats_prcssed_file,
-                   in_stms_prcssed_file,
-                   final_cats_list,
-                   out_fig_path,
-                   sep=';'):
+def plot_strm_rltn(
+        in_cat_shp,
+        in_q_stns_shp,
+        in_stms_net_shp,
+        in_dem_net_file,
+        in_cats_prcssed_file,
+        in_stms_prcssed_file,
+        final_cats_list,
+        out_fig_path,
+        sep=';'):
 
     in_cat_fld = 'DN'
     in_q_stns_fld = 'id'
@@ -83,13 +92,16 @@ def plot_strm_rltn(in_cat_shp,
 
     in_dem_net_df = pd.read_csv(
         in_dem_net_file, sep=sep, index_col=1)
+
     in_cats_prcssed_df = pd.read_csv(
         in_cats_prcssed_file, sep=sep, index_col=0)
+
     in_stms_prcssed_df = pd.read_csv(
         in_stms_prcssed_file, sep=sep, index_col=0)
 
     sel_cats = []
     sel_stms = []
+
     for _fin_cat in final_cats_list:
         sel_cats.extend(in_cats_prcssed_df.loc[:_fin_cat].index.tolist())
 
@@ -100,9 +112,10 @@ def plot_strm_rltn(in_cat_shp,
 
         if len(_final_stms.shape) == 1:
             _final_stm = _final_stms.loc['stream_no']
+
         else:
-            _final_stm = _final_stms.loc[_final_stms['out_stm'].values ==
-                                         1]['stream_no'].values[0]
+            _final_stm = _final_stms.loc[
+                _final_stms['out_stm'].values == 1]['stream_no'].values[0]
 
         sel_stms.extend(in_stms_prcssed_df.loc[:_final_stm].index.tolist())
 
@@ -119,21 +132,28 @@ def plot_strm_rltn(in_cat_shp,
 
     if sel_stms:
         in_stm_lines_dict = get_shp_stuff(in_stms_net_shp, shp_stm_no_fld)[0]
+
     else:
         in_stm_lines_dict = {}
 
     for _cat in in_cat_polys_dict:
-        if int(_cat) in sel_cats:
-            sel_cat_polys_list.append(in_cat_polys_dict[_cat])
-            sel_cat_labs_list.append(_cat)
+        if int(_cat) not in sel_cats:
+            continue
+
+        sel_cat_polys_list.append(in_cat_polys_dict[_cat])
+        sel_cat_labs_list.append(_cat)
 
     for _cat_pt in in_q_stns_pts_dict:
-        if int(_cat_pt) in sel_cats:
-            sel_q_stn_locs_list.append(in_q_stns_pts_dict[_cat_pt])
+        if int(_cat_pt) not in sel_cats:
+            continue
+
+        sel_q_stn_locs_list.append(in_q_stns_pts_dict[_cat_pt])
 
     for _stm in in_stm_lines_dict:
-        if int(_stm) in sel_stms:
-            sel_stm_lines_list.append(in_stm_lines_dict[_stm])
+        if int(_stm) not in sel_stms:
+            continue
+
+        sel_stm_lines_list.append(in_stm_lines_dict[_stm])
 
     cats_poly_pts = []
     q_stns_pts = []
@@ -147,12 +167,15 @@ def plot_strm_rltn(in_cat_shp,
 
         if geom_count == 1:
             _ = _poly.GetGeometryRef(0).GetPoints()
+
         else:
             assert _poly is not None, '_poly is None!'
             max_pts = 0
             max_pts_idx = None
+
             for i in range(geom_count):
                 _ = _poly.GetGeometryRef(i).GetGeometryRef(0).GetPointCount()
+
                 if _ is None:
                     break
 
@@ -161,7 +184,9 @@ def plot_strm_rltn(in_cat_shp,
                     max_pts_idx = i
 
             assert max_pts_idx is not None, 'Could not select a polygon!'
-            _ = _poly.GetGeometryRef(max_pts_idx).GetGeometryRef(0).GetPoints()
+
+            _ = _poly.GetGeometryRef(
+                max_pts_idx).GetGeometryRef(0).GetPoints()
 
         cats_poly_pts.append(np.array(_))
         centroids_list.append([_cent.GetX(), _cent.GetY()])
@@ -178,11 +203,13 @@ def plot_strm_rltn(in_cat_shp,
     plt.axes().set_aspect('equal', 'box')
     for i, _cat in enumerate(cats_poly_pts):
         plt.plot(_cat[:, 0], _cat[:, 1], 'g-', alpha=0.6)
-        plt.text(centroids_list[i][0],
-                 centroids_list[i][1],
-                 sel_cat_labs_list[i],
-                 ha='center',
-                 va='center')
+
+        plt.text(
+            centroids_list[i][0],
+            centroids_list[i][1],
+            sel_cat_labs_list[i],
+            ha='center',
+            va='center')
 
     for _stm in stm_lines_pts:
         plt.plot(_stm[:, 0], _stm[:, 1], 'b-', alpha=0.6)
@@ -213,19 +240,24 @@ def crt_strms_rltn_tree(
 
     no_cats_us_list = []
     cats_us_list = in_dem_net_df[dem_net_header[0]].values.tolist()
+
     for _ in in_dem_net_df[dem_net_header[-2]]:
         if _ not in cats_us_list:
             no_cats_us_list.append(_)
 
+
     def get_us_streams(curr_stream_no):
-        '''Get streams that are upstream of a given stream
-        '''
+
+        '''Get streams that are upstream of a given stream'''
+
         if not ((stms_prcssed_df.shape[0] > 0) and
                 (curr_stream_no == stms_prcssed_df.index[-1])):
-            curr_us_stm_01 = in_dem_net_df.loc[curr_stream_no,
-                                               dem_net_header[3]]
-            curr_us_stm_02 = in_dem_net_df.loc[curr_stream_no,
-                                               dem_net_header[4]]
+
+            curr_us_stm_01 = in_dem_net_df.loc[
+                curr_stream_no, dem_net_header[3]]
+
+            curr_us_stm_02 = in_dem_net_df.loc[
+                curr_stream_no, dem_net_header[4]]
 
             if curr_us_stm_01 != -2:
                 if curr_us_stm_01 not in us_stms:
@@ -239,17 +271,22 @@ def crt_strms_rltn_tree(
             us_stms.append(curr_stream_no)
         return
 
+
     def get_us_cats(cat_no):
-        '''Get catchments that are upstream of a given catchment
-        '''
+
+        '''Get catchments that are upstream of a given catchment'''
+
         if cat_no in no_cats_us_list:
             if cat_no not in us_cats:
                 us_cats.append(cat_no)
+
             return
 
         if ((cats_prcssed_df.shape[0] > 0) and
             (cat_no == cats_prcssed_df.iloc[-1, 0])):
+
             us_cats.append(cat_no)
+
             return
 
         for idx in in_dem_net_df.index:
@@ -268,12 +305,12 @@ def crt_strms_rltn_tree(
                     get_us_cats(curr_us_cat)
         return
 
+
     prcss_cats_list = [int(i) for i in prcss_cats_list]
-    cats_prcssed_df = pd.DataFrame(columns=['prcssed',
-                                            'no_up_cats',
-                                            'area',
-                                            'cat_obj',
-                                            'optd'])
+
+    cats_prcssed_df = pd.DataFrame(
+        columns=['prcssed', 'no_up_cats', 'area', 'cat_obj', 'optd'])
+
     cats_prcssed_df.index.name = 'cat_no'
     stms_prcssed_df = pd.DataFrame(columns=['prcssed', 'stm_obj', 'optd'])
     stms_prcssed_df.index.name = 'stream_no'
@@ -282,6 +319,7 @@ def crt_strms_rltn_tree(
     cat_lyr = cat_vec.GetLayer(0)
     cat_feat = cat_lyr.GetNextFeature()
     cats_area_dict = {}
+
     while cat_feat:
         f_val = cat_feat.GetFieldAsInteger(str(watershed_field_name))
         geom = cat_feat.GetGeometryRef()
@@ -307,9 +345,10 @@ def crt_strms_rltn_tree(
                 continue
 
             no_us_cats_flag = cat in no_cats_us_list
-            cats_prcssed_df.loc[cat, :3] = [False,
-                                            no_us_cats_flag,
-                                            cats_area_dict[cat]]
+
+            cats_prcssed_df.loc[cat, :3] = [
+                False, no_us_cats_flag, cats_area_dict[cat]]
+
             cats_prcssed_df.loc[cat, 'optd'] = False
 
     for process_cat in cats_prcssed_df.index:
@@ -320,13 +359,19 @@ def crt_strms_rltn_tree(
             cat = in_dem_net_df.loc[stream_no, dem_net_header[-2]]
             out_stm = in_dem_net_df.loc[stream_no, dem_net_header[-1]]
 
-            if cat == process_cat:
-                up_cat = in_dem_net_df.loc[stream_no, dem_net_header[0]]
-                temp_us_strm = in_dem_net_df.loc[stream_no, dem_net_header[3]]
-                if cat != up_cat:
-                    fin_stream_no = temp_us_strm
-                elif out_stm == 1:
-                    fin_stream_no = stream_no
+            if cat != process_cat:
+                continue
+
+            up_cat = in_dem_net_df.loc[stream_no, dem_net_header[0]]
+            temp_us_strm = in_dem_net_df.loc[stream_no, dem_net_header[3]]
+
+            if cat != up_cat:
+                fin_stream_no = temp_us_strm
+                break
+
+            elif out_stm == 1:
+                fin_stream_no = stream_no
+                break
 #                 elif cat == up_cat:
 #                     fin_stream_no = temp_us_strm
 
@@ -342,16 +387,20 @@ def crt_strms_rltn_tree(
         us_stms = [int(i) for i in us_stms]
 
         for stm in us_stms:
-            if stm not in stms_prcssed_idxs:
-                stms_prcssed_df.loc[stm, ['prcssed', 'optd']] = False
+            if stm in stms_prcssed_idxs:
+                continue
 
-    cats_prcssed_df.to_csv(out_cats_prcssed_file,
-                           sep=str(sep),
-                           index_label=cats_prcssed_df.index.name)
+            stms_prcssed_df.loc[stm, ['prcssed', 'optd']] = False
 
-    stms_prcssed_df.to_csv(out_stms_prcssed_file,
-                           sep=str(sep),
-                           index_label=stms_prcssed_df.index.name)
+    cats_prcssed_df.to_csv(
+        out_cats_prcssed_file,
+        sep=str(sep),
+        index_label=cats_prcssed_df.index.name)
+
+    stms_prcssed_df.to_csv(
+        out_stms_prcssed_file,
+        sep=str(sep),
+        index_label=stms_prcssed_df.index.name)
     return
 
 

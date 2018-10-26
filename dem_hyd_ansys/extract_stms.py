@@ -28,6 +28,7 @@ def get_stms(in_dem_net_shp_file,
              out_wat_ids_file,
              sep=';',
              gauge_coords_field_name='id'):
+
     '''Get the required stream network from the given one
 
     TauDEM creates many streams based on cell threshold but these
@@ -190,6 +191,7 @@ def get_stms(in_dem_net_shp_file,
     direct_next_streams_node_ids_list = []
     in_dem_net_recs = in_dem_net_reader.records()
 
+
     def get_us_cats(curr_stream_idx):
         us_link_no1 = in_dem_net_recs[curr_stream_idx][us_link_01_col_id]
         us_link_no2 = in_dem_net_recs[curr_stream_idx][us_link_02_col_id]
@@ -219,6 +221,7 @@ def get_stms(in_dem_net_shp_file,
             get_us_cats(us_link_no2_idx)
         del_stream_ids_list.append(curr_stream_idx)
         return
+
 
     for cats_not_us_cat in cats_not_us_cats_list + cats_us_cats_list:
         cat_ds_node_no = None
@@ -257,6 +260,7 @@ def get_stms(in_dem_net_shp_file,
 
     assert recs_and_shapes
 
+
     def get_cont_streams(cat_no, ds_link_no):
         curr_idx = None
         if ds_link_no == -1:
@@ -280,6 +284,7 @@ def get_stms(in_dem_net_shp_file,
             get_cont_streams(cat_no,
                              recs_and_shapes[curr_idx][0][ds_link_col_id])
         return
+
 
     if cats_us_cats_list:
         for item in zip((cats_not_us_cats_list + cats_us_cats_list),
@@ -356,6 +361,7 @@ def get_stms(in_dem_net_shp_file,
 
     direct_us_streams_list = []
 
+
     def get_us_stream_fids(stream_fid):
         us_stream_link_no_1 = (
             feat_dict[stream_fid].GetFieldAsInteger(us_link_01_col_id))
@@ -390,6 +396,7 @@ def get_stms(in_dem_net_shp_file,
             get_us_stream_fids(us_stream_id_02)
         return
 
+
     def get_line_elevs(in_geom):
         geom_pts = in_geom.GetPoints()
         pt_1 = geom_pts[0]
@@ -404,6 +411,7 @@ def get_stms(in_dem_net_shp_file,
         z_coord_pt_2 = dem_arr[row_pt_2, col_pt_2]
         return (z_coord_pt_1, z_coord_pt_2)
 
+
     def get_slope(in_geom):
         length = in_geom.Length()
         (z_coord_pt_1, z_coord_pt_2) = get_line_elevs(in_geom)
@@ -414,6 +422,7 @@ def get_stms(in_dem_net_shp_file,
         else:
             slope = abs((z_coord_pt_2 - z_coord_pt_1) / length)
         return slope
+
 
     def merge_to_single_line(in_points_list):
         lines_count = len(in_points_list)
@@ -435,19 +444,23 @@ def get_stms(in_dem_net_shp_file,
 
         if len(us_rels_tree) == (lines_count - 1):
             stream_order_list = [None] * lines_count
+
             for i in range(lines_count):
                 nothing_us = False
                 i_order = (lines_count - 1)
                 curr_ds_stream = i
+
                 while not nothing_us:
                     try:
                         curr_us_stream = us_rels_tree[curr_ds_stream]
                         i_order -= 1
                         curr_ds_stream = curr_us_stream
                         continue
+
                     except KeyError:
                         stream_order_list[i] = i_order
                         nothing_us = True
+
             out_line = ogr.Geometry(ogr.wkbLineString)
             for i in stream_order_list:
                 curr_line = in_points_list[i]
@@ -457,27 +470,36 @@ def get_stms(in_dem_net_shp_file,
             return out_line
         return
 
+
     def get_max_slope(in_multi_geom):
+
         geom_count = in_multi_geom.GetGeometryCount()
         points_list = []
+
         if not geom_count:
             geom_count = in_multi_geom.GetPointCount()
+
             if not geom_count:
                 raise RuntimeError('No features, no points!')
 
             points_list.append(in_multi_geom.GetPoints())
             merged_line = merge_to_single_line(points_list)
+
         else:
             for geom_i in range(geom_count):
                 curr_geom = in_multi_geom.GetGeometryRef(geom_i)
                 points_list.append(curr_geom.GetPoints())
+
             merged_line = merge_to_single_line(points_list)
+
         return (get_slope(merged_line), merged_line)
+
 
     feat_count = lyr.GetFeatureCount()
     for cat_no in unique_cats_list:
         if cat_no in cats_not_us_cats_list:
             continue
+
         feat_dict = {}
         feat_us_links_list = []
 
@@ -485,42 +507,55 @@ def get_stms(in_dem_net_shp_file,
         for idx in range(feat_count):
             feat = lyr.GetFeature(idx)
             stream_cat_no = feat.GetFieldAsInteger(ds_node_col_id)
-            if stream_cat_no == cat_no:
-                stream_fid = feat.GetFID()
-                feat_us_links_list.append(feat.GetFieldAsInteger(link_col_id))
-                feat_dict[stream_fid] = feat.Clone()
-                stream_ds_link_no = feat.GetFieldAsInteger(ds_link_col_id)
-                if stream_ds_link_no == -1:
-                    fin_cat_stream_fid = stream_fid
 
-        assert fin_cat_stream_fid is not None, \
-            'Couldn\'t get fin_cat_stream_fid!'
+            if stream_cat_no != cat_no:
+                continue
+
+            stream_fid = feat.GetFID()
+            feat_us_links_list.append(feat.GetFieldAsInteger(link_col_id))
+            feat_dict[stream_fid] = feat.Clone()
+            stream_ds_link_no = feat.GetFieldAsInteger(ds_link_col_id)
+
+            if stream_ds_link_no == -1:
+                fin_cat_stream_fid = stream_fid
+
+        assert fin_cat_stream_fid is not None, (
+            'Couldn\'t get fin_cat_stream_fid!')
 
         if len(feat_dict) == 1:
             out_feat = ogr.Feature(out_lyr_dfn)
 
             geom = list(feat_dict.values())[0].GetGeometryRef()
+
             out_feat.SetField(ds_node_col_id, int(cat_no))
+
             _ = feat_dict[fin_cat_stream_fid]
             _ = _.GetFieldAsInteger(us_link_01_col_id)
+
             out_feat.SetField(us_link_01_col_id, _)
             out_feat.SetField(length_col_id, geom.Length())
             out_feat.SetField(slope_col_id, get_slope(geom))
             out_feat.SetGeometry(geom)
+
             out_lyr.CreateFeature(out_feat)
             continue
+
         else:
             merged_stream_fids_list = []
             for curr_fid in feat_dict:
                 if curr_fid in merged_stream_fids_list:
                     continue
+
                 direct_us_streams_list = []
                 get_us_stream_fids(curr_fid)
+
                 for fid in direct_us_streams_list:
                     if fid not in merged_stream_fids_list:
                         merged_stream_fids_list.append(fid)
+
                 if len(direct_us_streams_list) > 1:
                     ds_cat_feat = feat_dict[direct_us_streams_list[0]].Clone()
+
                     for fid in direct_us_streams_list[1:]:
                         ds_cat = ds_cat_feat.GetGeometryRef()
                         curr_cat_feat = feat_dict[fid].Clone()
@@ -531,8 +566,9 @@ def get_stms(in_dem_net_shp_file,
                         merged_cat_feat.SetGeometry(ds_cat)
                         ds_cat_feat = merged_cat_feat
 
-                    slope, merged_line = \
-                        get_max_slope(ds_cat_feat.GetGeometryRef())
+                    slope, merged_line = get_max_slope(
+                        ds_cat_feat.GetGeometryRef())
+
                     fin_cat_feat = ogr.Feature(out_lyr_dfn)
                     fin_cat_feat.SetGeometry(merged_line)
 
@@ -540,28 +576,36 @@ def get_stms(in_dem_net_shp_file,
                     fin_cat_feat.SetField(
                         us_link_01_col_id,
                         fin_cat_feat.GetFieldAsInteger(us_link_01_col_id))
+
                     fin_cat_feat.SetField(length_col_id, merged_line.Length())
                     fin_cat_feat.SetField(slope_col_id, slope)
+
                     out_lyr.CreateFeature(fin_cat_feat)
 
                 elif len(direct_us_streams_list) == 1:
-                    geom = feat_dict[direct_us_streams_list[0]
-                                     ].GetGeometryRef()
+                    geom = feat_dict[
+                        direct_us_streams_list[0]].GetGeometryRef()
+
                     out_feat = ogr.Feature(out_lyr_dfn)
                     out_feat.SetField(ds_node_col_id, int(cat_no))
+
                     _ = feat_dict[direct_us_streams_list[0]]
                     _ = _.GetFieldAsInteger(us_link_01_col_id)
+
                     out_feat.SetField(us_link_01_col_id, _)
                     out_feat.SetField(length_col_id, geom.Length())
                     out_feat.SetField(slope_col_id, get_slope(geom))
                     out_feat.SetGeometry(geom)
+
                     out_lyr.CreateFeature(out_feat)
+
                 elif not direct_us_streams_list:
                     raise Exception('zero lines for FID: %s' % str(curr_fid))
+
                 else:
-                    raise Exception(('Couldn\'t do anything about FID: '
-                                     '%s, %s') % (str(curr_fid),
-                                                  str(direct_us_streams_list)))
+                    raise Exception(
+                        ('Couldn\'t do anything about FID: %s, %s') % (
+                            str(curr_fid), str(direct_us_streams_list)))
 
     feat_count = out_lyr.GetFeatureCount()
     del_feat_ids_list = []
@@ -575,6 +619,7 @@ def get_stms(in_dem_net_shp_file,
             if (i != j) and (i not in del_feat_ids_list):
                 j_feat = out_lyr.GetFeature(j)
                 j_geom = j_feat.GetGeometryRef()
+
                 if j_geom.Contains(i_geom):
                     del_feat_ids_list.append(i)
 
@@ -585,14 +630,16 @@ def get_stms(in_dem_net_shp_file,
     field_id = 0
     things_todo = True
     while things_todo:
-        curr_fin_field_ids = \
-            [out_lyr.GetLayerDefn().GetFieldIndex(str(i))
-             for i in fin_field_names]
+        curr_fin_field_ids = [
+            out_lyr.GetLayerDefn().GetFieldIndex(str(i))
+            for i in fin_field_names]
+
         field_count = out_lyr.GetLayerDefn().GetFieldCount()
         for field_id in range(field_count):
             if field_id not in curr_fin_field_ids:
                 out_lyr.DeleteField(field_id)
                 break
+
         else:
             things_todo = False
 
@@ -623,11 +670,15 @@ def get_stms(in_dem_net_shp_file,
     up_stream_cat_col_id = out_lyr_defn.GetFieldIndex(str('up_cat'))
     out_stream_cat_col_id = out_lyr_defn.GetFieldIndex(str('out_stm'))
 
-    if any([(up_stream_01_col_id == -1), (up_stream_02_col_id == -1),
-            (stream_no_col_id == -1), (up_stream_cat_col_id == -1),
-            (out_stream_cat_col_id == -1)]):
-        raise Exception('Fields not created properly or invalid names '
-                        'requested!')
+    if any([
+        (up_stream_01_col_id == -1),
+        (up_stream_02_col_id == -1),
+        (stream_no_col_id == -1),
+        (up_stream_cat_col_id == -1),
+        (out_stream_cat_col_id == -1)]):
+
+        raise Exception(
+            'Fields not created properly or invalid names requested!')
 
     ndv = -2  # means no upstreams
     fin_stream_no = 0
@@ -646,13 +697,16 @@ def get_stms(in_dem_net_shp_file,
     for geom_i in range(out_lyr.GetFeatureCount()):
         curr_stream_feat = out_lyr.GetFeature(geom_i)
         no_more_us_streams = False
+
         if curr_stream_feat is None:
             continue
 
         geoms = curr_stream_feat.GetGeometryRef()
         geoms_count = geoms.GetGeometryCount()
+
         if geoms_count == 0:
             stream_us_pt = geoms.GetPoints()[-1]
+
         else:
             raise Exception('More than one geometry in the feature!')
 
@@ -666,22 +720,27 @@ def get_stms(in_dem_net_shp_file,
 
             geoms = curr_us_stream_feat.GetGeometryRef()
             geoms_count = geoms.GetGeometryCount()
+
             if geoms_count == 0:
                 us_stream_us_pt = geoms.GetPoints()[0]
+
             else:
-                raise Exception('More than one geometry in the '
-                                'feature!')
+                raise Exception('More than one geometry in the feature!')
 
             if us_stream_us_pt == stream_us_pt:
-                us_stream_no = \
-                    curr_us_stream_feat.GetField(stream_no_col_id)
+                us_stream_no = (
+                    curr_us_stream_feat.GetField(stream_no_col_id))
+
                 if curr_stream_feat.GetField(up_stream_01_col_id) == ndv:
-                    curr_stream_feat.SetField(up_stream_01_col_id,
-                                              us_stream_no)
+                    curr_stream_feat.SetField(
+                        up_stream_01_col_id, us_stream_no)
+
                 else:
-                    curr_stream_feat.SetField(up_stream_02_col_id,
-                                              us_stream_no)
+                    curr_stream_feat.SetField(
+                        up_stream_02_col_id, us_stream_no)
+
                     no_more_us_streams = True
+
                 out_lyr.SetFeature(curr_stream_feat)
 
                 if no_more_us_streams:
@@ -736,7 +795,6 @@ def get_stms(in_dem_net_shp_file,
                 feat_modifd = True
 
             if cats_dict[cat].Contains(curr_stream_ds_pt):
-
                 ring = ogr.Geometry(ogr.wkbLinearRing)
 
                 ring.AddPoint(stm_ds_x_coord - half_pix_width,
@@ -778,8 +836,9 @@ def get_stms(in_dem_net_shp_file,
         curr_stream_feat = out_lyr.GetFeature(geom_i)
         if curr_stream_feat is None:
             continue
-        out_df.loc[geoms_count] = [curr_stream_feat.GetField(i)
-                                   for i in curr_field_idxs]
+        out_df.loc[geoms_count] = [
+            curr_stream_feat.GetField(i) for i in curr_field_idxs]
+
         geoms_count += 1
 
     if not out_df.shape[0]:
@@ -789,8 +848,7 @@ def get_stms(in_dem_net_shp_file,
 
         for i, cat in enumerate(cats_not_us_cats_list):
             out_df.loc[i, out_cols] = (
-                [-1, 0, 0, -2, -2, i,
-                 cats_not_us_cats_list[i], -2])
+                [-1, 0, 0, -2, -2, i, cats_not_us_cats_list[i], -2])
 
     out_df.index = out_df['stream_no'].values
     out_df.drop(labels=['stream_no'], axis=1, inplace=True)
