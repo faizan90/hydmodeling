@@ -64,7 +64,7 @@ def plot_cat_vars_errors(plot_args):
 
                 qact = kf_grp['qact_arr'][...]
 
-                q_errs = np.abs(qsim - qact)
+                q_errs = qsim - qact
 
                 plot_cat_vars_errors_kf(
                     kf_grp,
@@ -106,18 +106,28 @@ def plot_cat_vars_errors_kf(
         err_var_sort = err_var[sort_idxs]
         q_errs_sort = q_errs[sort_idxs]
 
+        over_idxs = q_errs_sort >= 0
+
+        err_var_over = err_var_sort[over_idxs]
+        err_var_under = err_var_sort[~over_idxs]
+
+        q_errs_over = q_errs_sort[over_idxs]
+        q_errs_under = np.abs(q_errs_sort[~over_idxs])
+
         plt.figure(figsize=(20, 10))
 
         ax = plt.gca()
 
         ax.set_yscale('log')
 
-        ax.scatter(err_var_sort, q_errs_sort, alpha=0.1)
+        ax.scatter(err_var_over, q_errs_over, alpha=0.1, label='over')
+        ax.scatter(err_var_under, q_errs_under, alpha=0.1, label='under')
 
         ax.set_xlabel(x_lab)
         ax.set_ylabel('Abs. discharge difference (sim. - obs.)')
 
         ax.grid()
+        ax.legend()
 
         ax.set_title(
             f'Discharge differences sorted w.r.t {err_var_lab}\n'

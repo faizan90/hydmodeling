@@ -19,9 +19,158 @@ from ..models import (
     get_ln_ns_cy,
     get_pcorr_cy,
     get_kge_cy,
-    lin_regsn_cy)
+    lin_regsn_cy,
+    tfm_opt_to_hbv_prms_py)
 
 plt.ioff()
+
+
+def plot_cat_rope_q_sims(cat_db):
+
+    with h5py.File(cat_db, 'r') as db:
+        out_dir = db['data'].attrs['main']
+        kfolds = db['data'].attrs['kfolds']
+        cat = db.attrs['cat']
+
+        conv_ratio = db['data'].attrs['conv_ratio']
+        use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
+        area_arr = db['data/area_arr'][...]
+
+        n_cells = area_arr.shape[0]
+
+        cv_flag = db['data'].attrs['cv_flag']
+
+        if cv_flag:
+            cv_kf_dict = {}
+            for i in range(1, kfolds + 1):
+                cd_db = db[f'valid/kf_{i:02d}']
+                kf_dict = {key: cd_db[key][...] for key in cd_db}
+                kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
+
+                cv_kf_dict[i] = kf_dict
+                break
+
+        all_kfs_dict = {}
+        for i in range(1, kfolds + 1):
+            cd_db = db[f'calib/kf_{i:02d}']
+            kf_dict = {key: cd_db[key][...] for key in cd_db}
+            kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
+
+            all_kfs_dict[i] = kf_dict
+
+        all_tem_arr = np.concatenate([
+            all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
+
+        all_ppt_arr = np.concatenate([
+            all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
+
+        all_pet_arr = np.concatenate([
+            all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
+
+        all_qact_arr = np.concatenate([
+            all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
+
+        if 'extra_us_inflow' in kf_dict:
+            all_us_inflow_arr = np.concatenate(
+                [all_kfs_dict[i]['extra_us_inflow']
+                 for i in all_kfs_dict],
+                axis=0)
+
+            extra_flow_flag = True
+
+        else:
+            extra_flow_flag = False
+
+        qsims_dir = os.path.join(out_dir, '12_rope_discharge_sims')
+
+        if not os.path.exists(qsims_dir):
+            try:
+                os.mkdir(qsims_dir)
+
+            except FileExistsError:
+                pass
+
+        calib_db = db['calib']
+
+        f_var_infos = db['cdata/aux_var_infos'][...]
+        prms_idxs = db['cdata/use_prms_idxs'][...]
+        f_vars = db['cdata/aux_vars'][...]
+        prms_flags = db['cdata/all_prms_flags'][...]
+        bds_arr = db['cdata/bds_arr'][...]
+
+        out_df = pd.DataFrame(
+            data=all_qact_arr, columns=['obs'], dtype=np.float32)
+
+        for k in range(1, kfolds + 1):
+            kf_dict = all_kfs_dict[k]
+            kf_str = f'kf_{k:02d}'
+
+            if 'extra_us_inflow' in kf_dict:
+                kf_dict['extra_us_inflow'] = all_us_inflow_arr
+
+            prm_vecs = calib_db[kf_str + '/prm_vecs'][...]
+            n_prms = prm_vecs.shape[0]
+
+            plt.figure(figsize=(17, 8))
+
+            for i in range(prm_vecs.shape[0]):
+                opt_prms = prm_vecs[i]
+
+                hbv_prms = tfm_opt_to_hbv_prms_py(
+                    prms_flags,
+                    f_var_infos,
+                    prms_idxs,
+                    f_vars,
+                    opt_prms,
+                    bds_arr,
+                    n_cells)
+
+                all_outputs_dict = hbv_loop_py(
+                    all_tem_arr,
+                    all_ppt_arr,
+                    all_pet_arr,
+                    hbv_prms,
+                    kf_dict['ini_arr'],
+                    area_arr,
+                    conv_ratio)
+
+                assert all_outputs_dict['loop_ret'] == 0.0
+
+                qsim_arr = all_outputs_dict['qsim_arr']
+
+                if extra_flow_flag:
+                    qsim_arr = qsim_arr + all_us_inflow_arr
+
+                plt.plot(qsim_arr, color='k', alpha=0.01, lw=0.5)
+
+                out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
+
+            plt.plot(all_qact_arr, color='r', alpha=0.7, lw=0.5)
+
+            plt.xlabel('Step no.')
+            plt.ylabel('Discharge')
+
+            plt.grid()
+
+            plt.title(
+                f'Discharge simulation using ROPE parameters (n={n_prms}) '
+                f'for the catchment: {cat} and kf: {k:02d}')
+
+            out_fig_name = f'{kf_str}_rope_qsims_{cat}.png'
+
+            plt.savefig(
+                os.path.join(qsims_dir, out_fig_name),
+                bbox_inches='tight',
+                dpi=150)
+
+            plt.close()
+
+        out_df.to_csv(
+            os.path.join(qsims_dir, f'cat_{cat}_rope_qsims.csv'),
+            float_format='%0.3f',
+            index=False,
+            sep=';')
+    return
 
 
 def plot_cat_hbv_sim(plot_args):
@@ -153,7 +302,6 @@ def plot_cat_hbv_sim(plot_args):
 
 class PlotCatHBVSimKf:
 
-
     def __init__(
             self,
             kf_str,
@@ -284,7 +432,6 @@ class PlotCatHBVSimKf:
         self.bal_idxs = [0]
         self.bal_idxs.extend(list(range(off_idx, self.n_recs, wat_bal_stps)))
         return
-
 
     def wat_bal_sim(self):
 
@@ -599,7 +746,6 @@ class PlotCatHBVSimKf:
         plt.savefig(out_fig_loc, bbox_inches='tight')
         plt.close('all')
         return
-
 
     def full_sim(self):
 

@@ -30,7 +30,8 @@ from hydmodeling import (
     plot_cats_ann_cycs_fdcs_comp,
     plot_cats_prms_transfer_perfs,
     plot_cats_prm_vecs_evo,
-    plot_cats_vars_errors)
+    plot_cats_vars_errors,
+    plot_cats_rope_q_sims)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -85,30 +86,31 @@ def main():
     plot_prm_trans_comp_flag = False
     plot_opt_evo_flag = False
     plot_var_errors_flag = False
+    plot_rope_qsims_flag = False
     plot_hbv_vars_flag = False
-    use_cv_time_flag = False
-    ext_mod_cmp_flag = False
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-#     create_stms_rels_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-    plot_hbv_vars_flag = True
-#     use_cv_time_flag = True
-#     ext_mod_cmp_flag = True
+    create_stms_rels_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_var_errors_flag = True
+    plot_rope_qsims_flag = True
+#     plot_hbv_vars_flag = True
 
-    # =============================================================================
+    use_cv_time_flag = False
+#     use_cv_time_flag = True
+
+    #=========================================================================
     # This performs the hydrological preprocessing
-    # =============================================================================
+    #=========================================================================
     show_ansys_stdout = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
     hyd_ansys_runtype = cfp['HYD_ANSYS']['hyd_ansys_runtype']
     calc_for_cats_only = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
@@ -211,9 +213,9 @@ def main():
             out_cumm_cat_descrip_file,
             sep)
 
-    #==========================================================================
+    #=========================================================================
     # Optimize hydrologic model
-    #==========================================================================
+    #=========================================================================
     in_hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
 
     in_dem_net_file = cfp['GET_STMS']['dem_net_file']
@@ -264,9 +266,6 @@ def main():
             [start_date, end_date], format=time_fmt)
 
         cv_list = [start_date, end_date]
-
-    if ext_mod_cmp_flag:
-        ext_mod_file = cfp['OPT_HYD_MODEL']['ext_mod_file']
 
     time_freq = cfp['OPT_HYD_MODEL']['time_freq']
 
@@ -520,9 +519,9 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #============================ ==============================================
+    #============================ ============================================
     # Plot final parameter population
-    #==========================================================================
+    #=========================================================================
 
     if plot_prm_vecs_flag:
         _beg_t = timeit.default_timer()
@@ -539,9 +538,9 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
+    #=========================================================================
     # Plot hbv prms for all catchments per kfold in 2d
-    #==========================================================================
+    #=========================================================================
 
     if plot_2d_kfold_prms_flag:
         _beg_t = timeit.default_timer()
@@ -558,9 +557,9 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
+    #=========================================================================
     # Plot annual cycle and FDC comparison
-    #==========================================================================
+    #=========================================================================
 
     if plot_ann_cys_fdcs_flag:
         _beg_t = timeit.default_timer()
@@ -581,9 +580,9 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
+    #=========================================================================
     # Plot catchment parameter transfer comparison
-    #==========================================================================
+    #=========================================================================
 
     if plot_prm_trans_comp_flag:
         _beg_t = timeit.default_timer()
@@ -600,9 +599,9 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
+    #=========================================================================
     # Plot catchment parameter transfer comparison
-    #==========================================================================
+    #=========================================================================
 
     if plot_opt_evo_flag:
 
@@ -651,9 +650,9 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
+    #=========================================================================
     # Plot sorted errors w.r.t given variables
-    #==========================================================================
+    #=========================================================================
 
     if plot_var_errors_flag:
         err_var_labs = cfp['PLOT_OPT_RES']['err_var_labs'].split(sep)
@@ -674,6 +673,26 @@ def main():
 
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
+
+    #=========================================================================
+    # plot the ROPE discharge simulations
+    #=========================================================================
+
+    if plot_rope_qsims_flag:
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting ROPE discharge simulations...')
+
+        _beg_t = timeit.default_timer()
+
+        plot_cats_rope_q_sims(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
     #=========================================================================
     # plot the hbv variables
     #=========================================================================
@@ -711,7 +730,7 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
+    #=========================================================================
     return
 
 

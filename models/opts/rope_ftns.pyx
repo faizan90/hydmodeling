@@ -224,6 +224,10 @@ cdef void adjust_rope_bds(
         rope_bds_dfs[j, 0] = min_prm_val
         rope_bds_dfs[j, 1] = max_prm_val - min_prm_val
 
+        with gil:
+            assert 0 <= rope_bds_dfs[j, 0] <= 1.0
+            assert 0 <= rope_bds_dfs[j, 1] <= 1.0
+
     # check if fc, pwp, aspect and slope bounds are as expected
     for j in range(
         prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
@@ -240,6 +244,7 @@ cdef void adjust_rope_bds(
         with gil: assert min_cpwp <= min_cfc
         with gil: assert max_cpwp <= max_cfc
 
+    # there seems to be no need for these two loops
     for j in range(n_hbv_prms):
         for m in range(3, 6):
             if not prms_flags[j, m]:
