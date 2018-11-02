@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 '''
 Created on Oct 12, 2017
 
@@ -55,16 +54,16 @@ def get_shp_stuff(in_shp, field_id):
     assert shp_spt_ref, '%s has no spatial reference!' % in_shp
 
     for j in range(feat_count):
-        _curr_feat = in_lyr.GetFeature(j)
+        curr_feat = in_lyr.GetFeature(j)
 
-        if _curr_feat is not None:
-            cat_no = _curr_feat.GetFieldAsString(str(field_id))
+        if curr_feat is not None:
+            cat_no = curr_feat.GetFieldAsString(str(field_id))
 
         else:
             continue
 
-        _geom = _curr_feat.GetGeometryRef().Clone()
-        geoms_dict[cat_no] = _geom
+        geom = curr_feat.GetGeometryRef().Clone()
+        geoms_dict[cat_no] = geom
 
     in_ds.Destroy()
 
@@ -102,22 +101,24 @@ def plot_strm_rltn(
     sel_cats = []
     sel_stms = []
 
-    for _fin_cat in final_cats_list:
-        sel_cats.extend(in_cats_prcssed_df.loc[:_fin_cat].index.tolist())
+    for fin_cat in final_cats_list:
+        sel_cats.extend(in_cats_prcssed_df.loc[:fin_cat].index.tolist())
 
-        if not in_stms_prcssed_df.shape[0]:
+        if ((not in_stms_prcssed_df.shape[0]) or
+            (fin_cat not in in_dem_net_df.index)):
+
             continue
 
-        _final_stms = in_dem_net_df.loc[_fin_cat]
+        final_stms = in_dem_net_df.loc[fin_cat]
 
-        if len(_final_stms.shape) == 1:
-            _final_stm = _final_stms.loc['stream_no']
+        if len(final_stms.shape) == 1:
+            final_stm = final_stms.loc['stream_no']
 
         else:
-            _final_stm = _final_stms.loc[
-                _final_stms['out_stm'].values == 1]['stream_no'].values[0]
+            final_stm = final_stms.loc[
+                final_stms['out_stm'].values == 1]['stream_no'].values[0]
 
-        sel_stms.extend(in_stms_prcssed_df.loc[:_final_stm].index.tolist())
+        sel_stms.extend(in_stms_prcssed_df.loc[:final_stm].index.tolist())
 
     sel_cats = np.unique(sel_cats).tolist()
     sel_stms = np.unique(sel_stms).tolist()
@@ -222,6 +223,7 @@ def plot_strm_rltn(
     plt.ylabel('Northings')
 
     plt.savefig(out_fig_path, bbox_inches='tight')
+    plt.close()
 #     plt.show()
     return
 
@@ -238,13 +240,29 @@ def crt_strms_rltn_tree(
     in_dem_net_df = pd.read_csv(in_dem_net_file, sep=sep, index_col=0)
     dem_net_header = in_dem_net_df.columns.tolist()
 
-    no_cats_us_list = []
+    cat_vec = ogr.Open(in_watersheds_file)
+    cat_lyr = cat_vec.GetLayer(0)
+    cat_feat = cat_lyr.GetNextFeature()
+    cats_area_dict = {}
+
     cats_us_list = in_dem_net_df[dem_net_header[0]].values.tolist()
+    all_cats_list = []
 
-    for _ in in_dem_net_df[dem_net_header[-2]]:
-        if _ not in cats_us_list:
-            no_cats_us_list.append(_)
+    while cat_feat:
+        f_val = cat_feat.GetFieldAsInteger(str(watershed_field_name))
+        all_cats_list.append(int(f_val))
 
+        geom = cat_feat.GetGeometryRef()
+        cats_area_dict[f_val] = geom.Area()
+        cat_feat = cat_lyr.GetNextFeature()
+    cat_vec.Destroy()
+
+    no_cats_us_list = []
+    for _ in all_cats_list:
+        if _ in cats_us_list:
+            continue
+
+        no_cats_us_list.append(_)
 
     def get_us_streams(curr_stream_no):
 
@@ -271,7 +289,6 @@ def crt_strms_rltn_tree(
             us_stms.append(curr_stream_no)
         return
 
-
     def get_us_cats(cat_no):
 
         '''Get catchments that are upstream of a given catchment'''
@@ -279,14 +296,12 @@ def crt_strms_rltn_tree(
         if cat_no in no_cats_us_list:
             if cat_no not in us_cats:
                 us_cats.append(cat_no)
-
             return
 
         if ((cats_prcssed_df.shape[0] > 0) and
             (cat_no == cats_prcssed_df.iloc[-1, 0])):
 
             us_cats.append(cat_no)
-
             return
 
         for idx in in_dem_net_df.index:
@@ -305,27 +320,14 @@ def crt_strms_rltn_tree(
                     get_us_cats(curr_us_cat)
         return
 
-
     prcss_cats_list = [int(i) for i in prcss_cats_list]
 
     cats_prcssed_df = pd.DataFrame(
         columns=['prcssed', 'no_up_cats', 'area', 'cat_obj', 'optd'])
-
     cats_prcssed_df.index.name = 'cat_no'
+
     stms_prcssed_df = pd.DataFrame(columns=['prcssed', 'stm_obj', 'optd'])
     stms_prcssed_df.index.name = 'stream_no'
-
-    cat_vec = ogr.Open(in_watersheds_file)
-    cat_lyr = cat_vec.GetLayer(0)
-    cat_feat = cat_lyr.GetNextFeature()
-    cats_area_dict = {}
-
-    while cat_feat:
-        f_val = cat_feat.GetFieldAsInteger(str(watershed_field_name))
-        geom = cat_feat.GetGeometryRef()
-        cats_area_dict[f_val] = geom.Area()
-        cat_feat = cat_lyr.GetNextFeature()
-    cat_vec.Destroy()
 
     for process_cat in prcss_cats_list:
         cats_prcssed_idxs = cats_prcssed_df.index
@@ -336,9 +338,6 @@ def crt_strms_rltn_tree(
         us_cats = []
         get_us_cats(process_cat)
         us_cats = [int(i) for i in us_cats]
-
-#         if not us_cats:
-#             us_cats.append(int(process_cat))
 
         for cat in reversed(us_cats):
             if cat in cats_prcssed_idxs:
@@ -352,31 +351,27 @@ def crt_strms_rltn_tree(
             cats_prcssed_df.loc[cat, 'optd'] = False
 
     for process_cat in cats_prcssed_df.index:
+        if ((process_cat in no_cats_us_list) and
+            (process_cat not in in_dem_net_df.loc[:, dem_net_header[-2]])):
+
+            continue
+
         stms_prcssed_idxs = stms_prcssed_df.index
 
         fin_stream_no = None
         for stream_no in in_dem_net_df.index:
-            cat = in_dem_net_df.loc[stream_no, dem_net_header[-2]]
-            out_stm = in_dem_net_df.loc[stream_no, dem_net_header[-1]]
-
+            cat = in_dem_net_df.loc[stream_no, dem_net_header[0]]
             if cat != process_cat:
                 continue
 
-            up_cat = in_dem_net_df.loc[stream_no, dem_net_header[0]]
-            temp_us_strm = in_dem_net_df.loc[stream_no, dem_net_header[3]]
+            out_stm = in_dem_net_df.loc[stream_no, dem_net_header[-1]]
 
-            if cat != up_cat:
-                fin_stream_no = temp_us_strm
-                break
-
-            elif out_stm == 1:
+            if out_stm == 1:
                 fin_stream_no = stream_no
                 break
-#                 elif cat == up_cat:
-#                     fin_stream_no = temp_us_strm
 
         assert fin_stream_no is not None, (
-            'could not find the final stream for catchment %d!' % process_cat)
+            'Could not find the final stream for catchment %d!' % process_cat)
 
         if fin_stream_no == -2:
             continue
@@ -391,6 +386,17 @@ def crt_strms_rltn_tree(
                 continue
 
             stms_prcssed_df.loc[stm, ['prcssed', 'optd']] = False
+
+    for prcss_cat in prcss_cats_list:
+        assert prcss_cat in cats_prcssed_df.index
+
+    for stm_no in in_dem_net_df.index:
+        if (in_dem_net_df.loc[stm_no, dem_net_header[0]]
+            not in cats_prcssed_df.index):
+
+            continue
+
+        assert stm_no in stms_prcssed_df.index
 
     cats_prcssed_df.to_csv(
         out_cats_prcssed_file,

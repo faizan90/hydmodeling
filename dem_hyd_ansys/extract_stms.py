@@ -144,20 +144,26 @@ def get_stms(in_dem_net_shp_file,
         if unique_cat not in in_wat_id_arr:
             raise Exception('Catchment id not in wat_id_arr!')
 
+    in_dem_net_recs = in_dem_net_reader.records()
+
     got_fin_outlet = False
     for unique_cat in unique_wat_ids:
         if unique_cat not in unique_cats_list:
 #             if got_fin_outlet:
 #                 raise RuntimeError('More than one outlet in watersheds_id?')
             unique_cat_idxs = np.where(in_wat_id_arr == unique_cat)
-            unique_cat_idxs_row = unique_cat_idxs[0][0]
+            unique_cat_idxs_rows = unique_cat_idxs[0]
+            for row_no in unique_cat_idxs_rows:
+                in_wat_id_arr[row_no, 1] = -1
+                got_fin_outlet = True
 
 #             if len(unique_cat_idxs) == 1:
 #                 unique_cat_idxs_col = unique_cat_idxs[1][0]
 #             else:
-            unique_cat_idxs_col = unique_cat_idxs[1][0]
+#             unique_cat_idxs_col = unique_cat_idxs[1][0]
+#             in_wat_id_arr[unique_cat_idxs_row, unique_cat_idxs_col] = -1
+
             got_fin_outlet = True
-            in_wat_id_arr[unique_cat_idxs_row, unique_cat_idxs_col] = -1
 
     assert got_fin_outlet, 'No outlet?'
 
@@ -191,7 +197,6 @@ def get_stms(in_dem_net_shp_file,
     del_stream_ids_list = []
     # streams directly next to catchment outlets
     direct_next_streams_node_ids_list = []
-    in_dem_net_recs = in_dem_net_reader.records()
 
     def get_us_cats(curr_stream_idx):
         us_link_no1 = in_dem_net_recs[curr_stream_idx][us_link_01_col_id]
@@ -225,6 +230,7 @@ def get_stms(in_dem_net_shp_file,
 
     for cats_not_us_cat in cats_not_us_cats_list + cats_us_cats_list:
         cat_ds_node_no = None
+
         for idx, rec in enumerate(in_dem_net_recs):
             if rec[ds_node_col_id] == cats_not_us_cat:
                 cat_ds_node_no = idx
@@ -245,10 +251,12 @@ def get_stms(in_dem_net_shp_file,
     assert len(direct_next_streams_node_ids_list) == len(unique_cats_list), (
         'unequal lengths!')
 
-    for idx, rec in enumerate(zip(in_dem_net_reader.records(),
-                                  in_dem_net_reader.shapes())):
+    for idx, rec in enumerate(
+        zip(in_dem_net_reader.records(), in_dem_net_reader.shapes())):
+
         if rec[0][us_link_01_col_id] != -1:
             del_idx_cond = (idx not in del_stream_ids_list)
+
             if del_idx_cond:
                 out_dem_net_writer_01.line(parts=[rec[1].points])
                 out_dem_net_writer_01.record(*rec[0])
@@ -273,26 +281,33 @@ def get_stms(in_dem_net_shp_file,
                     curr_idx = idx
                     break
 
-        try:
-            assert curr_idx is not None, (cat_no, ds_link_no)
-        except:
-            tre = 1
-
-        fin_stream_idxs_list.append(curr_idx)
-        contain_cats_list.append(cat_no)
         if ((rec[0][ds_node_col_id] == watersheds_ds_id_dict[cat_no]) or
-           (ds_link_no == -1)):
+            (ds_link_no == -1)):
+
+            if curr_idx is not None:
+                fin_stream_idxs_list.append(curr_idx)
+                contain_cats_list.append(cat_no)
+
             return
+
         else:
-            get_cont_streams(cat_no,
-                             recs_and_shapes[curr_idx][0][ds_link_col_id])
+            assert curr_idx is not None, (cat_no, ds_link_no)
+
+            fin_stream_idxs_list.append(curr_idx)
+            contain_cats_list.append(cat_no)
+
+            get_cont_streams(
+                cat_no, recs_and_shapes[curr_idx][0][ds_link_col_id])
         return
 
     if cats_us_cats_list:
-        for item in zip((cats_not_us_cats_list + cats_us_cats_list),
-                        direct_next_streams_node_ids_list):
+        for item in zip(
+            (cats_not_us_cats_list + cats_us_cats_list),
+            direct_next_streams_node_ids_list):
+
             try:
                 get_cont_streams(*item)
+
             except Exception as msg:
                 raise Exception('Error in: %s., %s' % (str(item[0]), str(msg)))
 
