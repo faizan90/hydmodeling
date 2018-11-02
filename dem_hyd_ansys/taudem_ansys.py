@@ -8,11 +8,12 @@ import timeit
 import subprocess
 from os import mkdir
 from platform import architecture
-from os.path import (join as os_join,
-					 exists as os_exists,
-					 abspath,
-					 basename,
-					 dirname)
+from os.path import (
+	join as os_join,
+	exists as os_exists,
+	abspath,
+	basename,
+	dirname)
 
 import ogr
 
@@ -23,19 +24,21 @@ from .merge_polys import merge_same_id_shp_poly
 class TauDEMAnalysis:
 
 	def __init__(self, raw_dem_path, gage_shp_path, outputs_dir, n_cpus=1):
+
 		self.raw_dem_path = abspath(raw_dem_path)
 		self.gage_shp_path = abspath(gage_shp_path)
 		self.outputs_dir = abspath(outputs_dir)
 		self.n_cpus = n_cpus
 
-		assert n_cpus
+		assert n_cpus > 0
 
 		if not os_exists(self.raw_dem_path):
-			raise IOError('raw_dem file does not exist at the given location!')
+			raise IOError(
+				'raw_dem file does not exist at the given location!')
 
 		if not os_exists(self.gage_shp_path):
-			raise IOError('gage_shp file does not exist at the given '
-						  'location!')
+			raise IOError(
+				'gage_shp file does not exist at the given location!')
 
 		self.fil = os_join(self.outputs_dir, 'fil.tif')
 		self.fdr = os_join(self.outputs_dir, 'fdr.tif')
@@ -72,14 +75,16 @@ class TauDEMAnalysis:
 			raise NotImplementedError('To be downloaded!')
 			self.exes_dir = os_join(dirname(abspath(__file__)),
 									'TauDEM537exeWin32')
+
 		elif _bitness == '64bit':
 			self.exes_dir = os_join(dirname(abspath(__file__)),
 									'TauDEM535exeWin64')
+
 		else:
 			raise RuntimeError('Could not get the bitness of the system!')
 
-		self.polygonize_file = os_join(dirname(abspath(__file__)),
-									   'gdal_polygonize.py')
+		self.polygonize_file = os_join(
+			dirname(abspath(__file__)), 'gdal_polygonize.py')
 
 		self.fil_exe = os_join(self.exes_dir, 'PitRemove')
 		self.fdr_exe = os_join(self.exes_dir, 'D8FlowDir')
@@ -92,6 +97,7 @@ class TauDEMAnalysis:
 		return
 
 	def _prepare(self):
+
 		self.dem_coord_sys = get_ras_props(self.raw_dem_path)[8]
 		self.gage_shp_coord_sys = get_vec_props(self.gage_shp_path, 0)[4]
 
@@ -123,7 +129,8 @@ class TauDEMAnalysis:
 			assert id_in_fields
 
 		except AssertionError:
-			print('Field \'id\' does not exist in gage_shp!')
+			raise AssertionError('Field \'id\' does not exist in gage_shp!')
+
 		finally:
 			in_shp_vec.Destroy()
 
@@ -132,26 +139,25 @@ class TauDEMAnalysis:
 		return
 
 	def __call__(self):
+
 		self._prepare()
 
-		fil_cmd = '"%s" -z "%s" -fel "%s"' % (self.fil_exe,
-											  self.raw_dem_path,
-											  self.fil)
+		fil_cmd = '"%s" -z "%s" -fel "%s"' % (
+			self.fil_exe, self.raw_dem_path, self.fil)
 
-		fdr_cmd = '"%s" -fel "%s" -p "%s" -sd8 "%s"' % (self.fdr_exe,
-													  	self.fil,
-													  	self.fdr,
-													  	self.sd8)
+		fdr_cmd = '"%s" -fel "%s" -p "%s" -sd8 "%s"' % (
+			self.fdr_exe, self.fil, self.fdr, self.sd8)
 
 		if self.area_flag:
-			fac_cmd = '"%s" -p "%s" -ad8 "%s" -o "%s"' % (self.fac_exe,
-														  self.fdr,
-														  self.fac,
-													      self.gage_shp_path)
+			# if gage_shp is the original one, then stream net might be wrong.
+			# Run once without the area_flag. Rename gage_shp_moved to
+			# gage_shp_path
+			fac_cmd = '"%s" -p "%s" -ad8 "%s" -o "%s"' % (
+				self.fac_exe, self.fdr, self.fac, self.gage_shp_path)
+
 		else:
-			fac_cmd = '"%s" -p "%s" -ad8 "%s"' % (self.fac_exe,
-												  self.fdr,
-												  self.fac)
+			fac_cmd = '"%s" -p "%s" -ad8 "%s"' % (
+				self.fac_exe, self.fdr, self.fac)
 
 		thresh_cmd = ('"%s" -ssa "%s" -src "%s" -thresh %d' %
 					  (self.thresh_exe,
@@ -191,6 +197,7 @@ class TauDEMAnalysis:
 			streamnet_cmd = 'mpiexec -n %d %s' % (self.n_cpus, streamnet_cmd)
 
 		out_shps = [self.gage_shp_moved, self.dem_net, self.watersheds_shp]
+
 		for shp in out_shps:
 			if not os_exists(shp):
 				continue
@@ -201,41 +208,48 @@ class TauDEMAnalysis:
 			out_driver.DeleteDataSource(shp)
 
 		if self.run_type == 'before':
-			cmd_list = [fil_cmd,
-						fdr_cmd,
-						fac_cmd,
-						thresh_cmd,
-						snap_pp_cmd,
-						streamnet_cmd]
+			cmd_list = [
+				fil_cmd,
+				fdr_cmd,
+				fac_cmd,
+				thresh_cmd,
+				snap_pp_cmd,
+				streamnet_cmd]
+
 		elif self.run_type == 'after':
 			cmd_list = [fac_cmd, thresh_cmd, snap_pp_cmd, streamnet_cmd]
+
 			assert os_exists(self.fil), '%s does not exist!' % self.fil
 			assert os_exists(self.fdr), '%s does not exist!' % self.fdr
 			assert os_exists(self.sd8), '%s does not exist!' % self.sd8
+
 		else:
-			raise NameError('\RUN_TYPE\' can only be \'before\' or \'after\'!')
+			raise NameError(
+				'\RUN_TYPE\' can only be \'before\' or \'after\'!')
 
 		if self.watersheds_flag:
-			gage_watershed_cmd = ('"%s" -p "%s" -o "%s" -gw "%s" -id "%s"' %
-								  (self.gage_watershed_exe,
-								   self.fdr,
-								   self.gage_shp_moved,
-								   self.watersheds,
-								   self.watersheds_ids))
+			gage_watershed_cmd = (
+				'"%s" -p "%s" -o "%s" -gw "%s" -id "%s"' % (
+					self.gage_watershed_exe,
+					self.fdr,
+					self.gage_shp_moved,
+					self.watersheds,
+					self.watersheds_ids))
 
 			if self.n_cpus > 1:
-				gage_watershed_cmd = ('mpiexec -n %d %s' %
-									  (self.n_cpus, gage_watershed_cmd))
+				gage_watershed_cmd = (
+					'mpiexec -n %d %s' % (self.n_cpus, gage_watershed_cmd))
 
 			cmd_list.append(gage_watershed_cmd)
 
 		if self.strm_dists_flag:
-			strm_dist_cmd = ('"%s" -p "%s" -src "%s" -dist "%s" -thresh "%d"' %
-							 (self.strm_dist_exe,
-							  self.fdr,
-							  self.fac,
-							  self.strm_dist,
-							  self.strm_orign_thresh))
+			strm_dist_cmd = (
+				'"%s" -p "%s" -src "%s" -dist "%s" -thresh "%d"' % (
+					self.strm_dist_exe,
+					self.fdr,
+					self.fac,
+					self.strm_dist,
+					self.strm_orign_thresh))
 
 			if self.n_cpus > 1:
 				strm_dist_cmd = (
@@ -246,52 +260,55 @@ class TauDEMAnalysis:
 		if self.verbose:
 			for cmd in cmd_list:
 				print('\nExecuting: %s' % cmd)
-				proc = subprocess.Popen(cmd,
-										shell=False)
+				proc = subprocess.Popen(cmd, shell=False)
 				proc.wait()
+
 		else:
 			log_file_cur = open(self.log_file, 'w')
 			for cmd in cmd_list:
 				# print activitities to LOG_FILE
 				print('\nExecuting: %s' % cmd)
-				proc = subprocess.Popen(cmd,
-										shell=False,
-										stdout=log_file_cur,
-										stderr=log_file_cur)
+				proc = subprocess.Popen(
+					cmd,
+					shell=False,
+					stdout=log_file_cur,
+					stderr=log_file_cur)
+
 				proc.wait()
+
 			log_file_cur.close()
 
 		if self.watersheds_flag:
-			assert os_exists(self.watersheds), 'watersheds file does not exist!'
+			assert os_exists(self.watersheds), (
+				'watersheds file does not exist!')
 
 			temp_shp = dirname(self.watersheds_shp)
 			temp_shp = os_join(temp_shp, 'temp_')
 			temp_shp += basename(self.watersheds_shp)
 
 			fmt = 'ESRI Shapefile'
-			cmd = 'python "%s" "%s" -f "%s" "%s"' % (self.polygonize_file,
-													 self.watersheds,
-													 fmt,
-													 temp_shp)
+			cmd = 'python "%s" "%s" -f "%s" "%s"' % (
+				self.polygonize_file, self.watersheds, fmt, temp_shp)
 
 			print('\nExecuting: %s' % cmd)
 
 			if self.verbose:
-				proc = subprocess.Popen(cmd,
-										shell=False)
+				proc = subprocess.Popen(cmd, shell=False)
 				proc.wait()
+
 			else:
 				log_file_cur = open(self.log_file, 'a')
-				proc = subprocess.Popen(cmd,
-										shell=False,
-										stdout=log_file_cur,
-										stderr=log_file_cur)
+				proc = subprocess.Popen(
+					cmd,
+					shell=False,
+					stdout=log_file_cur,
+					stderr=log_file_cur)
+
 				proc.wait()
 				log_file_cur.close()
 
-			merge_same_id_shp_poly(temp_shp,
-								   self.watersheds_shp,
-								   field='DN')
+			merge_same_id_shp_poly(
+				temp_shp, self.watersheds_shp, field='DN')
 
 			driver = ogr.GetDriverByName(fmt)
 			if os_exists(temp_shp):

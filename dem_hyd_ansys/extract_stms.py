@@ -147,8 +147,8 @@ def get_stms(in_dem_net_shp_file,
     got_fin_outlet = False
     for unique_cat in unique_wat_ids:
         if unique_cat not in unique_cats_list:
-            if got_fin_outlet:
-                raise RuntimeError('More than one outlet in watersheds_id?')
+#             if got_fin_outlet:
+#                 raise RuntimeError('More than one outlet in watersheds_id?')
             unique_cat_idxs = np.where(in_wat_id_arr == unique_cat)
             unique_cat_idxs_row = unique_cat_idxs[0][0]
 
@@ -159,11 +159,13 @@ def get_stms(in_dem_net_shp_file,
             got_fin_outlet = True
             in_wat_id_arr[unique_cat_idxs_row, unique_cat_idxs_col] = -1
 
-    if got_fin_outlet:
-        np.savetxt(out_wat_ids_file,
-                   in_wat_id_arr,
-                   delimiter=str(sep),
-                   fmt='%d')
+    assert got_fin_outlet, 'No outlet?'
+
+    np.savetxt(
+        out_wat_ids_file,
+        in_wat_id_arr,
+        delimiter=str(sep),
+        fmt='%d')
 
     watersheds_ds_id_dict = {}
     watersheds_us_id_dict = {}
@@ -190,7 +192,6 @@ def get_stms(in_dem_net_shp_file,
     # streams directly next to catchment outlets
     direct_next_streams_node_ids_list = []
     in_dem_net_recs = in_dem_net_reader.records()
-
 
     def get_us_cats(curr_stream_idx):
         us_link_no1 = in_dem_net_recs[curr_stream_idx][us_link_01_col_id]
@@ -221,7 +222,6 @@ def get_stms(in_dem_net_shp_file,
             get_us_cats(us_link_no2_idx)
         del_stream_ids_list.append(curr_stream_idx)
         return
-
 
     for cats_not_us_cat in cats_not_us_cats_list + cats_us_cats_list:
         cat_ds_node_no = None
@@ -260,7 +260,6 @@ def get_stms(in_dem_net_shp_file,
 
     assert recs_and_shapes
 
-
     def get_cont_streams(cat_no, ds_link_no):
         curr_idx = None
         if ds_link_no == -1:
@@ -274,7 +273,11 @@ def get_stms(in_dem_net_shp_file,
                     curr_idx = idx
                     break
 
-        assert curr_idx is not None, (cat_no, ds_link_no)
+        try:
+            assert curr_idx is not None, (cat_no, ds_link_no)
+        except:
+            tre = 1
+
         fin_stream_idxs_list.append(curr_idx)
         contain_cats_list.append(cat_no)
         if ((rec[0][ds_node_col_id] == watersheds_ds_id_dict[cat_no]) or
@@ -284,7 +287,6 @@ def get_stms(in_dem_net_shp_file,
             get_cont_streams(cat_no,
                              recs_and_shapes[curr_idx][0][ds_link_col_id])
         return
-
 
     if cats_us_cats_list:
         for item in zip((cats_not_us_cats_list + cats_us_cats_list),
@@ -361,7 +363,6 @@ def get_stms(in_dem_net_shp_file,
 
     direct_us_streams_list = []
 
-
     def get_us_stream_fids(stream_fid):
         us_stream_link_no_1 = (
             feat_dict[stream_fid].GetFieldAsInteger(us_link_01_col_id))
@@ -396,7 +397,6 @@ def get_stms(in_dem_net_shp_file,
             get_us_stream_fids(us_stream_id_02)
         return
 
-
     def get_line_elevs(in_geom):
         geom_pts = in_geom.GetPoints()
         pt_1 = geom_pts[0]
@@ -411,7 +411,6 @@ def get_stms(in_dem_net_shp_file,
         z_coord_pt_2 = dem_arr[row_pt_2, col_pt_2]
         return (z_coord_pt_1, z_coord_pt_2)
 
-
     def get_slope(in_geom):
         length = in_geom.Length()
         (z_coord_pt_1, z_coord_pt_2) = get_line_elevs(in_geom)
@@ -422,7 +421,6 @@ def get_stms(in_dem_net_shp_file,
         else:
             slope = abs((z_coord_pt_2 - z_coord_pt_1) / length)
         return slope
-
 
     def merge_to_single_line(in_points_list):
         lines_count = len(in_points_list)
@@ -470,7 +468,6 @@ def get_stms(in_dem_net_shp_file,
             return out_line
         return
 
-
     def get_max_slope(in_multi_geom):
 
         geom_count = in_multi_geom.GetGeometryCount()
@@ -493,7 +490,6 @@ def get_stms(in_dem_net_shp_file,
             merged_line = merge_to_single_line(points_list)
 
         return (get_slope(merged_line), merged_line)
-
 
     feat_count = lyr.GetFeatureCount()
     for cat_no in unique_cats_list:

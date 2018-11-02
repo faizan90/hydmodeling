@@ -113,7 +113,7 @@ def main():
     #=========================================================================
     show_ansys_stdout = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
     hyd_ansys_runtype = cfp['HYD_ANSYS']['hyd_ansys_runtype']
-    calc_for_cats_only = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
+    calc_for_cats_only = cfp['HYD_ANSYS'].getboolean('calc_for_cats_only')
     max_cell_move = cfp['HYD_ANSYS'].getint('max_cell_move')
     strm_strt_thresh = cfp['HYD_ANSYS'].getint('strm_strt_thresh')
 

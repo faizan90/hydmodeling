@@ -511,13 +511,20 @@ class PlotCatHBVSimKf:
             curr_comb_sum = np.sum(
                 self.comb_run_arr[self.bal_idxs[i]:self.bal_idxs[i + 1]])
 
+            curr_sto = (
+                self.ur_sto_arr[self.bal_idxs[i + 1] - 1] +
+                self.lr_sto_arr[self.bal_idxs[i + 1] - 1])
+
             # ET accounted for
-            act_bal_w_et_arr.append(curr_q_act_sum / (prec_sum - evap_sum))
-            sim_bal_w_et_arr.append(curr_comb_sum / (prec_sum - evap_sum))
+            act_bal_w_et_arr.append(
+                curr_q_act_sum / (prec_sum - evap_sum - curr_sto))
+
+            sim_bal_w_et_arr.append(
+                curr_comb_sum / (prec_sum - evap_sum - curr_sto))
 
             # ET not accounted for
-            act_bal_wo_et_arr.append(curr_q_act_sum / prec_sum)
-            sim_bal_wo_et_arr.append(curr_comb_sum / prec_sum)
+            act_bal_wo_et_arr.append(curr_q_act_sum / (prec_sum - curr_sto))
+            sim_bal_wo_et_arr.append(curr_comb_sum / (prec_sum - curr_sto))
 
             prec_sum_arr.append(prec_sum)
             evap_sum_arr.append(evap_sum)
@@ -886,11 +893,15 @@ class PlotCatHBVSimKf:
             curr_comb_sum = np.sum(self.comb_run_arr[
                 self.bal_idxs[i]:self.bal_idxs[i + 1]])
 
+            curr_sto = (
+                self.ur_sto_arr[self.bal_idxs[i + 1] - 1] +
+                self.lr_sto_arr[self.bal_idxs[i + 1] - 1])
+
             act_bal_arr.append(
-                curr_q_act_sum / (curr_prec_sum - curr_evap_sum))
+                curr_q_act_sum / (curr_prec_sum - curr_evap_sum - curr_sto))
 
             sim_bal_arr.append(
-                curr_comb_sum / (curr_prec_sum - curr_evap_sum))
+                curr_comb_sum / (curr_prec_sum - curr_evap_sum - curr_sto))
 
             prec_sum_arr.append(curr_prec_sum)
 
