@@ -46,7 +46,7 @@ from .models import (
 
 from .plotting import (
     plot_cats_hbv_sim,
-    plot_cats_rope_q_sims,
+    plot_cats_qsims,
 
     plot_cats_kfold_effs,
     plot_cats_prms_transfer_perfs,

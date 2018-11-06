@@ -25,7 +25,7 @@ from ..models import (
 plt.ioff()
 
 
-def plot_cat_rope_q_sims(cat_db):
+def plot_cat_qsims(cat_db):
 
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
@@ -81,7 +81,7 @@ def plot_cat_rope_q_sims(cat_db):
         else:
             extra_flow_flag = False
 
-        qsims_dir = os.path.join(out_dir, '12_rope_discharge_sims')
+        qsims_dir = os.path.join(out_dir, '12_discharge_sims')
 
         if not os.path.exists(qsims_dir):
             try:
@@ -91,6 +91,8 @@ def plot_cat_rope_q_sims(cat_db):
                 pass
 
         calib_db = db['calib']
+
+        opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
 
         f_var_infos = db['cdata/aux_var_infos'][...]
         prms_idxs = db['cdata/use_prms_idxs'][...]
@@ -153,10 +155,10 @@ def plot_cat_rope_q_sims(cat_db):
             plt.grid()
 
             plt.title(
-                f'Discharge simulation using ROPE parameters (n={n_prms}) '
-                f'for the catchment: {cat} and kf: {k:02d}')
+                f'Discharge simulation using {opt_schm} parameters '
+                f'(n={n_prms}) for the catchment: {cat} and kf: {k:02d}')
 
-            out_fig_name = f'{kf_str}_rope_qsims_{cat}.png'
+            out_fig_name = f'{kf_str}_qsims_{cat}.png'
 
             plt.savefig(
                 os.path.join(qsims_dir, out_fig_name),
@@ -166,7 +168,7 @@ def plot_cat_rope_q_sims(cat_db):
             plt.close()
 
         out_df.to_csv(
-            os.path.join(qsims_dir, f'cat_{cat}_rope_qsims.csv'),
+            os.path.join(qsims_dir, f'cat_{cat}_qsims.csv'),
             float_format='%0.3f',
             index=False,
             sep=';')
@@ -248,11 +250,11 @@ def plot_cat_hbv_sim(plot_args):
             out_dir,
             wat_bal_stps)
 
-        if full_sim_flag:
-            sim.full_sim()
-
         if wat_bal_flag:
             sim.wat_bal_sim()
+
+        if full_sim_flag:
+            sim.full_sim()
 
         if (kfolds == 1) and (not cv_flag):
             continue
@@ -291,12 +293,11 @@ def plot_cat_hbv_sim(plot_args):
             out_dir,
             wat_bal_stps)
 
-        if full_sim_flag:
-            sim.full_sim()
-
         if wat_bal_flag:
             sim.wat_bal_sim()
 
+        if full_sim_flag:
+            sim.full_sim()
     return
 
 

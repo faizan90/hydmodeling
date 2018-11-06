@@ -769,12 +769,13 @@ def plot_cat_prm_vecs_kf(
     return
 
 
-def plot_cat_prm_vecs_evo(
-        cat_db,
-        save_obj_flag,
-        save_png_flag,
-        save_gif_flag,
-        anim_secs=5):
+def plot_cat_prm_vecs_evo(plot_args):
+
+    (cat_db,
+     save_obj_flag,
+     save_png_flag,
+     save_gif_flag,
+     anim_secs) = plot_args
 
     '''Plot parameter vector evolution for all kfolds.'''
 

@@ -5,7 +5,7 @@ import h5py
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
-from .sims import plot_cat_hbv_sim, plot_cat_rope_q_sims
+from .sims import plot_cat_hbv_sim, plot_cat_qsims
 from .prms import (
     plot_cat_prm_vecs,
     plot_cat_prm_vecs_evo,
@@ -196,7 +196,7 @@ def plot_cats_prm_vecs_evo(
 
     else:
         for opt_res in opt_res_gen:
-            plot_cat_prm_vecs_evo(*opt_res)
+            plot_cat_prm_vecs_evo(opt_res)
 
     return
 
@@ -241,10 +241,10 @@ def plot_cats_hbv_sim(
     return
 
 
-def plot_cats_rope_q_sims(dbs_dir, n_cpus=1):
+def plot_cats_qsims(dbs_dir, n_cpus=1):
 
-    '''Plot ROPE discharge simulations for every catchment for every
-    kfold.'''
+    '''Plot discharge simulations for every catchment for every
+    kfold using its prm_vecs.'''
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -260,7 +260,7 @@ def plot_cats_rope_q_sims(dbs_dir, n_cpus=1):
         mp_pool.restart(True)
 
         try:
-            print(list(mp_pool.uimap(plot_cat_rope_q_sims, plot_gen)))
+            print(list(mp_pool.uimap(plot_cat_qsims, plot_gen)))
             mp_pool.clear()
 
         except Exception as msg:
@@ -270,7 +270,7 @@ def plot_cats_rope_q_sims(dbs_dir, n_cpus=1):
 
     else:
         for plot_args in plot_gen:
-            plot_cat_rope_q_sims(plot_args)
+            plot_cat_qsims(plot_args)
 
     return
 

@@ -120,8 +120,31 @@ def plot_cat_vars_errors_kf(
 
         ax.set_yscale('log')
 
-        ax.scatter(err_var_over, q_errs_over, alpha=0.1, label='over')
-        ax.scatter(err_var_under, q_errs_under, alpha=0.1, label='under')
+        ax.scatter(
+            err_var_over,
+            q_errs_over,
+            alpha=0.1,
+            label='over',
+            color='C0')
+
+        ax.scatter(
+            err_var_under,
+            q_errs_under,
+            alpha=0.1,
+            label='under',
+            color='C1')
+
+        ax.axhline(
+            np.exp(np.log(q_errs_over).mean()),
+            color='C0',
+            alpha=0.7,
+            label='mean over')
+
+        ax.axhline(
+            np.exp(np.log(q_errs_under).mean()),
+            color='C1',
+            alpha=0.7,
+            label='mean under')
 
         ax.set_xlabel(x_lab)
         ax.set_ylabel('Abs. discharge difference (sim. - obs.)')

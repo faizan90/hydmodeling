@@ -1110,22 +1110,6 @@ def solve_cat(
             out_db_dict['extra_us_inflow'] = (
                 extra_inflow).copy(order='C')
 
-        if route_type == 0:
-            pass
-
-        elif route_type == 1:
-            if curr_us_stm == -2:
-                pass
-
-            else:
-                route_labs = [[f'lag_{i}', f'wt_{i}']
-                              for i in curr_us_stms]
-                out_db_dict['route_labs'] = route_labs
-
-        else:
-            raise NotImplementedError(
-                'Implement stuff for this routing type!')
-
         out_db_dict['calib_valid_suff'] = calib_valid_suff
         out_db_dict['use_step_flag'] = use_step_flag
         out_db_dict['use_step_arr'] = use_step_arr

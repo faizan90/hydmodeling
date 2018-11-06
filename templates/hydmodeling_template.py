@@ -31,7 +31,7 @@ from hydmodeling import (
     plot_cats_prms_transfer_perfs,
     plot_cats_prm_vecs_evo,
     plot_cats_vars_errors,
-    plot_cats_rope_q_sims)
+    plot_cats_qsims)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -86,23 +86,23 @@ def main():
     plot_prm_trans_comp_flag = False
     plot_opt_evo_flag = False
     plot_var_errors_flag = False
-    plot_rope_qsims_flag = False
+    plot_qsims_flag = False
     plot_hbv_vars_flag = False
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-    create_stms_rels_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_opt_evo_flag = True
+#     create_stms_rels_flag = True
+#     optimize_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
+#     plot_opt_evo_flag = True
     plot_var_errors_flag = True
-    plot_rope_qsims_flag = True
+#     plot_qsims_flag = True
 #     plot_hbv_vars_flag = True
 
     use_cv_time_flag = False
@@ -678,14 +678,14 @@ def main():
     # plot the ROPE discharge simulations
     #=========================================================================
 
-    if plot_rope_qsims_flag:
+    if plot_qsims_flag:
         print('\n\n')
         print('#' * 10)
-        print('Plotting ROPE discharge simulations...')
+        print('Plotting discharge simulations...')
 
         _beg_t = timeit.default_timer()
 
-        plot_cats_rope_q_sims(dbs_dir, n_cpus)
+        plot_cats_qsims(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
