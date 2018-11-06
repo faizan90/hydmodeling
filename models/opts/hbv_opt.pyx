@@ -129,7 +129,7 @@ cpdef dict hbv_opt(args):
 
         DT_D[::1] mu_sc_fac_bds, cr_cnst_bds, curr_obj_vals
         DT_D[:, ::1] v_j_g, u_j_gs
-        # TODO: save populatiopn state at certain iterations to see how they evolve 
+        # TODO: save population state at certain iterations to see how they evolve
 
         # ROPE related parameters
         DT_UL chull_vecs_ctr = 0, n_temp_rope_prm_vecs, n_acc_prm_vecs, n_uvecs

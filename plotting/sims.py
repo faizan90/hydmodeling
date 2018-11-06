@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pickle
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties as f_props
 from matplotlib.gridspec import GridSpec
@@ -73,49 +74,73 @@ def plot_hbv(plot_args):
         if valid_flag == True:
             valid_tem_arr = np.concatenate([
                 all_kfs_dict[i]['tem_arr'][:,db['valid']['kf_01']['valid_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
+            valid_tem_arr = np.asarray(valid_tem_arr,
+                                         order='C')
             valid_ppt_arr = np.concatenate([
                 all_kfs_dict[i]['ppt_arr'][:,db['valid']['kf_01']['valid_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
+            valid_ppt_arr = np.asarray(valid_ppt_arr,
+                                         order='C')
             valid_pet_arr = np.concatenate([
                 all_kfs_dict[i]['pet_arr'][:,db['valid']['kf_01']['valid_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
+            valid_pet_arr = np.asarray(valid_pet_arr,
+                                         order='C')
             valid_qact_arr = np.concatenate([
                 all_kfs_dict[i]['qact_arr'][db['valid']['kf_01']['valid_step_arr'][...] ==1] for i in all_kfs_dict], axis=0)
+            valid_qact_arr = np.asarray(valid_qact_arr,
+                                         order='C')
             if valid_flags[1]== True:
                 valid_q_ext_arr = np.concatenate([
                     all_kfs_dict[i]['q_ext_arr'][db['valid']['kf_01']['valid_step_arr'][...] ==1] for i in all_kfs_dict], axis = 0)
+                valid_q_ext_arr = np.asarray(valid_q_ext_arr,
+                                                 order='C')
                 valid_snow_ext_arr = np.concatenate([
                     all_kfs_dict[i]['snow_ext_arr'][
                         db['valid']['kf_01']['valid_step_arr'][...] == 1]
                     for i in all_kfs_dict], axis=0)
+                valid_snow_ext_arr = np.asarray(valid_snow_ext_arr,
+                                                 order='C')
                 valid_evap_ext_arr = np.concatenate([
                     all_kfs_dict[i]['evap_ext_arr'][
                         db['valid']['kf_01']['valid_step_arr'][...] == 1]
                     for i in all_kfs_dict], axis=0)
+                valid_evap_ext_arr = np.asarray(valid_evap_ext_arr,
+                                                 order='C')
             if 'extra_us_inflow' in kf_dict:
                 valid_us_inflow_arr = np.concatenate([
                     all_kfs_dict[i]['extra_us_inflow'][np.asarray(db['valid_time']['val_data']) ==1]
                     for i in all_kfs_dict], axis=0)
+                valid_us_inflow_arr = np.asarray(valid_us_inflow_arr,
+                                                 order='C')
 
             calib_tem_arr = np.concatenate([
                 all_kfs_dict[i]['tem_arr'][:,db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
+            calib_tem_arr = np.asarray(calib_tem_arr, order='C')
             calib_ppt_arr = np.concatenate([
                 all_kfs_dict[i]['ppt_arr'][:,db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
+            calib_ppt_arr = np.asarray(calib_ppt_arr, order='C')
             calib_pet_arr = np.concatenate([
                 all_kfs_dict[i]['pet_arr'][:,db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=1)
+            calib_pet_arr = np.asarray(calib_pet_arr, order='C')
             calib_qact_arr = np.concatenate([
                 all_kfs_dict[i]['qact_arr'][db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis=0)
+            calib_qact_arr = np.asarray(calib_qact_arr, order='C')
             if valid_flags[1]== True:
                 calib_q_ext_arr = np.concatenate([
                     all_kfs_dict[i]['q_ext_arr'][db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis = 0)
+                calib_q_ext_arr = np.asarray(calib_q_ext_arr, order='C')
                 calib_snow_ext_arr = np.concatenate([
                     all_kfs_dict[i]['snow_ext_arr'][db['calib']['kf_01']['use_step_arr'][...] ==1] for i in all_kfs_dict], axis = 0)
+                calib_snow_ext_arr = np.asarray(calib_snow_ext_arr, order='C')
                 calib_evap_ext_arr = np.concatenate([
                     all_kfs_dict[i]['evap_ext_arr'][
                         db['calib']['kf_01']['use_step_arr'][...] == 1] for
                     i in all_kfs_dict], axis=0)
+                calib_evap_ext_arr = np.asarray(calib_evap_ext_arr, order='C')
             if 'extra_us_inflow' in kf_dict:
                 calib_us_inflow_arr = np.concatenate([
                     all_kfs_dict[i]['extra_us_inflow'][np.asarray(db['calib']['kf_01']['use_step_arr']) ==1]
                     for i in all_kfs_dict], axis=0)
+                calib_us_inflow_arr = np.asarray(calib_us_inflow_arr, order='C')
 
         all_tem_arr = np.concatenate([
             all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
@@ -237,8 +262,15 @@ def plot_error(plot_args):
     (cat_db, valid_flag) = plot_args
 
     with h5py.File(cat_db, 'r') as db:
-        qext = db['extern_data']['Q']['q'][...]
+        if valid_flag[1] == True:
+            qext0 = db['valid']['kf_01']['extern_data']['Q']['q'][...]
+            snow_ext0 = db['valid']['kf_01']['extern_data']['snow']['depth'][...]
+        if valid_flag[0] == True:
+            plot_list = 3
+        else:
+            plot_list = 1
         out_dir = db['data'].attrs['main']
+        sim_dir = os.path.join(out_dir, r'sim_out\all_params.pkl')
         out_dir = os.path.join(out_dir, r'10_error')
         if not os.path.exists(out_dir):
             try:
@@ -249,44 +281,141 @@ def plot_error(plot_args):
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
 
+        with open(sim_dir, 'rb') as f:
+            all_out = pickle.load(f)
+
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
             cd_db = db[f'calib/{kf_str}']
-            qsim = cd_db['qsim_arr'][...]
-            qact = cd_db['qact_arr'][...]
-            tem = cd_db['tem_arr'][...]
+            qsim0 = cd_db['qsim_arr'][...]
+            qact0 = cd_db['qact_arr'][...]
+            tem0 = np.squeeze(cd_db['tem_arr'][...])
+            ppt0 = np.squeeze(cd_db['ppt_arr'][...])
+            pet0 = np.squeeze(cd_db['pet_arr'][...])
+            snow0 = np.squeeze(all_out['outs_arr'])[:, 0]
 
-            error = qsim - qact
-            tem_error = np.vstack((tem[0,:],error))
-            sort_idxs = np.argsort(tem)
-            #tem_error_sort = np.sort(tem_error, axis = 1)
-            tem_error_sort = tem_error[:,sort_idxs]
+            # pet0 = np.squeeze(cd_db['snow_arr'][...])
 
-            plt.scatter(tem_error_sort[0, :],
-                        tem_error_sort[1, :],
-                        label='HBV', alpha=0.1,
-                        s=6)  # tem_error_sort[1,:]
-            plt.xlabel('Temperature [°C]')
-            plt.ylabel('absolute Q error')
+            for p in range(plot_list):
+                if p==1:
+                    calib_arr = db[f'valid/{kf_str}']['use_step_arr'][...]
+                    qsim = qsim0[calib_arr==1]
+                    qact = qact0[calib_arr==1]
+                    if valid_flag[1] == True:
+                        qext = qext0[calib_arr==1]
+                        snow_ext = snow_ext0[calib_arr == 1]
+                    tem = tem0[calib_arr==1]
+                    ppt = ppt0[calib_arr==1]
+                    pet = pet0[calib_arr==1]
+                    snow = snow0[calib_arr == 1]
+                    pl = 'calib'
 
-            plt.savefig(str(
-                Path(out_dir, f'tem_error_{cat}_kf_{i:02d}.png')),
-                        bbox_inches='tight', dpi=600)
-            if valid_flag[1] == True:
-                error_ext = qext - qact
-                tem_error_ext = np.vstack((tem[0,:], error_ext))
-                sort_idxs = np.argsort(tem)
-                tem_error_sort_ext = tem_error_ext[:, sort_idxs]
-                plt.scatter(tem_error_sort_ext[0, :],
-                            tem_error_sort_ext[1, :], label=ext_model_name,
-                            alpha=0.01, s=6)
-                plt.xlabel('Temperature [°C]')
-                plt.ylabel('absolute Q error')
-                plt.legend()
-                plt.savefig(str(
-                    Path(out_dir, f'tem_error_ext_{cat}_kf_{i:02d}.png')),
-                    bbox_inches='tight', dpi=600)
-            plt.close()
+                elif p==2:
+                    valid_arr = db[f'valid/{kf_str}']['valid_step_arr'][...]
+                    qsim = qsim0[valid_arr==1]
+                    qact = qact0[valid_arr==1]
+                    if valid_flag[1] == True:
+                        qext = qext0[valid_arr==1]
+                        snow_ext = snow_ext0[valid_arr==1]
+                    tem = tem0[valid_arr==1]
+                    ppt = ppt0[valid_arr==1]
+                    pet = pet0[valid_arr==1]
+                    snow = snow0[valid_arr == 1]
+                    pl = 'valid'
+                else:
+                    qsim = qsim0
+                    qact = qact0
+                    if valid_flag[1] == True:
+                        qext = qext0
+                        snow_ext = snow_ext0
+                    tem = tem0
+                    ppt = ppt0
+                    pet = pet0
+                    snow = snow0
+                    pl = 'all'
+
+                if not os.path.exists(os.path.join(out_dir, pl)):
+                    os.makedirs(os.path.join(out_dir, pl))
+
+                error = qsim - qact
+                variable_list = ['tem', 'ppt', 'pet', 'qact', 'snow']
+
+                description_list = ['Temperature [°C]', 'Precipitation [mm]', 'PET [mm]', 'Qact', 'snow']
+                pet_axis = [0, 7, -100, +100]
+                ppt_axis = [0, 40, -100, +100]
+                tem_axis = [-20, 30, -100, +100]
+                q_axis = [0, 250, -100, +100]
+                snow_axis = [0, 100, -100, +100]
+
+                axis_list = [tem_axis, ppt_axis, pet_axis, q_axis, snow_axis]
+
+
+                for ind, variable in enumerate(variable_list):
+                    var_error = np.vstack((eval(variable),error))
+                    sort_idxs = np.argsort(eval(variable))
+                    #tem_error_sort = np.sort(tem_error, axis = 1)
+                    var_error_sort = var_error[:,sort_idxs]
+
+                    #ax = plt.gca()
+                    plt.scatter(var_error_sort[0, :],
+                                var_error_sort[1, :],
+                                label='HBV', alpha=0.1,
+                                s=0.5)  # tem_error_sort[1,:]
+                    plt.plot(var_error_sort[0, :],
+                             pd.rolling_mean(var_error_sort[1, :],
+                                             window=1000, center=True))
+
+                    #ax.set_yscale('log')
+                    plt.xlabel(description_list[ind])
+                    plt.ylabel('absolute Q error')
+                    plt.axis(axis_list[ind])
+                    plt.grid(b=True)
+
+                    plt.savefig(str(
+                        Path(out_dir, f'{pl}/{variable}_error_{cat}_kf_{i:02d}_{pl}.png')),
+                                bbox_inches='tight', dpi=600)
+                    if valid_flag[1] == True:
+                        error_ext = qext - qact
+                        if variable == 'snow':
+                            variable = 'snow_ext'
+                        var_error_ext = np.vstack((eval(variable), error_ext))
+                        sort_idxs = np.argsort(eval(variable))
+                        var_error_sort_ext = var_error_ext[:, sort_idxs]
+                        plt.scatter(var_error_sort_ext[0, :],
+                                    var_error_sort_ext[1, :], label='Shetran',
+                                    alpha=0.1, s=0.5)
+                        plt.plot(var_error_sort_ext[0, :],
+                                pd.rolling_mean(var_error_sort_ext[1, :],
+                                                 window=1000,
+                                                 center=True))
+                        plt.xlabel(description_list[ind])
+                        plt.ylabel('absolute Q error')
+                        plt.legend()
+                        #plt.axis(axis_list[i])
+                        plt.savefig(str(
+                            Path(out_dir, f'{pl}/{variable}_error_ext_{cat}_kf_{i:02d}_{pl}.png')),
+                            bbox_inches='tight', dpi=600)
+                    plt.close()
+                    if valid_flag[1] == True:
+                        plt.scatter(var_error_sort_ext[0, :],
+                                   var_error_sort_ext[1, :],
+                                   label='Shetran',
+                                   alpha=0.1, s=0.5)
+                        plt.plot(var_error_sort_ext[0, :],
+                                 pd.rolling_mean(var_error_sort_ext[1, :],
+                                                 window=1000,
+                                                 center=True))
+                        plt.xlabel(description_list[ind])
+                        plt.ylabel('absolute Q error')
+                        plt.axis(axis_list[ind])
+                        plt.legend()
+                        plt.grid(b=True)
+                        # plt.axis(axis_list[i])
+                        plt.savefig(str(
+                            Path(out_dir,
+                                 f'{pl}/{variable}_error_ext_only_{cat}_kf_{i:02d}_{pl}.png')),
+                            bbox_inches='tight', dpi=600)
+                        plt.close()
     return
 
 def plot_hull(plot_args):
@@ -626,17 +755,18 @@ def _plot_hbv_kf(
 
     all_sims = np.zeros((prms_dist_arr.shape[0], temp_dist_arr.shape[1]))
 
-    for i in range(prms_dist_arr.shape[0]):
-        all_outputs_dict = hbv_loop_py(
-            temp_dist_arr,
-            prec_dist_arr,
-            pet_dist_arr,
-            np.expand_dims(prms_dist_arr[i,:], axis=0),
-            kf_dict['ini_arr'],
-            area_arr,
-            conv_ratio)
+    if valid_flags[2] == 'ROPE':
+        for i in range(prms_dist_arr.shape[0]):
+            all_outputs_dict = hbv_loop_py(
+                temp_dist_arr,
+                prec_dist_arr,
+                pet_dist_arr,
+                np.expand_dims(prms_dist_arr[i,:], axis=0),
+                kf_dict['ini_arr'],
+                area_arr,
+                conv_ratio)
 
-        all_sims[i] = all_outputs_dict['qsim_arr']
+            all_sims[i] = all_outputs_dict['qsim_arr']
 
     prms_dist_arr = kf_dict['hbv_prms']
 
@@ -683,6 +813,17 @@ def _plot_hbv_kf(
     comb_run_arr = ur_run_uu + ur_run_ul + lr_run_arr
 
     q_sim_arr = all_outputs_dict['qsim_arr']
+
+    sim_out = os.path.join(out_dir, 'sim_out')
+    if not os.path.exists(sim_out):
+        try:
+            os.mkdir(sim_out)
+        except:
+            pass
+
+    sim_out_dir = os.path.join(sim_out, 'all_params.pkl')
+    with open(sim_out_dir, 'wb') as f:
+        pickle.dump(all_outputs_dict, f, pickle.HIGHEST_PROTOCOL)
 
     extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
 
@@ -848,6 +989,8 @@ def _plot_hbv_kf(
 
             _curr_prec_sum = np.sum(prec_arr[bal_idxs[i]:bal_idxs[i + 1]])
             _curr_evap_sum = np.sum(evap_arr[bal_idxs[i]:bal_idxs[i + 1]])
+            if valid_flags[1] == True:
+                _curr_ext_evap_sum = np.sum(evap_ext_arr[bal_idxs[i]:bal_idxs[i + 1]])
             if valid_flags[1]== True:
                 _curr_evap_ext_sum = np.sum(
                     evap_ext_arr[bal_idxs[i]:bal_idxs[i + 1]])
@@ -862,7 +1005,7 @@ def _plot_hbv_kf(
 
             if valid_flags[1] ==  True:
                 sim_bal_ext_arr.append(_curr_q_ext_sum /
-                                   (_curr_prec_sum - _curr_evap_sum))
+                                   (_curr_prec_sum - _curr_ext_evap_sum))
 
 
             prec_sum_arr.append(_curr_prec_sum)

@@ -222,12 +222,12 @@ def plot_error_stats(dbs_dir,
         mp_pool.restart(True)
         try:
             print(list(
-                mp_pool.uimap(plot_prm_trans, plot_gen)))
+                mp_pool.uimap(plot_error, plot_gen)))
             mp_pool.clear()
         except Exception as msg:
             mp_pool.close()
             mp_pool.join()
-            print('Error in plot_prm_trans:', msg)
+            print('Error in plot_error:', msg)
     else:
         for plot_args in plot_gen:
             plot_error(plot_args)

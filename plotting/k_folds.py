@@ -1090,8 +1090,18 @@ def _get_fdc_probs_vals(in_ser):
     return probs, vals
 
 
-def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
+def _compare_ann_cycs_fdcs(dbs_dir, db, i, db_lab, title_lab, off_idx, out_dir, valid_flags):
     kf_str = f'kf_{i:02d}'
+
+    if valid_flags[0]:
+        cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+        cat_db = cats_dbs[0]
+        assert len(cats_dbs)==1
+        with h5py.File(cat_db, 'r') as dab:
+            calib_idxs = dab['calib']['kf_01']['use_step_arr'][...]
+            valid_idxs = dab['valid']['kf_01']['valid_step_arr'][...]
+
+
 
     kf_qact_df = db[db_lab][kf_str]['qact_df'].iloc[off_idx:]
     cats = kf_qact_df.columns
@@ -1102,11 +1112,37 @@ def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
         print('Annual cycle comparision available only for daily series!')
         return
 
-    qact_ann_cyc_df = get_daily_annual_cycle(
-        kf_qact_df.iloc[off_idx:])
+    if valid_flags[0] and title_lab == 'Calibration':
+        kf_qact_df = db[db_lab][kf_str]['qact_df'][calib_idxs==1]
+    elif valid_flags[0] and title_lab == 'Validation':
+        kf_qact_df = db[db_lab][kf_str]['qact_df'][valid_idxs==1]
 
-    kf_qsim_df = db[db_lab][kf_str]['out_cats_flow_df'].iloc[off_idx:]
+    qact_ann_cyc_df = get_daily_annual_cycle(
+            kf_qact_df.iloc[off_idx:])
+
+    if valid_flags[0] and title_lab == 'Calibration':
+        kf_qsim_df = db[db_lab][kf_str]['out_cats_flow_df'][calib_idxs==1]
+    elif valid_flags[0] and title_lab == 'Validation':
+        kf_qsim_df = db[db_lab][kf_str]['out_cats_flow_df'][valid_idxs==1]
+    else:
+        kf_qsim_df = db[db_lab][kf_str]['out_cats_flow_df'].iloc[off_idx:]
     qsim_ann_cyc_df = get_daily_annual_cycle(kf_qsim_df)
+
+    if valid_flags[1]:
+        cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+        cat_db = cats_dbs[0]
+        assert len(cats_dbs)==1
+        with h5py.File(cat_db, 'r') as dab:
+            kf_qext = dab['valid'][kf_str]['extern_data'][
+                'Q']['q'][...]
+            kf_qext_df = pd.Series(kf_qext, index=db[db_lab][kf_str]['out_cats_flow_df'].index)
+        if valid_flags[0] and title_lab == 'Calibration':
+            kf_qext_df = kf_qext_df[calib_idxs==1]
+        elif valid_flags[0] and title_lab == 'Validation':
+            kf_qext_df = kf_qext_df[valid_idxs==1]
+        kf_qext_df = kf_qext_df.iloc[off_idx:]
+        qext_ann_cyc_df = get_daily_annual_cycle(kf_qsim_df)
+        plot_qext_df = qext_ann_cyc_df.iloc[:365]
 
     assert np.all(kf_qact_df.index == kf_qsim_df.index)
 
@@ -1129,6 +1165,13 @@ def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
             plot_qsim_df[cat].values,
             alpha=0.7,
             label='qsim')
+
+        if valid_flags[1]:
+            plt.plot(
+                plt_xcrds,
+                plot_qext_df[cat].values,
+                alpha=0.7,
+                label='qext')
 
         plt.grid()
         plt.legend()
@@ -1154,6 +1197,8 @@ def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
         # FDC
         qact_probs, qact_vals = _get_fdc_probs_vals(kf_qact_df[cat])
         qsim_probs, qsim_vals = _get_fdc_probs_vals(kf_qsim_df[cat])
+        if valid_flags[1]:
+            qext_probs, qext_vals = _get_fdc_probs_vals(kf_qext_df)
 
         plt.semilogy(
             qact_probs,
@@ -1166,6 +1211,13 @@ def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
             qsim_vals,
             alpha=0.7,
             label='qsim')
+
+        if valid_flags[1]:
+            plt.semilogy(
+                qext_probs,
+                qext_vals,
+                alpha=0.7,
+                label='qext')
 
         plt.grid()
         plt.legend()
@@ -1188,7 +1240,7 @@ def _compare_ann_cycs_fdcs(db, i, db_lab, title_lab, off_idx, out_dir):
     return
 
 
-def plot_ann_cycs_fdcs_comp(hgs_db_path, off_idx, out_dir):
+def plot_ann_cycs_fdcs_comp(dbs_dir, hgs_db_path, off_idx, out_dir, valid_flags):
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -1203,12 +1255,14 @@ def plot_ann_cycs_fdcs_comp(hgs_db_path, off_idx, out_dir):
         for lab_i in range(len(db_lab_list)):
             for i in range(1, kfolds + 1):
                 _compare_ann_cycs_fdcs(
+                    dbs_dir,
                     db,
                     i,
                     db_lab_list[lab_i],
                     title_lab_list[lab_i],
                     off_idx,
-                    out_dir)
+                    out_dir,
+                    valid_flags)
 
     plt.close()
     return

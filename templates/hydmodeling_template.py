@@ -93,20 +93,20 @@ def main():
     valid_flag= False
     show_q_extern = False
 
-    #hyd_analysis_flag = True
+    # hyd_analysis_flag = True
     # get_stms_flag = True
     # create_stms_rels_flag = True
     # create_cumm_cats_flag = True
     # optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
+    # plot_kfold_perfs_flag = True
+    # plot_best_kfold_prms_flag = True
+    # plot_prm_vecs_flag = True
+    # plot_2d_kfold_prms_flag = True
+    # plot_ann_cys_fdcs_flag = True
+    # plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
-    # plot_error_statistics = True
-    # plot_convex_hull = True
+    plot_error_statistics = True
+    plot_convex_hull = True
 
     valid_flag = True
     show_q_extern = True
@@ -379,9 +379,8 @@ def main():
         unavailable_q = pd.isna(in_q_df)
 
         if valid_flag == True:
-            cal_sel_idx = np.any([in_use_step_ser.index <= start_date_calib,
-                             in_use_step_ser.index >= end_date_calib, unavailable_q.iloc[:,0].values.ravel()], axis=0)
-            in_use_step_ser.loc[cal_sel_idx] = 0
+            cal_sel_idx = (in_use_step_ser.index >= start_date_calib) & (in_use_step_ser.index <= end_date_calib) & (~unavailable_q.iloc[:,0].values.ravel())
+            in_use_step_ser.loc[~cal_sel_idx] = 0
 
         in_ppt_dfs_dict = load_pickle(in_ppt_file)
         in_temp_dfs_dict = load_pickle(in_temp_file)
@@ -455,6 +454,9 @@ def main():
 
     date_range = pd.date_range(start_date, end_date,
                                freq=time_freq)
+    # in_q_df = pd.read_csv(in_q_file, sep=str(sep), index_col=0)
+    # in_q_df.index = pd.to_datetime(in_q_df.index, format=in_date_fmt)
+
     sel_idxs_arr = np.linspace(0,
                                date_range.shape[0],
                                kfolds + 1,
@@ -464,39 +466,40 @@ def main():
     if valid_flag == True:
         for cat in prcss_cats_list:
             dbs = os.path.join(dbs_dir, r'cat_{}.hdf5'.format(cat))
-            db = h5py.File(dbs, 'r+')
+            with h5py.File(dbs, 'r+') as db:
 
-            in_q_df = pd.read_csv(in_q_file, sep=str(sep), index_col=0)
-            in_q_df.index = pd.to_datetime(in_q_df.index,
-                                           format=in_date_fmt)
+                in_q_df = pd.read_csv(in_q_file, sep=str(sep), index_col=0)
+                in_q_df.index = pd.to_datetime(in_q_df.index,
+                                               format=in_date_fmt)
 
-            in_index = in_q_df.index[in_q_df.index >= start_date]
-            in_index = in_index[in_index <= end_date]
+                in_index = pd.date_range(start=start_date, end=end_date, time_freq='D')
+                in_index = in_q_df.index[in_q_df.index >= start_date]
+                in_index = in_index[in_index <= end_date]
 
-            valid_step_ser = pd.Series(
-                index=in_index,
-                data=np.ones(in_index.shape[0], dtype=np.int32))
-            assert min(valid_step_ser.index) <= start_date_valid
-            assert max(valid_step_ser.index) >= end_date_valid
-            valid_sel_idx = np.any(
-                [valid_step_ser.index <= start_date_valid,
-                 valid_step_ser.index >= end_date_valid], axis=0)
-            valid_step_ser.loc[valid_sel_idx] = 0
+                valid_step_ser = pd.Series(
+                    index=in_index,
+                    data=np.ones(in_index.shape[0], dtype=np.int32))
+                assert min(valid_step_ser.index) <= start_date_valid
+                assert max(valid_step_ser.index) >= end_date_valid
+                valid_sel_idx = np.any(
+                    [valid_step_ser.index <= start_date_valid,
+                     valid_step_ser.index >= end_date_valid], axis=0)
+                valid_step_ser.loc[valid_sel_idx] = 0
 
-            # manipulate dbs_dir
-            if 'valid_time' in db.keys():
-                 del db['valid_time']
-            val_time = db.create_group('valid_time')
-            val_time.create_dataset('valid_step_arr',
-                                    data=valid_step_ser)
+                # manipulate dbs_dir
+                if 'valid_time' in db.keys():
+                     del db['valid_time']
+                val_time = db.create_group('valid_time')
+                val_time.create_dataset('valid_step_arr',
+                                        data=valid_step_ser)
 
-            for k in range(1,kfolds+1):
-                kf_str = f'kf_{k:02d}'
-                k_valid_step_ser = valid_step_ser.iloc[sel_idxs_arr[k-1]:sel_idxs_arr[k]]
-                if 'valid_step_arr' in db['valid'][kf_str].keys():
-                   del db['valid'][kf_str]['valid_step_arr']
-                db['valid'][kf_str].create_dataset("valid_step_arr",
-                                        data=k_valid_step_ser)
+                for k in range(1,kfolds+1):
+                    kf_str = f'kf_{k:02d}'
+                    k_valid_step_ser = valid_step_ser.iloc[sel_idxs_arr[k-1]:sel_idxs_arr[k]]
+                    if 'valid_step_arr' in db['valid'][kf_str].keys():
+                       del db['valid'][kf_str]['valid_step_arr']
+                    db['valid'][kf_str].create_dataset("valid_step_arr",
+                                            data=k_valid_step_ser)
 
     if show_q_extern:
         prcss_extern_cats = list(extern_hdf5.keys())
@@ -524,29 +527,30 @@ def main():
             ET_extern = ET_extern.loc[pd.date_range(start=start_date, end=end_date)]
 
             dbs = os.path.join(dbs_dir, r'cat_{}.hdf5'.format(cat))
-            db = h5py.File(dbs, 'r+')
-            for k in range(1,kfolds+1):
-                kf_str = f'kf_{k:02d}'
-                k_db = db['valid'][kf_str]
+            with h5py.File(dbs, 'r+') as db:
+                for k in range(1,kfolds+1):
+                    kf_str = f'kf_{k:02d}'
+                    k_db = db['valid'][kf_str]
 
-                if 'extern_data' in k_db.keys():
-                    del k_db['extern_data']
-                k_q_ext = q_extern.iloc[
-                          sel_idxs_arr[k-1]:sel_idxs_arr[k]]
-                extern_model = k_db.create_group('extern_data')
-                extern_model.attrs['model'] = model_name
-                ext_q = extern_model.create_group('Q')
-                snow = extern_model.create_group('snow')
-                ET_ext = extern_model.create_group('ET')
-                ext_q.create_dataset("q", data=k_q_ext.values[:,0])
-                k_snow_ext = snow_extern[
-                          sel_idxs_arr[k-1]:sel_idxs_arr[k]]
-                snow.create_dataset('depth', data=k_snow_ext.values[:,0])
+                    if 'extern_data' in k_db.keys():
+                        continue
+                        #del k_db['extern_data']
+                    k_q_ext = q_extern.iloc[
+                              sel_idxs_arr[k-1]:sel_idxs_arr[k]]
+                    extern_model = k_db.create_group('extern_data')
+                    extern_model.attrs['model'] = model_name
+                    ext_q = extern_model.create_group('Q')
+                    snow = extern_model.create_group('snow')
+                    ET_ext = extern_model.create_group('ET')
+                    ext_q.create_dataset("q", data=k_q_ext.values[:,0])
+                    k_snow_ext = snow_extern[
+                              sel_idxs_arr[k-1]:sel_idxs_arr[k]]
+                    snow.create_dataset('depth', data=k_snow_ext.values[:,0])
 
-                k_ET_ext_tot = ET_extern[
-                          sel_idxs_arr[k-1]:sel_idxs_arr[k]]
+                    k_ET_ext_tot = ET_extern[
+                              sel_idxs_arr[k-1]:sel_idxs_arr[k]]
 
-                ET_ext.create_dataset('total_ET', data=k_ET_ext_tot.values[:,0])
+                    ET_ext.create_dataset('total_ET', data=k_ET_ext_tot.values[:,0])
 
     #=========================================================================
     # Plot the k-fold results
@@ -632,7 +636,7 @@ def main():
 
         ann_cyc_fdc_plot_dir = os.path.join(
             in_hyd_mod_dir, r'08_ann_cycs_fdc_comparison')
-        plot_ann_cycs_fdcs_comp(hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
+        plot_ann_cycs_fdcs_comp(dbs_dir, hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir, valid_flags)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -660,7 +664,7 @@ def main():
     # plot the hbv variables different validation
     # =========================================================================
 
-    if valid_flag == True:
+    if valid_flag and plot_hbv_vars_flag:
         print('\n\n')
         print('#' * 10)
         print('Plotting hbv variables...')

@@ -1242,7 +1242,6 @@ def _get_var_dict(in_df_dict, cats, area_dict, db, de, lf):
         out_dict[cat] = _df_1
     return out_dict
 
-
 def _get_var_dicts(in_ppts,
                    in_tems,
                    in_pets,
