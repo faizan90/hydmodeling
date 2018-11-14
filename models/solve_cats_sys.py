@@ -1161,7 +1161,7 @@ def _get_k_aux_dict(aux_dict, area_dict, cats, lf):
                     for cat in cats}
     for cat in cats:
         assert not np.any(np.isnan(out_dict[cat]))
-        assert out_dict[cat].ndim == 2
+        # assert out_dict[cat].ndim == 2
     return out_dict
 
 

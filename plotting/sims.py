@@ -289,13 +289,24 @@ def plot_error(plot_args):
             cd_db = db[f'calib/{kf_str}']
             qsim0 = cd_db['qsim_arr'][...]
             qact0 = cd_db['qact_arr'][...]
-            tem0 = np.squeeze(cd_db['tem_arr'][...])
-            ppt0 = np.squeeze(cd_db['ppt_arr'][...])
-            pet0 = np.squeeze(cd_db['pet_arr'][...])
-            snow0 = np.squeeze(all_out['outs_arr'])[:, 0]
+
+            if all_out['outs_arr'].shape[0]==1:
+                snow0 = np.squeeze(all_out['outs_arr'])[:, 0]
+                tem0 = np.squeeze(cd_db['tem_arr'][...])
+                ppt0 = np.squeeze(cd_db['ppt_arr'][...])
+                pet0 = np.squeeze(cd_db['pet_arr'][...])
+            else:
+                snow0 = np.mean(np.squeeze(all_out['outs_arr'])[:, :, 0], axis=0)
+                tem0 = np.mean(np.squeeze(cd_db['tem_arr'][...]),
+                               axis=0)
+                ppt0 = np.mean(np.squeeze(cd_db['ppt_arr'][...]),
+                               axis=0)
+                pet0 = np.mean(np.squeeze(cd_db['pet_arr'][...]),
+                               axis=0)
 
             # pet0 = np.squeeze(cd_db['snow_arr'][...])
-
+            var_error_sort = {}
+            var_error_sort_ext = {}
             for p in range(plot_list):
                 if p==1:
                     calib_arr = db[f'valid/{kf_str}']['use_step_arr'][...]
@@ -337,37 +348,43 @@ def plot_error(plot_args):
                 if not os.path.exists(os.path.join(out_dir, pl)):
                     os.makedirs(os.path.join(out_dir, pl))
 
-                error = qsim - qact
+                error = qsim/qact
                 variable_list = ['tem', 'ppt', 'pet', 'qact', 'snow']
 
                 description_list = ['Temperature [°C]', 'Precipitation [mm]', 'PET [mm]', 'Qact', 'snow']
-                pet_axis = [0, 7, -100, +100]
-                ppt_axis = [0, 40, -100, +100]
-                tem_axis = [-20, 30, -100, +100]
-                q_axis = [0, 250, -100, +100]
-                snow_axis = [0, 100, -100, +100]
+                pet_axis = [0, 7, 0, 2]
+                ppt_axis = [0, 40, 0, 2]
+                tem_axis = [-20, 30, 0, 2]
+                q_axis = [0, 150, 0, 2]
+                snow_axis = [0, 100, 0, 2]
 
                 axis_list = [tem_axis, ppt_axis, pet_axis, q_axis, snow_axis]
 
 
+                var_error_sort_ext[p] = {}
+                var_error_sort[p] = {}
+
                 for ind, variable in enumerate(variable_list):
-                    var_error = np.vstack((eval(variable),error))
-                    sort_idxs = np.argsort(eval(variable))
+
+                    var_mean = eval(variable)
+                    var_error = np.vstack((var_mean,error))
+                    sort_idxs = np.argsort(var_mean)
                     #tem_error_sort = np.sort(tem_error, axis = 1)
-                    var_error_sort = var_error[:,sort_idxs]
+                    var_error_sort[p][variable] = var_error[:,sort_idxs]
 
                     #ax = plt.gca()
-                    plt.scatter(var_error_sort[0, :],
-                                var_error_sort[1, :],
+                    plt.scatter(var_error_sort[p][variable][0, :],
+                                var_error_sort[p][variable][1, :],
                                 label='HBV', alpha=0.1,
                                 s=0.5)  # tem_error_sort[1,:]
-                    plt.plot(var_error_sort[0, :],
-                             pd.rolling_mean(var_error_sort[1, :],
+                    plt.plot(pd.rolling_mean(var_error_sort[p][variable][0, :],
+                                             window=1000, center=True),
+                             pd.rolling_mean(var_error_sort[p][variable][1, :],
                                              window=1000, center=True))
 
                     #ax.set_yscale('log')
                     plt.xlabel(description_list[ind])
-                    plt.ylabel('absolute Q error')
+                    plt.ylabel('$Q_{sim}/Q_{act}$')
                     plt.axis(axis_list[ind])
                     plt.grid(b=True)
 
@@ -375,21 +392,24 @@ def plot_error(plot_args):
                         Path(out_dir, f'{pl}/{variable}_error_{cat}_kf_{i:02d}_{pl}.png')),
                                 bbox_inches='tight', dpi=600)
                     if valid_flag[1] == True:
-                        error_ext = qext - qact
+                        var_mean_ext = eval(variable)
+                        error_ext = qext/qact
                         if variable == 'snow':
                             variable = 'snow_ext'
-                        var_error_ext = np.vstack((eval(variable), error_ext))
-                        sort_idxs = np.argsort(eval(variable))
-                        var_error_sort_ext = var_error_ext[:, sort_idxs]
-                        plt.scatter(var_error_sort_ext[0, :],
-                                    var_error_sort_ext[1, :], label='Shetran',
+                        var_error_ext = np.vstack((var_mean_ext, error_ext))
+                        sort_idxs_ext = np.argsort(var_mean_ext)
+                        var_error_sort_ext[p][variable] = var_error_ext[:, sort_idxs]
+                        plt.scatter(var_error_sort_ext[p][variable][0, :],
+                                    var_error_sort_ext[p][variable][1, :], label='Shetran',
                                     alpha=0.1, s=0.5)
-                        plt.plot(var_error_sort_ext[0, :],
-                                pd.rolling_mean(var_error_sort_ext[1, :],
+                        plt.plot(pd.rolling_mean(var_error_sort_ext[p][variable][0, :],
+                                                 window=1000,
+                                                 center=True),
+                                pd.rolling_mean(var_error_sort_ext[p][variable][1, :],
                                                  window=1000,
                                                  center=True))
                         plt.xlabel(description_list[ind])
-                        plt.ylabel('absolute Q error')
+                        plt.ylabel('$Q_{sim}/Q_{act}$')
                         plt.legend()
                         #plt.axis(axis_list[i])
                         plt.savefig(str(
@@ -397,12 +417,14 @@ def plot_error(plot_args):
                             bbox_inches='tight', dpi=600)
                     plt.close()
                     if valid_flag[1] == True:
-                        plt.scatter(var_error_sort_ext[0, :],
-                                   var_error_sort_ext[1, :],
+                        plt.scatter(var_error_sort_ext[p][variable][0, :],
+                                   var_error_sort_ext[p][variable][1, :],
                                    label='Shetran',
                                    alpha=0.1, s=0.5)
-                        plt.plot(var_error_sort_ext[0, :],
-                                 pd.rolling_mean(var_error_sort_ext[1, :],
+                        plt.plot(pd.rolling_mean(var_error_sort_ext[p][variable][0, :],
+                                                 window=1000,
+                                                 center=True),
+                                 pd.rolling_mean(var_error_sort_ext[p][variable][1, :],
                                                  window=1000,
                                                  center=True))
                         plt.xlabel(description_list[ind])
@@ -416,6 +438,60 @@ def plot_error(plot_args):
                                  f'{pl}/{variable}_error_ext_only_{cat}_kf_{i:02d}_{pl}.png')),
                             bbox_inches='tight', dpi=600)
                         plt.close()
+
+            for variable in variable_list:
+                plt.plot(pd.rolling_mean(var_error_sort[0][variable][0, :],
+                                         window=1000, center=True),
+                         pd.rolling_mean(var_error_sort[0][variable][1, :],
+                                         window=1000, center=True), label='all HBV')
+                if valid_flag[0] == True:
+                    plt.plot(pd.rolling_mean(var_error_sort[1][variable][0, :],
+                                             window=1000, center=True),
+                             pd.rolling_mean(var_error_sort[1][variable][1, :],
+                                             window=1000, center=True), label='calib HBV')
+                    plt.plot(pd.rolling_mean(var_error_sort[2][variable][0, :],
+                                             window=1000, center=True),
+                             pd.rolling_mean(var_error_sort[2][variable][1, :],
+                                             window=1000, center=True), label='valid HBV')
+                plt.legend()
+                plt.grid(b=True)
+                plt.savefig(str(
+                    Path(out_dir,
+                         f'{variable}_error_mean_hbv{cat}_kf_{i:02d}.png')),
+                    bbox_inches='tight', dpi=600)
+
+                if valid_flag[1] == True:
+                    if variable == 'snow':
+                        variable = 'snow_ext'
+
+                    plt.plot(pd.rolling_mean(var_error_sort_ext[0][variable][0, :],window=1000,
+                                             center=True),
+                             pd.rolling_mean(var_error_sort_ext[0][variable][1, :],
+                                             window=1000,
+                                             center=True), label='all Shetran')
+
+                    if valid_flag[0] == True:
+                        plt.plot(pd.rolling_mean(var_error_sort_ext[1][variable][0, :],
+                                                 window=1000,
+                                                 center=True),
+                                 pd.rolling_mean(var_error_sort_ext[1][variable][1, :],
+                                                 window=1000,
+                                                 center=True), label='calib Shetran')
+                        plt.plot(pd.rolling_mean(var_error_sort_ext[2][variable][0, :],
+                                                 window=1000,
+                                                 center=True),
+                                 pd.rolling_mean(var_error_sort_ext[2][variable][1, :],
+                                                 window=1000,
+                                                 center=True), label='valid Shetran')
+                    plt.legend()
+                    plt.grid(b=True)
+                    plt.savefig(str(
+                        Path(out_dir,
+                             f'{variable}_error_mean{cat}_kf_{i:02d}.png')),
+                        bbox_inches='tight', dpi=600)
+                plt.close()
+
+
     return
 
 def plot_hull(plot_args):
@@ -887,8 +963,8 @@ def _plot_hbv_kf(
     else:
         ns_ext = 0
 
-    for i in range(all_sims.shape[0]):
-        ns = get_ns_cy(q_act_arr, all_sims[i,:], off_idx)
+    # for i in range(all_sims.shape[0]):
+    #     ns = get_ns_cy(q_act_arr, all_sims[i,:], off_idx)
 
     ln_ns = get_ln_ns_cy(q_act_arr, q_sim_arr, off_idx)
     kge = get_kge_cy(q_act_arr, q_sim_arr, off_idx)

@@ -1135,13 +1135,13 @@ def _compare_ann_cycs_fdcs(dbs_dir, db, i, db_lab, title_lab, off_idx, out_dir, 
         with h5py.File(cat_db, 'r') as dab:
             kf_qext = dab['valid'][kf_str]['extern_data'][
                 'Q']['q'][...]
-            kf_qext_df = pd.Series(kf_qext, index=db[db_lab][kf_str]['out_cats_flow_df'].index)
+            kf_qext_df = pd.DataFrame(kf_qext, index=db[db_lab][kf_str]['out_cats_flow_df'].index, columns=[cats[0]])
         if valid_flags[0] and title_lab == 'Calibration':
             kf_qext_df = kf_qext_df[calib_idxs==1]
         elif valid_flags[0] and title_lab == 'Validation':
             kf_qext_df = kf_qext_df[valid_idxs==1]
         kf_qext_df = kf_qext_df.iloc[off_idx:]
-        qext_ann_cyc_df = get_daily_annual_cycle(kf_qsim_df)
+        qext_ann_cyc_df = get_daily_annual_cycle(kf_qext_df)
         plot_qext_df = qext_ann_cyc_df.iloc[:365]
 
     assert np.all(kf_qact_df.index == kf_qsim_df.index)
@@ -1198,7 +1198,7 @@ def _compare_ann_cycs_fdcs(dbs_dir, db, i, db_lab, title_lab, off_idx, out_dir, 
         qact_probs, qact_vals = _get_fdc_probs_vals(kf_qact_df[cat])
         qsim_probs, qsim_vals = _get_fdc_probs_vals(kf_qsim_df[cat])
         if valid_flags[1]:
-            qext_probs, qext_vals = _get_fdc_probs_vals(kf_qext_df)
+            qext_probs, qext_vals = _get_fdc_probs_vals(kf_qext_df[cat])
 
         plt.semilogy(
             qact_probs,

@@ -64,7 +64,7 @@ def load_pickle(in_file, mode='rb'):
 
 def main():
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template.ini')
+    cfp.read(r'G:\simone_vogel\_CodeDev\HBV\templates\config_hydmodeling_template_Weathercop.ini')
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
@@ -87,29 +87,29 @@ def main():
     plot_ann_cys_fdcs_flag = False
     plot_prm_trans_comp_flag = False
     plot_hbv_vars_flag = False
-    plot_error_statistics = False
-    plot_convex_hull = False
+    plot_error_statistics_flag = False
+    plot_convex_hull_flag = False
 
     valid_flag= False
-    show_q_extern = False
+    show_q_extern_flag = False
 
     # hyd_analysis_flag = True
-    # get_stms_flag = True
-    # create_stms_rels_flag = True
-    # create_cumm_cats_flag = True
-    # optimize_flag = True
-    # plot_kfold_perfs_flag = True
-    # plot_best_kfold_prms_flag = True
-    # plot_prm_vecs_flag = True
-    # plot_2d_kfold_prms_flag = True
-    # plot_ann_cys_fdcs_flag = True
-    # plot_prm_trans_comp_flag = True
+    get_stms_flag = True
+    create_stms_rels_flag = True
+    create_cumm_cats_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
     plot_hbv_vars_flag = True
-    plot_error_statistics = True
-    plot_convex_hull = True
+    plot_error_statistics_flag = True
+    plot_convex_hull_flag = True
 
-    valid_flag = True
-    show_q_extern = True
+    # valid_flag = True
+    show_q_extern_flag = True
 
     # =============================================================================
     # This performs the hydrological preprocessing
@@ -235,12 +235,12 @@ def main():
     in_date_fmt = cfp['OPT_HYD_MODEL']['in_date_fmt']
     start_date = cfp['OPT_HYD_MODEL']['start_date']
     end_date = cfp['OPT_HYD_MODEL']['end_date']
-    if valid_flag == True:
+    if valid_flag:
         start_date_calib = pd.to_datetime(cfp['OPT_HYD_MODEL']['start_date_calib'])
         end_date_calib = pd.to_datetime(cfp['OPT_HYD_MODEL']['end_date_calib'])
         start_date_valid = pd.to_datetime(cfp['OPT_HYD_MODEL']['start_date_valid'])
         end_date_valid = pd.to_datetime(cfp['OPT_HYD_MODEL']['end_date_valid'])
-    if show_q_extern == True:
+    if show_q_extern_flag:
         extern_hdf5 = h5py.File(cfp['OPT_HYD_MODEL']['extern_model_data'], 'r')
 
 
@@ -254,8 +254,8 @@ def main():
     compare_ann_cyc_flag = cfp['OPT_HYD_MODEL'].getboolean(
         'compare_ann_cyc_flag')
     use_obs_flow_flag = cfp['OPT_HYD_MODEL'].getboolean('use_obs_flow_flag')
-    if valid_flag == True:
-        use_obs_flow_flag = True
+    # if valid_flag == True:
+    #     use_obs_flow_flag = True
 
     min_q_thresh = cfp['OPT_HYD_MODEL'].getfloat('min_q_thresh')
     run_as_lump_flag = cfp['OPT_HYD_MODEL'].getboolean('run_as_lump_flag')
@@ -334,7 +334,7 @@ def main():
     k_d_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_d'].split(sep)]
     k_ll_flags = [int(_) for _ in cfp['PRM_FLAGS']['k_ll'].split(sep)]
 
-    valid_flags = [valid_flag, show_q_extern, in_opt_schm_vars_dict['opt_schm']]
+    valid_flags = [valid_flag, show_q_extern_flag, in_opt_schm_vars_dict['opt_schm']]
 
     all_prms_flags = np.array(
         [tt_flags,
@@ -472,7 +472,7 @@ def main():
                 in_q_df.index = pd.to_datetime(in_q_df.index,
                                                format=in_date_fmt)
 
-                in_index = pd.date_range(start=start_date, end=end_date, time_freq='D')
+                # in_index = pd.date_range(start=start_date, end=end_date, time_freq='D')
                 in_index = in_q_df.index[in_q_df.index >= start_date]
                 in_index = in_index[in_index <= end_date]
 
@@ -501,7 +501,7 @@ def main():
                     db['valid'][kf_str].create_dataset("valid_step_arr",
                                             data=k_valid_step_ser)
 
-    if show_q_extern:
+    if show_q_extern_flag:
         prcss_extern_cats = list(extern_hdf5.keys())
         model_name = extern_hdf5.attrs.get('model')
 
@@ -724,7 +724,7 @@ def main():
     # plot error statistics
     #=========================================================================
 
-    if plot_error_statistics == True:
+    if plot_error_statistics_flag:
         print('\n\n')
         print('#' * 10)
         print('Plotting error statistics...')
@@ -745,7 +745,7 @@ def main():
     #=========================================================================
 
     if in_opt_schm_vars_dict['opt_schm'] == 'ROPE':
-        if plot_convex_hull == True:
+        if plot_convex_hull_flag:
             print('\n\n')
             print('#' * 10)
             print('Plotting convex hull...')

@@ -217,6 +217,9 @@ def plot_error_stats(dbs_dir,
 
     plot_gen = ((cat_db, valid_flag) for cat_db in cats_dbs)
 
+    if valid_flag:
+        n_cpus = 1
+
     if n_cpus > 1:
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
