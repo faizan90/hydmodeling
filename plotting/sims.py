@@ -38,18 +38,6 @@ def plot_cat_qsims(cat_db):
 
         n_cells = area_arr.shape[0]
 
-        cv_flag = db['data'].attrs['cv_flag']
-
-        if cv_flag:
-            cv_kf_dict = {}
-            for i in range(1, kfolds + 1):
-                cd_db = db[f'valid/kf_{i:02d}']
-                kf_dict = {key: cd_db[key][...] for key in cd_db}
-                kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
-
-                cv_kf_dict[i] = kf_dict
-                break
-
         all_kfs_dict = {}
         for i in range(1, kfolds + 1):
             cd_db = db[f'calib/kf_{i:02d}']
@@ -432,6 +420,62 @@ class PlotCatHBVSimKf:
 
         self.bal_idxs = [0]
         self.bal_idxs.extend(list(range(off_idx, self.n_recs, wat_bal_stps)))
+
+        self.full_sims_dir = os.path.join(self.out_dir, '03_hbv_figs')
+        if not os.path.exists(self.full_sims_dir):
+            try:
+                os.mkdir(self.full_sims_dir)
+
+            except FileExistsError:
+                pass
+
+        sim_dict = {
+            'temp': self.temp_arr,
+            'prec': self.prec_arr,
+            'pet': self.pet_arr,
+            'snow': self.snow_arr,
+            'liqu': self.liqu_arr,
+            'sm': self.sm_arr,
+            'tot_run': self.tot_run_arr,
+            'evap': self.evap_arr,
+            'ur_sto': self.ur_sto_arr,
+            'ur_run_uu': self.ur_run_uu,
+            'ur_run_ul': self.ur_run_ul,
+            'ur_to_lr_run': self.ur_to_lr_run,
+            'lr_sto': self.lr_sto_arr,
+            'lr_run': self.lr_run_arr,
+            'comb_run': self.comb_run_arr,
+            'q_sim': self.q_sim_arr
+            }
+
+        sim_df = pd.DataFrame(sim_dict, dtype=float)
+        sim_df.to_csv(os.path.join(
+            self.full_sims_dir,
+            f'kf_{self.kf_str}_HBV_sim_{self.cat}.csv'), sep=';')
+
+        out_labs = []
+        out_labs.extend(self.prm_syms)
+
+        if 'route_labs' in self.kf_dict:
+            out_labs.extend(self.kf_dict['route_labs'])
+
+        out_labs.extend(['ns', 'ln_ns', 'kge', 'obj_ftn', 'p_corr'])
+
+        out_params_df = pd.DataFrame(index=out_labs, columns=['value'])
+        out_params_df['value'] = np.concatenate(
+            (self.prms_arr,
+             [self.ns,
+              self.ln_ns,
+              self.kge,
+              'nothing_yet',
+              self.q_correl]))
+
+        out_params_loc = os.path.join(
+            self.full_sims_dir,
+            f'kf_{self.kf_str}_HBV_model_params_{self.cat}.csv')
+
+        out_params_df.to_csv(
+            out_params_loc, sep=str(';'), index_label='param')
         return
 
     def wat_bal_sim(self):
@@ -757,62 +801,6 @@ class PlotCatHBVSimKf:
 
     def full_sim(self):
 
-        full_sims_dir = os.path.join(self.out_dir, '03_hbv_figs')
-        if not os.path.exists(full_sims_dir):
-            try:
-                os.mkdir(full_sims_dir)
-
-            except FileExistsError:
-                pass
-
-        sim_dict = {
-            'temp': self.temp_arr,
-            'prec': self.prec_arr,
-            'pet': self.pet_arr,
-            'snow': self.snow_arr,
-            'liqu': self.liqu_arr,
-            'sm': self.sm_arr,
-            'tot_run': self.tot_run_arr,
-            'evap': self.evap_arr,
-            'ur_sto': self.ur_sto_arr,
-            'ur_run_uu': self.ur_run_uu,
-            'ur_run_ul': self.ur_run_ul,
-            'ur_to_lr_run': self.ur_to_lr_run,
-            'lr_sto': self.lr_sto_arr,
-            'lr_run': self.lr_run_arr,
-            'comb_run': self.comb_run_arr,
-            'q_sim': self.q_sim_arr
-            }
-
-        sim_df = pd.DataFrame(sim_dict, dtype=float)
-        sim_df.to_csv(os.path.join(
-            full_sims_dir,
-            f'kf_{self.kf_str}_HBV_sim_{self.cat}.csv'), sep=';')
-
-        out_labs = []
-        out_labs.extend(self.prm_syms)
-
-        if 'route_labs' in self.kf_dict:
-            out_labs.extend(self.kf_dict['route_labs'])
-
-        out_labs.extend(['ns', 'ln_ns', 'kge', 'obj_ftn', 'p_corr'])
-
-        out_params_df = pd.DataFrame(index=out_labs, columns=['value'])
-        out_params_df['value'] = np.concatenate(
-            (self.prms_arr,
-             [self.ns,
-              self.ln_ns,
-              self.kge,
-              'nothing_yet',
-              self.q_correl]))
-
-        out_params_loc = os.path.join(
-            full_sims_dir,
-            f'kf_{self.kf_str}_HBV_model_params_{self.cat}.csv')
-
-        out_params_df.to_csv(
-            out_params_loc, sep=str(';'), index_label='param')
-
         full_sim_text = np.array([
             ('Max. actual Q = %0.4f' %
              self.q_act_arr[self.off_idx:].max()).rstrip('0'),
@@ -869,7 +857,7 @@ class PlotCatHBVSimKf:
             ''])
 
         out_fig_loc = os.path.join(
-            full_sims_dir,
+            self.full_sims_dir,
             f'kf_{self.kf_str}_HBV_model_plot_{self.cat}.png')
 
         act_bal_arr = []

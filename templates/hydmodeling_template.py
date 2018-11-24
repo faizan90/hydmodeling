@@ -92,18 +92,18 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-#     create_stms_rels_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
+    create_stms_rels_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
     plot_var_errors_flag = True
 #     plot_qsims_flag = True
-#     plot_hbv_vars_flag = True
+    plot_hbv_vars_flag = True
 
     use_cv_time_flag = False
 #     use_cv_time_flag = True
@@ -170,14 +170,14 @@ def main():
     #=========================================================================
     prcss_cats_list = cfp['CREATE_STM_RELS']['prcss_cats_list'].split(sep)
 
-    out_hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
+    hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
     out_cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
     out_stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
     watershed_field_name = cfp['CREATE_STM_RELS']['watershed_field_name']
     out_cats_rel_fig_path = cfp['CREATE_STM_RELS']['out_cats_rel_fig_path']
 
-    if not os.path.exists(out_hyd_mod_dir):
-        os.mkdir(out_hyd_mod_dir)
+    if not os.path.exists(hyd_mod_dir):
+        os.mkdir(hyd_mod_dir)
 
     if create_stms_rels_flag:
         crt_strms_rltn_tree(
@@ -216,8 +216,6 @@ def main():
     #=========================================================================
     # Optimize hydrologic model
     #=========================================================================
-    in_hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
-
     in_dem_net_file = cfp['GET_STMS']['dem_net_file']
     in_cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
     in_stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
@@ -457,7 +455,7 @@ def main():
             warm_up_steps,
             n_cpus,
             route_type,
-            in_hyd_mod_dir,
+            hyd_mod_dir,
             bounds_dict,
             all_prms_flags,
             obj_ftn_wts,
@@ -477,8 +475,8 @@ def main():
         print(f'Total calibration time was: {_tot_t:0.4f} secs!')
         print('#' * 10)
 
-    dbs_dir = os.path.join(in_hyd_mod_dir, r'01_database')
-    hgs_db_path = os.path.join(in_hyd_mod_dir, r'02_hydrographs/hgs_dfs')
+    dbs_dir = os.path.join(hyd_mod_dir, r'01_database')
+    hgs_db_path = os.path.join(hyd_mod_dir, r'02_hydrographs/hgs_dfs')
 
     #=========================================================================
     # Plot the k-fold results
@@ -569,7 +567,7 @@ def main():
         print('Plotting annual cycle and FDC comparison...')
 
         ann_cyc_fdc_plot_dir = os.path.join(
-            in_hyd_mod_dir, r'08_ann_cycs_fdc_comparison')
+            hyd_mod_dir, r'08_ann_cycs_fdc_comparison')
 
         plot_cats_ann_cycs_fdcs_comp(
             hgs_db_path, warm_up_steps, ann_cyc_fdc_plot_dir)
