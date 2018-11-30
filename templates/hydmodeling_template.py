@@ -8,6 +8,7 @@ import os
 import time
 import timeit
 import pickle
+from shutil import copy2
 import configparser as cfpm
 from collections import OrderedDict
 
@@ -55,13 +56,16 @@ def load_pickle(in_file, mode='rb'):
 # TODO: Have a check on time frequency for all input
 # TODO: make snowmelt more physical.
 # These parameters vary the most among kfolds
-# TODO: See if chull algorithm is better than depth
 # TODO: Make plots of DS cats better
 
 
 def main():
+    in_ini_file = r'config_hydmodeling_template.ini'
+
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read('config_hydmodeling_template.ini')
+    cfp.read(in_ini_file)
+
+    in_ini_abs_path = os.path.abspath(in_ini_file)
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
@@ -69,6 +73,8 @@ def main():
 
     else:
         n_cpus = int(n_cpus)
+
+    old_chdir = os.getcwd()
 
     main_dir = cfp['DEFAULT']['main_dir']
     os.chdir(main_dir)
@@ -93,20 +99,20 @@ def main():
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
     create_stms_rels_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_opt_evo_flag = True
-    plot_var_errors_flag = True
+#     optimize_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
+#     plot_opt_evo_flag = True
+#     plot_var_errors_flag = True
 #     plot_qsims_flag = True
-    plot_hbv_vars_flag = True
+#     plot_hbv_vars_flag = True
 
     use_cv_time_flag = False
-#     use_cv_time_flag = True
+    use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing
@@ -178,6 +184,8 @@ def main():
 
     if not os.path.exists(hyd_mod_dir):
         os.mkdir(hyd_mod_dir)
+
+    copy2(in_ini_abs_path, os.path.join(hyd_mod_dir, in_ini_file))
 
     if create_stms_rels_flag:
         crt_strms_rltn_tree(
@@ -729,6 +737,8 @@ def main():
         print('#' * 10)
 
     #=========================================================================
+
+    os.chdir(old_chdir)
     return
 
 
