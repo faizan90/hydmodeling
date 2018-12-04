@@ -166,7 +166,7 @@ cdef void get_new_chull_vecs(
     for i in range(n_acc_vecs):
 #         with gil: print(f'd[{i}]: {depths_arr[i]}')
 
-        with gil: assert depths_arr[i] != 0, 'Impossible depth of zero!'
+        with gil: assert depths_arr[i] > 0, 'Impossible depth of zero or less!'
 
         if depths_arr[i] != 1:
             continue
@@ -185,7 +185,6 @@ cdef void get_new_chull_vecs(
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
         for j in range(n_prms):
             chull_vecs[i, j] = NaN
-
     return
 
 
@@ -256,7 +255,6 @@ cdef void adjust_rope_bds(
             max_fvar = min_fvar + rope_bds_dfs[k, 1]
 
             with gil: assert min_fvar <= max_fvar
-
     return
 
 
@@ -354,8 +352,8 @@ cdef void gen_vecs_in_chull(
 
         for j in range(n_cpus):
             for i in range(n_temp_rope_prm_vecs):
-                temp_mins[j, i] = chull_vecs_ctr
-                mins[j, i] = chull_vecs_ctr
+                temp_mins[j, i] = n_temp_rope_prm_vecs
+                mins[j, i] = n_temp_rope_prm_vecs
 
         if depth_ftn_type == 1:
             if use_c:

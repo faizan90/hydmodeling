@@ -471,6 +471,7 @@ cpdef dict hbv_opt(args):
             for k in range(stms_inflow_arr.shape[1]):
                 stms_inflow_mult_arr[j, k, i] = stms_inflow_arr[j, k]
                 stms_outflow_mult_arr[j, k, i] = stms_outflow_arr[j, k]
+
             for k in range(cats_outflow_arr.shape[1]):
                 cats_outflow_mult_arr[j, k, i] = cats_outflow_arr[j, k]
 
