@@ -24,7 +24,9 @@ void quick_sort(double *arr, long first_index, long last_index) {
 		index_b = last_index;
 
 		while (index_a < index_b) {
-			while (arr[index_a] <= arr[pivotIndex] && index_a < last_index) {
+
+			while ((arr[index_a] <= arr[pivotIndex]) &&
+					(index_a < last_index)) {
 				index_a++;
 			}
 
@@ -157,7 +159,7 @@ void gen_usph_vecs_norm_dist_c(
 	size_t j, tid;
 	timeval t0;
 	long long i;
-	unsigned long long re_seed_i = (unsigned long long) (1e9);
+	unsigned long long re_seed_i = (unsigned long long) (1e6);
 
 	for (tid = 0; tid < n_cpus; ++tid) {
 		gettimeofday(&t0);

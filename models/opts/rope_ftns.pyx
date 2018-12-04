@@ -114,6 +114,10 @@ cdef void get_new_chull_vecs(
         sort_obj_vals[i] = pre_obj_vals[i]
 
     quick_sort(&sort_obj_vals[0], 0, n_prm_vecs - 1)
+    
+    with gil:
+        print('\n')
+        print('min, max obj val:', sort_obj_vals[0], sort_obj_vals[n_prm_vecs - 1])
 
     for i in range(n_prm_vecs):
         prm_vec_rank = searchsorted(
@@ -314,8 +318,12 @@ cdef void gen_vecs_in_chull(
     while ctr < n_prm_vecs:
         with gil: print(f'Try no.: {tries_ctr}, ctr: {ctr}')
         pre_ctr = ctr
+        
+        for i in range(chull_vecs_ctr):
+            for j in range(n_prms):
+                temp_rope_prm_vecs[i, j] = chull_vecs[i, j]
 
-        for i in range(n_temp_rope_prm_vecs):
+        for i in range(chull_vecs_ctr, n_temp_rope_prm_vecs):
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = (
                     rope_bds_dfs[j, 0] + (rand_c() * rope_bds_dfs[j, 1]))
@@ -412,7 +420,7 @@ cdef void gen_vecs_in_chull(
                     dot_ref,
                     dot_test,
                     dot_test_sort,
-                    temp_mins,#
+                    temp_mins,
                     mins,
                     depths_arr,
                     chull_vecs_ctr,
