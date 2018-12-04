@@ -98,7 +98,7 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-    create_stms_rels_flag = True
+#     create_stms_rels_flag = True
 #     optimize_flag = True
 #     plot_kfold_perfs_flag = True
 #     plot_best_kfold_prms_flag = True
@@ -108,7 +108,7 @@ def main():
 #     plot_prm_trans_comp_flag = True
 #     plot_opt_evo_flag = True
 #     plot_var_errors_flag = True
-#     plot_qsims_flag = True
+    plot_qsims_flag = True
 #     plot_hbv_vars_flag = True
 
     use_cv_time_flag = False

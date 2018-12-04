@@ -25,49 +25,35 @@ from ..models import (
 plt.ioff()
 
 
-def plot_cat_qsims(cat_db):
+class PlotCatQSims:
 
-    with h5py.File(cat_db, 'r') as db:
+    '''Just to have less mess'''
+
+    def __init__(self, db):
+
+        self.db = db
+
+        self.kfolds = db['data'].attrs['kfolds']
+        self.cat = db.attrs['cat']
+
+        self.conv_ratio = db['data'].attrs['conv_ratio']
+
+        self.area_arr = db['data/area_arr'][...]
+        self.n_cells = self.area_arr.shape[0]
+
+        self.calib_db = db['calib']
+
+        self.opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
+
+        self.f_var_infos = db['cdata/aux_var_infos'][...]
+        self.prms_idxs = db['cdata/use_prms_idxs'][...]
+        self.f_vars = db['cdata/aux_vars'][...]
+        self.prms_flags = db['cdata/all_prms_flags'][...]
+        self.bds_arr = db['cdata/bds_arr'][...]
+
+        self.use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
+
         out_dir = db['data'].attrs['main']
-        kfolds = db['data'].attrs['kfolds']
-        cat = db.attrs['cat']
-
-        conv_ratio = db['data'].attrs['conv_ratio']
-        use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
-        area_arr = db['data/area_arr'][...]
-
-        n_cells = area_arr.shape[0]
-
-        all_kfs_dict = {}
-        for i in range(1, kfolds + 1):
-            cd_db = db[f'calib/kf_{i:02d}']
-            kf_dict = {key: cd_db[key][...] for key in cd_db}
-            kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
-
-            all_kfs_dict[i] = kf_dict
-
-        all_tem_arr = np.concatenate([
-            all_kfs_dict[i]['tem_arr'] for i in all_kfs_dict], axis=1)
-
-        all_ppt_arr = np.concatenate([
-            all_kfs_dict[i]['ppt_arr'] for i in all_kfs_dict], axis=1)
-
-        all_pet_arr = np.concatenate([
-            all_kfs_dict[i]['pet_arr'] for i in all_kfs_dict], axis=1)
-
-        all_qact_arr = np.concatenate([
-            all_kfs_dict[i]['qact_arr'] for i in all_kfs_dict], axis=0)
-
-        if 'extra_us_inflow' in kf_dict:
-            all_us_inflow_arr = np.concatenate(
-                [all_kfs_dict[i]['extra_us_inflow']
-                 for i in all_kfs_dict],
-                axis=0)
-
-            extra_flow_flag = True
-
-        else:
-            extra_flow_flag = False
 
         qsims_dir = os.path.join(out_dir, '12_discharge_sims')
 
@@ -78,27 +64,76 @@ def plot_cat_qsims(cat_db):
             except FileExistsError:
                 pass
 
-        calib_db = db['calib']
+        self.qsims_dir = qsims_dir
+        return
 
-        opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
+    def _get_data(self, sim_lab):
 
-        f_var_infos = db['cdata/aux_var_infos'][...]
-        prms_idxs = db['cdata/use_prms_idxs'][...]
-        f_vars = db['cdata/aux_vars'][...]
-        prms_flags = db['cdata/all_prms_flags'][...]
-        bds_arr = db['cdata/bds_arr'][...]
+        all_kfs_dict = {}
+        for i in range(1, self.kfolds + 1):
+            cd_db = self.db[f'{sim_lab}/kf_{i:02d}']
+            kf_dict = {key: cd_db[key][...] for key in cd_db}
+            kf_dict['use_obs_flow_flag'] = self.use_obs_flow_flag
+
+            all_kfs_dict[i] = kf_dict
+
+        input_labs = ['tem_arr', 'ppt_arr', 'pet_arr', 'qact_arr']
+
+        if 'extra_us_inflow' in kf_dict:
+            input_labs.append('extra_us_inflow')
+            self.extra_flow_flag = True
+
+        else:
+            self.extra_flow_flag = False
+
+        input_arrs = []
+
+        del kf_dict
+
+        for input_lab in input_labs:
+            kf_arrs = []
+            for i in all_kfs_dict:
+                kf_arrs.append(all_kfs_dict[i][input_lab])
+
+                del all_kfs_dict[i][input_lab]
+
+            axis = kf_arrs[0].ndim - 1
+            input_arrs.append(np.concatenate(kf_arrs, axis=axis))
+
+        return input_arrs, all_kfs_dict
+
+    def run_prm_sims(self, sim_lab, opt_iter):
+
+        if opt_iter is None:
+            opt_iter_lab = 'last'
+
+        else:
+            assert (opt_iter >= 0) and isinstance(opt_iter, int)
+
+            opt_iter_lab = f'{opt_iter}'
+
+        args = self._get_data(sim_lab)
+
+        tem_arr, ppt_arr, pet_arr, qact_arr = args[0][:4]
+
+        kfs_dict = args[1]
+
+        if self.extra_flow_flag:
+            us_inflow_arr = args[0][4]
 
         out_df = pd.DataFrame(
-            data=all_qact_arr, columns=['obs'], dtype=np.float32)
+            data=qact_arr, columns=['obs'], dtype=np.float32)
 
-        for k in range(1, kfolds + 1):
-            kf_dict = all_kfs_dict[k]
+        for k in range(1, self.kfolds + 1):
             kf_str = f'kf_{k:02d}'
 
-            if 'extra_us_inflow' in kf_dict:
-                kf_dict['extra_us_inflow'] = all_us_inflow_arr
+            if opt_iter is None:
+                prm_vecs = self.calib_db[kf_str + '/prm_vecs'][...]
 
-            prm_vecs = calib_db[kf_str + '/prm_vecs'][...]
+            else:
+                iter_prm_vecs = self.calib_db[kf_str + '/iter_prm_vecs'][...]
+                prm_vecs = iter_prm_vecs[opt_iter, :, :].copy('c')
+
             n_prms = prm_vecs.shape[0]
 
             plt.figure(figsize=(17, 8))
@@ -107,35 +142,35 @@ def plot_cat_qsims(cat_db):
                 opt_prms = prm_vecs[i]
 
                 hbv_prms = tfm_opt_to_hbv_prms_py(
-                    prms_flags,
-                    f_var_infos,
-                    prms_idxs,
-                    f_vars,
+                    self.prms_flags,
+                    self.f_var_infos,
+                    self.prms_idxs,
+                    self.f_vars,
                     opt_prms,
-                    bds_arr,
-                    n_cells)
+                    self.bds_arr,
+                    self.n_cells)
 
-                all_outputs_dict = hbv_loop_py(
-                    all_tem_arr,
-                    all_ppt_arr,
-                    all_pet_arr,
+                outputs_dict = hbv_loop_py(
+                    tem_arr,
+                    ppt_arr,
+                    pet_arr,
                     hbv_prms,
-                    kf_dict['ini_arr'],
-                    area_arr,
-                    conv_ratio)
+                    kfs_dict[k]['ini_arr'],
+                    self.area_arr,
+                    self.conv_ratio)
 
-                assert all_outputs_dict['loop_ret'] == 0.0
+                assert outputs_dict['loop_ret'] == 0.0
 
-                qsim_arr = all_outputs_dict['qsim_arr']
+                qsim_arr = outputs_dict['qsim_arr']
 
-                if extra_flow_flag:
-                    qsim_arr = qsim_arr + all_us_inflow_arr
+                if self.extra_flow_flag:
+                    qsim_arr = qsim_arr + us_inflow_arr
 
                 plt.plot(qsim_arr, color='k', alpha=0.01, lw=0.5)
 
                 out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
 
-            plt.plot(all_qact_arr, color='r', alpha=0.7, lw=0.5)
+            plt.plot(qact_arr, color='r', alpha=0.7, lw=0.5)
 
             plt.xlabel('Step no.')
             plt.ylabel('Discharge')
@@ -143,23 +178,45 @@ def plot_cat_qsims(cat_db):
             plt.grid()
 
             plt.title(
-                f'Discharge simulation using {opt_schm} parameters '
-                f'(n={n_prms}) for the catchment: {cat} and kf: {k:02d}')
+                f'Discharge simulation using {self.opt_schm} parameters '
+                f'(n={n_prms}) for the catchment: {self.cat}, kf: {k:02d} and '
+                f'Optimization iteration: {opt_iter_lab}')
 
-            out_fig_name = f'{kf_str}_qsims_{cat}.png'
+            out_fig_name = (
+                f'{kf_str}_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.png')
 
             plt.savefig(
-                os.path.join(qsims_dir, out_fig_name),
+                os.path.join(self.qsims_dir, out_fig_name),
                 bbox_inches='tight',
                 dpi=150)
 
             plt.close()
 
         out_df.to_csv(
-            os.path.join(qsims_dir, f'cat_{cat}_qsims.csv'),
+            os.path.join(
+                self.qsims_dir,
+                f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.csv'),
             float_format='%0.3f',
             index=False,
             sep=';')
+        return
+
+
+def plot_cat_qsims(cat_db):
+
+    with h5py.File(cat_db, 'r') as db:
+
+        opt_iters = [None]
+
+        cv_flag = db['data'].attrs['cv_flag']
+
+        plot_sims_cls = PlotCatQSims(db)
+
+        for opt_iter in opt_iters:
+            plot_sims_cls.run_prm_sims('calib', opt_iter)
+
+            if cv_flag:
+                plot_sims_cls.run_prm_sims('valid', opt_iter)
     return
 
 
