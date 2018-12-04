@@ -14,7 +14,7 @@ from .data_depths cimport depth_ftn, pre_depth, post_depth
 
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
-cdef DT_UL use_c = 1
+cdef DT_UL use_c = 0
 
 
 cdef extern from "cmath":
@@ -116,8 +116,7 @@ cdef void get_new_chull_vecs(
     quick_sort(&sort_obj_vals[0], 0, n_prm_vecs - 1)
     
     with gil:
-        print('\n')
-        print('min, max obj val:', sort_obj_vals[0], sort_obj_vals[n_prm_vecs - 1])
+        print('over all min, max obj val:', sort_obj_vals[0], sort_obj_vals[n_prm_vecs - 1])
 
     for i in range(n_prm_vecs):
         prm_vec_rank = searchsorted(
@@ -128,6 +127,9 @@ cdef void get_new_chull_vecs(
 
         for j in range(n_prms):
             acc_vecs[prm_vec_rank, j] = prm_vecs[i, j]
+
+    with gil:
+        print('Max selected obj val for acc_vecs:', sort_obj_vals[n_acc_vecs - 1])
 
     for j in range(n_cpus):
         for i in range(mins.shape[1]):
@@ -430,6 +432,7 @@ cdef void gen_vecs_in_chull(
             if ctr >= n_prm_vecs:
                 break
 
+#             if (not depths_arr[i]) and (i >= chull_vecs_ctr):
             if not depths_arr[i]:
                 continue
 
