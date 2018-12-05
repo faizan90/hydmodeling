@@ -8,6 +8,7 @@
 
 from cython.parallel import prange, threadid
 
+cdef double shrink_cnst = 1e-6
 
 cdef extern from "data_depths.h" nogil:
     cdef:
@@ -46,7 +47,7 @@ cdef void depth_ftn(
 
         int even = (n_test % 2) == 0
 
-        DT_D dy_med, inc_mult = (1 - (1e-10))
+        DT_D dy_med, inc_mult = (1 - shrink_cnst)
 
     for i in prange(
         n_uvecs, schedule='dynamic', nogil=True, num_threads=n_cpus):
@@ -74,11 +75,11 @@ cdef void depth_ftn(
 
         if even:
             dy_med = 0.5 * (
-                dot_test_sort[tid, n_test / 2] + 
-                dot_test_sort[tid, (n_test / 2) - 1])
+                dot_test_sort[tid, n_test // 2] + 
+                dot_test_sort[tid, (n_test // 2) - 1])
 
         else:
-            dy_med = dot_test_sort[tid, n_test / 2]
+            dy_med = dot_test_sort[tid, n_test // 2]
 
         for j in range(n_test):
             dot_test[tid, j] = dy_med + (
@@ -169,7 +170,7 @@ cdef void post_depth(
 
         int even = (n_test % 2) == 0
 
-        DT_D dy_med, inc_mult = (1 - (1e-10))
+        DT_D dy_med, inc_mult = (1 - shrink_cnst)
 
     for i in prange(
         n_uvecs, schedule='dynamic', nogil=True, num_threads=n_cpus):
@@ -189,11 +190,11 @@ cdef void post_depth(
 
         if even:
             dy_med = 0.5 * (
-                dot_test_sort[tid, n_test / 2] + 
-                dot_test_sort[tid, (n_test / 2) - 1])
+                dot_test_sort[tid, n_test // 2] + 
+                dot_test_sort[tid, (n_test // 2) - 1])
 
         else:
-            dy_med = dot_test_sort[tid, n_test / 2]
+            dy_med = dot_test_sort[tid, n_test // 2]
 
         for j in range(n_test):
             dot_test[tid, j] = dy_med + (

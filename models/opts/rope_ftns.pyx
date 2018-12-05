@@ -14,7 +14,7 @@ from .data_depths cimport depth_ftn, pre_depth, post_depth
 
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
-cdef DT_UL use_c = 0
+cdef DT_UL use_c = 1
 
 
 cdef extern from "cmath":
@@ -114,9 +114,6 @@ cdef void get_new_chull_vecs(
         sort_obj_vals[i] = pre_obj_vals[i]
 
     quick_sort(&sort_obj_vals[0], 0, n_prm_vecs - 1)
-    
-    with gil:
-        print('over all min, max obj val:', sort_obj_vals[0], sort_obj_vals[n_prm_vecs - 1])
 
     for i in range(n_prm_vecs):
         prm_vec_rank = searchsorted(
@@ -128,13 +125,10 @@ cdef void get_new_chull_vecs(
         for j in range(n_prms):
             acc_vecs[prm_vec_rank, j] = prm_vecs[i, j]
 
-    with gil:
-        print('Max selected obj val for acc_vecs:', sort_obj_vals[n_acc_vecs - 1])
-
     for j in range(n_cpus):
         for i in range(mins.shape[1]):
-            temp_mins[j, i] = n_acc_vecs
-            mins[j, i] = n_acc_vecs
+            temp_mins[j, i] = n_prms
+            mins[j, i] = n_prms
 
     if use_c:
         depth_ftn_c(
@@ -172,7 +166,8 @@ cdef void get_new_chull_vecs(
     for i in range(n_acc_vecs):
 #         with gil: print(f'd[{i}]: {depths_arr[i]}')
 
-        with gil: assert depths_arr[i] > 0, 'Impossible depth of zero or less!'
+        with gil: assert depths_arr[i] > 0, (
+            'Impossible depth of zero or less!')
 
         if depths_arr[i] != 1:
             continue
@@ -185,7 +180,7 @@ cdef void get_new_chull_vecs(
     chull_vecs_ctr[0] = ctr
 
     with gil: print(
-        f'Out of {n_acc_vecs}, {chull_vecs_ctr[0]} points on the new chull')
+        f'{chull_vecs_ctr[0]} out of {n_acc_vecs} points on the new chull.')
 
     # just to be sure
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
@@ -300,6 +295,7 @@ cdef void gen_vecs_in_chull(
         DT_UL n_prms = prm_vecs.shape[1]
         DT_UL n_temp_rope_prm_vecs = temp_rope_prm_vecs.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
+        DT_UL temp_rope_prms_strt_idx = chull_vecs_ctr
 
     if depth_ftn_type == 2:
         if use_c:
@@ -321,11 +317,12 @@ cdef void gen_vecs_in_chull(
         with gil: print(f'Try no.: {tries_ctr}, ctr: {ctr}')
         pre_ctr = ctr
 
-        for i in range(chull_vecs_ctr):
-            for j in range(n_prms):
-                temp_rope_prm_vecs[i, j] = chull_vecs[i, j]
-
-        for i in range(chull_vecs_ctr, n_temp_rope_prm_vecs):
+        if not ctr:
+            for i in range(chull_vecs_ctr):
+                for j in range(n_prms):
+                    temp_rope_prm_vecs[i, j] = chull_vecs[i, j]
+            
+        for i in range(temp_rope_prms_strt_idx, n_temp_rope_prm_vecs):
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = (
                     rope_bds_dfs[j, 0] + (rand_c() * rope_bds_dfs[j, 1]))
@@ -428,16 +425,15 @@ cdef void gen_vecs_in_chull(
                     chull_vecs_ctr,
                     n_cpus)
 
-        for i in range(chull_vecs_ctr):
-            if not depths_arr[i]:
-                with gil:
-                    print('Point %d previously on the hull has a depth of zero!' % i)
+        if temp_rope_prms_strt_idx:
+            for i in range(chull_vecs_ctr):
+                with gil: assert depths_arr[i] > 0, (
+                    ('Point previously on the chull has a depth of zero!'))
 
         for i in range(n_temp_rope_prm_vecs):
             if ctr >= n_prm_vecs:
                 break
 
-#             if (not depths_arr[i]) and (i >= chull_vecs_ctr):
             if not depths_arr[i]:
                 continue
 
@@ -448,7 +444,7 @@ cdef void gen_vecs_in_chull(
 
         if ((ctr < n_prm_vecs) and 
             ((ctr - pre_ctr) < min_pts_in_chull)):
-  
+
             tries_ctr += 1
 
         if tries_ctr >= max_chull_tries:
@@ -458,6 +454,8 @@ cdef void gen_vecs_in_chull(
             cont_opt_flag[0] = 0
 
             break
+
+        temp_rope_prms_strt_idx = 0
 
     return
 

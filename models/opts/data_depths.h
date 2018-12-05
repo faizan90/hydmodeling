@@ -12,6 +12,8 @@ double log(double x);
 double pow(double x, double y);
 double rand_c_mp(unsigned long long &seed);
 
+double shrink_cnst = 1e-6;
+
 
 void quick_sort(double *arr, long first_index, long last_index) {
 
@@ -233,7 +235,7 @@ void depth_ftn_c(
 
 	long long i;
 
-	double inc_mult = (double) (1 - (double) (1e-10));
+	double inc_mult = (double) (1 - shrink_cnst);
 
 	omp_set_num_threads(n_cpus);
 
@@ -400,7 +402,7 @@ void post_depth_c(
 
 	long long i;
 
-	double inc_mult = (double) (1 - (double) (1e-10));
+	double inc_mult = (double) (1 - shrink_cnst);
 
 	omp_set_num_threads(n_cpus);
 

@@ -25,188 +25,11 @@ from ..models import (
 plt.ioff()
 
 
-class PlotCatQSims:
-
-    '''Just to have less mess'''
-
-    def __init__(self, db):
-
-        self.db = db
-
-        self.kfolds = db['data'].attrs['kfolds']
-        self.cat = db.attrs['cat']
-
-        self.conv_ratio = db['data'].attrs['conv_ratio']
-
-        self.area_arr = db['data/area_arr'][...]
-        self.n_cells = self.area_arr.shape[0]
-
-        self.calib_db = db['calib']
-
-        self.opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
-
-        self.f_var_infos = db['cdata/aux_var_infos'][...]
-        self.prms_idxs = db['cdata/use_prms_idxs'][...]
-        self.f_vars = db['cdata/aux_vars'][...]
-        self.prms_flags = db['cdata/all_prms_flags'][...]
-        self.bds_arr = db['cdata/bds_arr'][...]
-
-        self.use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
-
-        out_dir = db['data'].attrs['main']
-
-        qsims_dir = os.path.join(out_dir, '12_discharge_sims')
-
-        if not os.path.exists(qsims_dir):
-            try:
-                os.mkdir(qsims_dir)
-
-            except FileExistsError:
-                pass
-
-        self.qsims_dir = qsims_dir
-        return
-
-    def _get_data(self, sim_lab):
-
-        all_kfs_dict = {}
-        for i in range(1, self.kfolds + 1):
-            cd_db = self.db[f'{sim_lab}/kf_{i:02d}']
-            kf_dict = {key: cd_db[key][...] for key in cd_db}
-            kf_dict['use_obs_flow_flag'] = self.use_obs_flow_flag
-
-            all_kfs_dict[i] = kf_dict
-
-        input_labs = ['tem_arr', 'ppt_arr', 'pet_arr', 'qact_arr']
-
-        if 'extra_us_inflow' in kf_dict:
-            input_labs.append('extra_us_inflow')
-            self.extra_flow_flag = True
-
-        else:
-            self.extra_flow_flag = False
-
-        input_arrs = []
-
-        del kf_dict
-
-        for input_lab in input_labs:
-            kf_arrs = []
-            for i in all_kfs_dict:
-                kf_arrs.append(all_kfs_dict[i][input_lab])
-
-                del all_kfs_dict[i][input_lab]
-
-            axis = kf_arrs[0].ndim - 1
-            input_arrs.append(np.concatenate(kf_arrs, axis=axis))
-
-        return input_arrs, all_kfs_dict
-
-    def run_prm_sims(self, sim_lab, opt_iter):
-
-        if opt_iter is None:
-            opt_iter_lab = 'last'
-
-        else:
-            assert (opt_iter >= 0) and isinstance(opt_iter, int)
-
-            opt_iter_lab = f'{opt_iter}'
-
-        args = self._get_data(sim_lab)
-
-        tem_arr, ppt_arr, pet_arr, qact_arr = args[0][:4]
-
-        kfs_dict = args[1]
-
-        if self.extra_flow_flag:
-            us_inflow_arr = args[0][4]
-
-        out_df = pd.DataFrame(
-            data=qact_arr, columns=['obs'], dtype=np.float32)
-
-        for k in range(1, self.kfolds + 1):
-            kf_str = f'kf_{k:02d}'
-
-            if opt_iter is None:
-                prm_vecs = self.calib_db[kf_str + '/prm_vecs'][...]
-
-            else:
-                iter_prm_vecs = self.calib_db[kf_str + '/iter_prm_vecs'][...]
-                prm_vecs = iter_prm_vecs[opt_iter, :, :].copy('c')
-
-            n_prms = prm_vecs.shape[0]
-
-            plt.figure(figsize=(17, 8))
-
-            for i in range(prm_vecs.shape[0]):
-                opt_prms = prm_vecs[i]
-
-                hbv_prms = tfm_opt_to_hbv_prms_py(
-                    self.prms_flags,
-                    self.f_var_infos,
-                    self.prms_idxs,
-                    self.f_vars,
-                    opt_prms,
-                    self.bds_arr,
-                    self.n_cells)
-
-                outputs_dict = hbv_loop_py(
-                    tem_arr,
-                    ppt_arr,
-                    pet_arr,
-                    hbv_prms,
-                    kfs_dict[k]['ini_arr'],
-                    self.area_arr,
-                    self.conv_ratio)
-
-                assert outputs_dict['loop_ret'] == 0.0
-
-                qsim_arr = outputs_dict['qsim_arr']
-
-                if self.extra_flow_flag:
-                    qsim_arr = qsim_arr + us_inflow_arr
-
-                plt.plot(qsim_arr, color='k', alpha=0.01, lw=0.5)
-
-                out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
-
-            plt.plot(qact_arr, color='r', alpha=0.7, lw=0.5)
-
-            plt.xlabel('Step no.')
-            plt.ylabel('Discharge')
-
-            plt.grid()
-
-            plt.title(
-                f'Discharge simulation using {self.opt_schm} parameters '
-                f'(n={n_prms}) for the catchment: {self.cat}, kf: {k:02d} and '
-                f'Optimization iteration: {opt_iter_lab}')
-
-            out_fig_name = (
-                f'{kf_str}_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.png')
-
-            plt.savefig(
-                os.path.join(self.qsims_dir, out_fig_name),
-                bbox_inches='tight',
-                dpi=150)
-
-            plt.close()
-
-        out_df.to_csv(
-            os.path.join(
-                self.qsims_dir,
-                f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.csv'),
-            float_format='%0.3f',
-            index=False,
-            sep=';')
-        return
-
-
 def plot_cat_qsims(cat_db):
 
     with h5py.File(cat_db, 'r') as db:
 
-        opt_iters = [None]
+        opt_iters = [None, 11]
 
         cv_flag = db['data'].attrs['cv_flag']
 
@@ -1263,4 +1086,181 @@ class PlotCatHBVSimKf:
         plt.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
         plt.savefig(out_fig_loc, bbox='tight_layout')
         plt.close('all')
+        return
+
+
+class PlotCatQSims:
+
+    '''Just to have less mess'''
+
+    def __init__(self, db):
+
+        self.db = db
+
+        self.kfolds = db['data'].attrs['kfolds']
+        self.cat = db.attrs['cat']
+
+        self.conv_ratio = db['data'].attrs['conv_ratio']
+
+        self.area_arr = db['data/area_arr'][...]
+        self.n_cells = self.area_arr.shape[0]
+
+        self.calib_db = db['calib']
+
+        self.opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
+
+        self.f_var_infos = db['cdata/aux_var_infos'][...]
+        self.prms_idxs = db['cdata/use_prms_idxs'][...]
+        self.f_vars = db['cdata/aux_vars'][...]
+        self.prms_flags = db['cdata/all_prms_flags'][...]
+        self.bds_arr = db['cdata/bds_arr'][...]
+
+        self.use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
+
+        out_dir = db['data'].attrs['main']
+
+        qsims_dir = os.path.join(out_dir, '12_discharge_sims')
+
+        if not os.path.exists(qsims_dir):
+            try:
+                os.mkdir(qsims_dir)
+
+            except FileExistsError:
+                pass
+
+        self.qsims_dir = qsims_dir
+        return
+
+    def _get_data(self, sim_lab):
+
+        all_kfs_dict = {}
+        for i in range(1, self.kfolds + 1):
+            cd_db = self.db[f'{sim_lab}/kf_{i:02d}']
+            kf_dict = {key: cd_db[key][...] for key in cd_db}
+            kf_dict['use_obs_flow_flag'] = self.use_obs_flow_flag
+
+            all_kfs_dict[i] = kf_dict
+
+        input_labs = ['tem_arr', 'ppt_arr', 'pet_arr', 'qact_arr']
+
+        if 'extra_us_inflow' in kf_dict:
+            input_labs.append('extra_us_inflow')
+            self.extra_flow_flag = True
+
+        else:
+            self.extra_flow_flag = False
+
+        input_arrs = []
+
+        del kf_dict
+
+        for input_lab in input_labs:
+            kf_arrs = []
+            for i in all_kfs_dict:
+                kf_arrs.append(all_kfs_dict[i][input_lab])
+
+                del all_kfs_dict[i][input_lab]
+
+            axis = kf_arrs[0].ndim - 1
+            input_arrs.append(np.concatenate(kf_arrs, axis=axis))
+
+        return input_arrs, all_kfs_dict
+
+    def run_prm_sims(self, sim_lab, opt_iter):
+
+        if opt_iter is None:
+            opt_iter_lab = 'last'
+
+        else:
+            assert (opt_iter >= 0) and isinstance(opt_iter, int)
+
+            opt_iter_lab = f'{opt_iter}'
+
+        args = self._get_data(sim_lab)
+
+        tem_arr, ppt_arr, pet_arr, qact_arr = args[0][:4]
+
+        kfs_dict = args[1]
+
+        if self.extra_flow_flag:
+            us_inflow_arr = args[0][4]
+
+        out_df = pd.DataFrame(
+            data=qact_arr, columns=['obs'], dtype=np.float32)
+
+        for k in range(1, self.kfolds + 1):
+            kf_str = f'kf_{k:02d}'
+
+            if opt_iter is None:
+                prm_vecs = self.calib_db[kf_str + '/prm_vecs'][...]
+
+            else:
+                iter_prm_vecs = self.calib_db[kf_str + '/iter_prm_vecs'][...]
+                prm_vecs = iter_prm_vecs[opt_iter, :, :].copy('c')
+
+            n_prms = prm_vecs.shape[0]
+
+            plt.figure(figsize=(17, 8))
+
+            for i in range(prm_vecs.shape[0]):
+                opt_prms = prm_vecs[i]
+
+                hbv_prms = tfm_opt_to_hbv_prms_py(
+                    self.prms_flags,
+                    self.f_var_infos,
+                    self.prms_idxs,
+                    self.f_vars,
+                    opt_prms,
+                    self.bds_arr,
+                    self.n_cells)
+
+                outputs_dict = hbv_loop_py(
+                    tem_arr,
+                    ppt_arr,
+                    pet_arr,
+                    hbv_prms,
+                    kfs_dict[k]['ini_arr'],
+                    self.area_arr,
+                    self.conv_ratio)
+
+                assert outputs_dict['loop_ret'] == 0.0
+
+                qsim_arr = outputs_dict['qsim_arr']
+
+                if self.extra_flow_flag:
+                    qsim_arr = qsim_arr + us_inflow_arr
+
+                plt.plot(qsim_arr, color='k', alpha=0.01, lw=0.5)
+
+                out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
+
+            plt.plot(qact_arr, color='r', alpha=0.7, lw=0.5)
+
+            plt.xlabel('Step no.')
+            plt.ylabel('Discharge')
+
+            plt.grid()
+
+            plt.title(
+                f'Discharge simulation using {self.opt_schm} parameters '
+                f'(n={n_prms}) for the catchment: {self.cat}, kf: {k:02d} and '
+                f'Optimization iteration: {opt_iter_lab}')
+
+            out_fig_name = (
+                f'{kf_str}_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.png')
+
+            plt.savefig(
+                os.path.join(self.qsims_dir, out_fig_name),
+                bbox_inches='tight',
+                dpi=150)
+
+            plt.close()
+
+        out_df.to_csv(
+            os.path.join(
+                self.qsims_dir,
+                f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.csv'),
+            float_format='%0.3f',
+            index=False,
+            sep=';')
         return
