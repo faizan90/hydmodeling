@@ -127,8 +127,8 @@ cdef void get_new_chull_vecs(
 
     for j in range(n_cpus):
         for i in range(mins.shape[1]):
-            temp_mins[j, i] = n_prms
-            mins[j, i] = n_prms
+            temp_mins[j, i] = n_prm_vecs
+            mins[j, i] = n_prm_vecs
 
     if use_c:
         depth_ftn_c(
@@ -317,11 +317,11 @@ cdef void gen_vecs_in_chull(
         with gil: print(f'Try no.: {tries_ctr}, ctr: {ctr}')
         pre_ctr = ctr
 
-        if not ctr:
+        if temp_rope_prms_strt_idx:
             for i in range(chull_vecs_ctr):
                 for j in range(n_prms):
                     temp_rope_prm_vecs[i, j] = chull_vecs[i, j]
-            
+
         for i in range(temp_rope_prms_strt_idx, n_temp_rope_prm_vecs):
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = (
@@ -427,8 +427,20 @@ cdef void gen_vecs_in_chull(
 
         if temp_rope_prms_strt_idx:
             for i in range(chull_vecs_ctr):
-                with gil: assert depths_arr[i] > 0, (
-                    ('Point previously on the chull has a depth of zero!'))
+#                 with gil: assert depths_arr[i] > 0, (
+#                     ('Point previously on the chull has a depth of zero!'))
+                if depths_arr[i] > 0:
+                    continue
+
+                with gil: 
+                    print(
+                        ('Point %d previously on the chull has '
+                         'a depth of zero!' % i))
+
+                    for j in range(chull_vecs_ctr):
+                        print('%0.6f, %0.6f - ' % (
+                            temp_rope_prm_vecs[i, j], chull_vecs[i, j]),
+                            end='')
 
         for i in range(n_temp_rope_prm_vecs):
             if ctr >= n_prm_vecs:
