@@ -320,7 +320,7 @@ cdef void gen_vecs_in_chull(
     while ctr < n_prm_vecs:
         with gil: print(f'Try no.: {tries_ctr}, ctr: {ctr}')
         pre_ctr = ctr
-        
+
         for i in range(chull_vecs_ctr):
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = chull_vecs[i, j]
@@ -427,6 +427,11 @@ cdef void gen_vecs_in_chull(
                     depths_arr,
                     chull_vecs_ctr,
                     n_cpus)
+
+        for i in range(chull_vecs_ctr):
+            if not depths_arr[i]:
+                with gil:
+                    print('Point %d previously on the hull has a depth of zero!' % i)
 
         for i in range(n_temp_rope_prm_vecs):
             if ctr >= n_prm_vecs:
