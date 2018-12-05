@@ -125,50 +125,52 @@ cdef void get_new_chull_vecs(
         for j in range(n_prms):
             acc_vecs[prm_vec_rank, j] = prm_vecs[i, j]
 
-    for j in range(n_cpus):
-        for i in range(mins.shape[1]):
-            temp_mins[j, i] = n_prm_vecs
-            mins[j, i] = n_prm_vecs
-
-    if use_c:
-        depth_ftn_c(
-            &acc_vecs[0, 0],
-            &acc_vecs[0, 0],
-            &uvecs[0, 0],
-            &dot_ref[0, 0],
-            &dot_test[0, 0],
-            &dot_test_sort[0, 0],
-            &temp_mins[0, 0],
-            &mins[0, 0],
-            &depths_arr[0],
-            n_acc_vecs,
-            n_acc_vecs,
-            n_uvecs,
-            n_prms,
-            n_cpus)
-
-    else:
-        depth_ftn(
-            acc_vecs,
-            acc_vecs,
-            uvecs,
-            dot_ref,
-            dot_test,
-            dot_test_sort,
-            temp_mins,
-            mins,
-            depths_arr,
-            n_acc_vecs,
-            n_acc_vecs,
-            n_cpus)
+#    Not checking depths anymore. Just taking all the points
+#     for j in range(n_cpus):
+#         for i in range(mins.shape[1]):
+#             temp_mins[j, i] = n_prm_vecs
+#             mins[j, i] = n_prm_vecs
+# 
+#     if use_c:
+#         depth_ftn_c(
+#             &acc_vecs[0, 0],
+#             &acc_vecs[0, 0],
+#             &uvecs[0, 0],
+#             &dot_ref[0, 0],
+#             &dot_test[0, 0],
+#             &dot_test_sort[0, 0],
+#             &temp_mins[0, 0],
+#             &mins[0, 0],
+#             &depths_arr[0],
+#             n_acc_vecs,
+#             n_acc_vecs,
+#             n_uvecs,
+#             n_prms,
+#             n_cpus)
+# 
+#     else:
+#         depth_ftn(
+#             acc_vecs,
+#             acc_vecs,
+#             uvecs,
+#             dot_ref,
+#             dot_test,
+#             dot_test_sort,
+#             temp_mins,
+#             mins,
+#             depths_arr,
+#             n_acc_vecs,
+#             n_acc_vecs,
+#             n_cpus)
 
     ctr = 0
     for i in range(n_acc_vecs):
 #         with gil: print(f'd[{i}]: {depths_arr[i]}')
 
-        with gil: assert depths_arr[i] > 0, (
-            'Impossible depth of zero or less!')
+#         with gil: assert depths_arr[i] > 0, (
+#             f'Impossible depth of zero or less ({depths_arr[i]})!')
 
+        # by not checking for boundary point, take all the points.
 #         if depths_arr[i] != 1:
 #             continue
 
@@ -179,8 +181,9 @@ cdef void get_new_chull_vecs(
 
     chull_vecs_ctr[0] = ctr
 
-    with gil: print(
-        f'{chull_vecs_ctr[0]} out of {n_acc_vecs} points on the new chull.')
+#    Took all the points, so no need to show this.
+#     with gil: print(
+#         f'{chull_vecs_ctr[0]} out of {n_acc_vecs} points on the new chull.')
 
     # just to be sure
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
