@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=True
+# cython: boundscheck=False
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -14,7 +14,7 @@ from .data_depths cimport depth_ftn, pre_depth, post_depth
 
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
-cdef DT_UL use_c = 0
+cdef DT_UL use_c = 1
 
 
 cdef extern from "cmath":
@@ -169,8 +169,8 @@ cdef void get_new_chull_vecs(
         with gil: assert depths_arr[i] > 0, (
             'Impossible depth of zero or less!')
 
-        if depths_arr[i] != 1:
-            continue
+#         if depths_arr[i] != 1:
+#             continue
 
         for j in range(n_prms):
             chull_vecs[ctr, j] = acc_vecs[i, j]
@@ -444,7 +444,7 @@ cdef void gen_vecs_in_chull(
 #                         print('%0.6f, %0.6f - ' % (
 #                             temp_rope_prm_vecs[i, j], chull_vecs[i, j]),
 #                             end='')
-                    print('Squared difference sum: %0.16f' % sq_diff)
+                    print('Squared difference sum: %5.16E' % sq_diff)
 
 #                     print('')
 
