@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=False
+# cython: boundscheck=True
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -14,7 +14,7 @@ from .data_depths cimport depth_ftn, pre_depth, post_depth
 
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
-cdef DT_UL use_c = 1
+cdef DT_UL use_c = 0
 
 
 cdef extern from "cmath":
@@ -296,6 +296,7 @@ cdef void gen_vecs_in_chull(
         DT_UL n_temp_rope_prm_vecs = temp_rope_prm_vecs.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
         DT_UL temp_rope_prms_strt_idx = chull_vecs_ctr
+        DT_D sq_diff
 
     if depth_ftn_type == 2:
         if use_c:
@@ -437,10 +438,15 @@ cdef void gen_vecs_in_chull(
                         ('Point %d previously on the chull has '
                          'a depth of zero!' % i))
 
-                    for j in range(chull_vecs_ctr):
-                        print('%0.6f, %0.6f - ' % (
-                            temp_rope_prm_vecs[i, j], chull_vecs[i, j]),
-                            end='')
+                    sq_diff = 0
+                    for j in range(n_prms):
+                        sq_diff += (temp_rope_prm_vecs[i, j] - chull_vecs[i, j])**2
+#                         print('%0.6f, %0.6f - ' % (
+#                             temp_rope_prm_vecs[i, j], chull_vecs[i, j]),
+#                             end='')
+                    print('Squared difference sum: %0.16f' % sq_diff)
+
+#                     print('')
 
         for i in range(n_temp_rope_prm_vecs):
             if ctr >= n_prm_vecs:
