@@ -38,7 +38,8 @@ class TauDEMAnalysis:
 
 		if not os_exists(self.gage_shp_path):
 			raise IOError(
-				'gage_shp file does not exist at the given location!')
+				'gage_shp (%s) file does not exist at the given location!' % (
+					self.gage_shp_path))
 
 		self.fil = os_join(self.outputs_dir, 'fil.tif')
 		self.fdr = os_join(self.outputs_dir, 'fdr.tif')

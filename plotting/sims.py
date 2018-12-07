@@ -25,24 +25,6 @@ from ..models import (
 plt.ioff()
 
 
-def plot_cat_qsims(cat_db):
-
-    with h5py.File(cat_db, 'r') as db:
-
-        opt_iters = [None, 11]
-
-        cv_flag = db['data'].attrs['cv_flag']
-
-        plot_sims_cls = PlotCatQSims(db)
-
-        for opt_iter in opt_iters:
-            plot_sims_cls.run_prm_sims('calib', opt_iter)
-
-            if cv_flag:
-                plot_sims_cls.run_prm_sims('valid', opt_iter)
-    return
-
-
 def plot_cat_hbv_sim(plot_args):
 
     '''Plot all HBV variables along with some model information for all
@@ -1089,6 +1071,28 @@ class PlotCatHBVSimKf:
         return
 
 
+def plot_cat_qsims(cat_db):
+
+    with h5py.File(cat_db, 'r') as db:
+
+        opt_iters = [None]
+        long_short_break_freqs = ['month']
+
+        cv_flag = db['data'].attrs['cv_flag']
+
+        plot_sims_cls = PlotCatQSims(db)
+
+        for long_short_break_freq in long_short_break_freqs:
+            for opt_iter in opt_iters:
+                cv_args = plot_sims_cls.run_prm_sims(
+                    'calib', opt_iter, long_short_break_freq)
+
+                if cv_flag:
+                    plot_sims_cls.run_prm_sims(
+                        'valid', opt_iter, long_short_break_freq, cv_args)
+    return
+
+
 class PlotCatQSims:
 
     '''Just to have less mess'''
@@ -1108,6 +1112,8 @@ class PlotCatQSims:
         self.calib_db = db['calib']
 
         self.opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
+
+        self.off_idx = db['data'].attrs['off_idx']
 
         self.f_var_infos = db['cdata/aux_var_infos'][...]
         self.prms_idxs = db['cdata/use_prms_idxs'][...]
@@ -1166,24 +1172,31 @@ class PlotCatQSims:
 
         return input_arrs, all_kfs_dict
 
-    def run_prm_sims(self, sim_lab, opt_iter):
+    def run_prm_sims(self, sim_lab, opt_iter, long_short_break_freq, *args):
 
         if opt_iter is None:
-            opt_iter_lab = 'last'
+            opt_iter_lab = 'final'
 
         else:
             assert (opt_iter >= 0) and isinstance(opt_iter, int)
 
             opt_iter_lab = f'{opt_iter}'
 
-        args = self._get_data(sim_lab)
+        if long_short_break_freq == 'month':
+            pass
 
-        tem_arr, ppt_arr, pet_arr, qact_arr = args[0][:4]
+        else:
+            raise ValueError(
+                f'Undefined long_short_break_freq: {long_short_break_freq}!')
 
-        kfs_dict = args[1]
+        sim_opt_data = self._get_data(sim_lab)
+
+        tem_arr, ppt_arr, pet_arr, qact_arr = sim_opt_data[0][:4]
+
+        kfs_dict = sim_opt_data[1]
 
         if self.extra_flow_flag:
-            us_inflow_arr = args[0][4]
+            us_inflow_arr = sim_opt_data[0][4]
 
         out_df = pd.DataFrame(
             data=qact_arr, columns=['obs'], dtype=np.float32)
@@ -1199,6 +1212,18 @@ class PlotCatQSims:
                 prm_vecs = iter_prm_vecs[opt_iter, :, :].copy('c')
 
             n_prms = prm_vecs.shape[0]
+
+            probs = (np.arange(1.0, n_prms + 1) / (n_prms + 1))
+
+            obj_ftns_dict = {}
+
+            obj_ftns_dict['ns'] = [get_ns_cy, 'NS', []]
+
+            obj_ftns_dict['ln_ns'] = [get_ln_ns_cy, 'Ln_NS', []]
+
+            obj_ftns_dict['kge'] = [get_kge_cy, 'KGE', []]
+
+            obj_ftns_dict['pcorr'] = [get_pcorr_cy, 'PCorr.', []]
 
             plt.figure(figsize=(17, 8))
 
@@ -1234,6 +1259,11 @@ class PlotCatQSims:
 
                 out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
 
+                for obj_key in obj_ftns_dict:
+                    obj_ftns_dict[obj_key][2].append(
+                        obj_ftns_dict[obj_key][0](
+                            qact_arr, qsim_arr, self.off_idx))
+
             plt.plot(qact_arr, color='r', alpha=0.7, lw=0.5)
 
             plt.xlabel('Step no.')
@@ -1256,11 +1286,215 @@ class PlotCatQSims:
 
             plt.close()
 
-        out_df.to_csv(
-            os.path.join(
-                self.qsims_dir,
-                f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.csv'),
-            float_format='%0.3f',
-            index=False,
-            sep=';')
-        return
+            for obj_key in obj_ftns_dict:
+                obj_vals = np.array(obj_ftns_dict[obj_key][2])
+
+                # pre_obj_vals
+                __, (ax1, ax2) = plt.subplots(
+                    2, 1, figsize=(15, 10), sharex=True)
+
+                ax1.set_title(
+                    f'{obj_ftns_dict[obj_key][1]} distribution\n'
+                    f'Min. obj.: {obj_vals.min():0.4f}, '
+                    f'Max. obj.: {obj_vals.max():0.4f}')
+
+                ax1.plot(np.sort(obj_vals), probs, marker='o', alpha=0.8)
+                ax1.set_ylabel('Non-exceedence Probability (-)')
+                ax1.grid()
+
+                ax2.hist(obj_vals, bins=20)
+                ax2.set_xlabel(f'{obj_ftns_dict[obj_key][1]} (-)')
+                ax2.set_ylabel('Frequency (-)')
+
+                out_obj_fig = (
+                    f'hbv_perf_cdf_{self.cat}_{sim_lab}_{kf_str}_'
+                    f'{obj_key}_{opt_iter_lab}_opt_qsims.png')
+
+                plt.savefig(
+                    os.path.join(self.qsims_dir, out_obj_fig),
+                    bbox_inches='tight')
+                plt.close()
+
+#         out_df.to_csv(
+#             os.path.join(
+#                 self.qsims_dir,
+#                 f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.csv'),
+#             float_format='%0.3f',
+#             index=False,
+#             sep=';')
+
+        return self._classify_short_long_term(
+            out_df, sim_lab, opt_iter_lab, long_short_break_freq, *args)
+
+    def _classify_short_long_term(
+            self, sims_df, sim_lab, opt_iter_lab, long_short_break_freq, *args):
+
+        n_steps = sims_df.shape[0]
+
+        if (sims_df.shape[0] % 2):
+            n_steps -= 1
+
+        if long_short_break_freq == 'month':
+            break_idx = int(n_steps // 30)
+
+        sims_arr = sims_df.values[:n_steps, :]
+
+        n_sims = sims_arr.shape[1]
+
+        obs_arr = sims_arr[:, 0]
+
+        obs_ft = np.fft.fft(obs_arr)
+
+        obs_phis = np.angle(obs_ft)
+
+        obs_amps = np.abs(obs_ft)
+
+        use_obs_phis = obs_phis[1: (n_steps // 2)]
+        use_obs_amps = obs_amps[1: (n_steps // 2)]
+
+        fig_size = (18, 10)
+
+        full_fig = plt.figure(figsize=fig_size)
+        part_fig = plt.figure(figsize=fig_size)
+
+        part_freq_idx = max(int(0.1 * n_steps // 2), 100)
+        assert part_freq_idx > 0
+
+        sim_plot_alpha = min(0.1, 5 / (n_sims // 2))
+
+        cmap = plt.get_cmap('winter')
+
+        if sim_lab == 'calib':
+            clr_vals = []
+
+        else:
+            clr_vals = args[0][0]
+
+        fin_cumm_rho_arrs = []
+
+        for i in range(1, n_sims):
+            sim_arr = sims_arr[:, i]
+
+            sim_ft = np.fft.fft(sim_arr)
+
+            sim_phis = np.angle(sim_ft)
+
+            sim_amps = np.abs(sim_ft)
+
+            use_sim_phis = sim_phis[1: (n_steps // 2)]
+            use_sim_amps = sim_amps[1: (n_steps // 2)]
+
+            indiv_cov_arr = (use_obs_amps * use_sim_amps) * (
+                np.cos(use_obs_phis - use_sim_phis))
+
+            tot_cov = indiv_cov_arr.sum()
+
+            cumm_rho_arr = indiv_cov_arr.cumsum() / tot_cov
+
+            ft_corr = indiv_cov_arr.sum() / (
+                ((use_obs_amps ** 2).sum() * (use_sim_amps ** 2).sum()) ** 0.5)
+
+            fin_cumm_rho_arr = cumm_rho_arr * ft_corr
+            fin_cumm_rho_arrs.append(fin_cumm_rho_arr)
+
+        fin_cumm_rho_arrs = np.array(fin_cumm_rho_arrs)
+
+        corr_diffs = fin_cumm_rho_arrs[:, -1] - fin_cumm_rho_arrs[:, break_idx]
+        min_corr_diff = corr_diffs.min()
+        max_corr_diff = corr_diffs.max()
+        min_max_corr_diff = max_corr_diff - min_corr_diff
+
+        for i in range(n_sims - 1):
+            fin_cumm_rho_arr = fin_cumm_rho_arrs[i]
+
+            if sim_lab == 'calib':
+                clr_val = (corr_diffs[i] - min_corr_diff) / min_max_corr_diff
+                clr_vals.append(clr_val)
+
+            else:
+                clr_val = clr_vals[i]
+
+            assert 0 <= clr_val <= 1
+
+            sim_clr = cmap(clr_val)
+
+            plt.figure(full_fig.number)
+            plt.plot(
+                fin_cumm_rho_arr,
+                alpha=sim_plot_alpha,
+                color=sim_clr)
+
+            plt.figure(part_fig.number)
+            plt.plot(
+                fin_cumm_rho_arr[:part_freq_idx],
+                alpha=sim_plot_alpha,
+                color=sim_clr)
+
+        indiv_cov_arr = (use_obs_amps * use_obs_amps) * (
+            np.cos(use_obs_phis - use_obs_phis))
+
+        tot_cov = indiv_cov_arr.sum()
+
+        cumm_rho_arr = indiv_cov_arr.cumsum() / tot_cov
+
+        ft_corr = indiv_cov_arr.sum() / (
+            ((use_obs_amps ** 2).sum() * (use_obs_amps ** 2).sum()) ** 0.5)
+
+        plt.figure(full_fig.number)
+        plt.plot((cumm_rho_arr * ft_corr), alpha=0.5, color='r')
+        plt.axvline(break_idx, color='orange')
+
+        plt.title(
+            f'Cummulative correlation contribution per fourier frequency\n'
+            f'n_sims: {n_sims}, n_steps: {n_steps}')
+
+        plt.xlabel('Frequency no.')
+        plt.ylabel('Contribution (-)')
+
+        plt.grid()
+        plt.ylim(0, 1)
+
+        cmap_mappable = plt.cm.ScalarMappable(cmap=cmap)
+        cmap_mappable.set_array([])
+
+        plt.colorbar(cmap_mappable)
+
+        out_fig_name = (
+            f'ft_corrs_cat_{self.cat}_{sim_lab}_{opt_iter_lab}_all_freqs.png')
+
+        plt.savefig(
+            os.path.join(self.qsims_dir, out_fig_name),
+            bbox_inches='tight')
+
+        plt.close()
+
+        plt.figure(part_fig.number)
+        plt.plot(
+            (cumm_rho_arr * ft_corr)[:part_freq_idx],
+            alpha=0.7,
+            color='r')
+
+        plt.axvline(break_idx, color='orange')
+
+        plt.title(
+            f'Correlation contribution per fourier frequency\n'
+            f'n_sims: {n_sims}, n_steps: {n_steps}')
+
+        plt.xlabel('Frequency no.')
+        plt.ylabel('Contribution (-)')
+
+        plt.grid()
+        plt.ylim(0, 1)
+
+        plt.colorbar(cmap_mappable)
+
+        out_fig_name = (
+            f'ft_corrs_cat_{self.cat}_{sim_lab}_{opt_iter_lab}_first_'
+            f'{part_freq_idx}_freqs.png')
+
+        plt.savefig(
+            os.path.join(self.qsims_dir, out_fig_name),
+            bbox_inches='tight')
+
+        plt.close()
+        return [clr_vals]

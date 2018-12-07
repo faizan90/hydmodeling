@@ -27,7 +27,7 @@ def get_shp_stuff(in_shp, field_id):
     Geometries are inside a dictionary whose keys are the values of field_id
     '''
 
-    assert os.path.exists(in_shp), 'in_shp does not exist!'
+    assert os.path.exists(in_shp), 'in_shp (%s) does not exist!' % in_shp
 
     in_ds = ogr.Open(in_shp)
 
@@ -63,6 +63,8 @@ def get_shp_stuff(in_shp, field_id):
             continue
 
         geom = curr_feat.GetGeometryRef().Clone()
+        assert geom is not None
+
         geoms_dict[cat_no] = geom
 
     in_ds.Destroy()
@@ -388,7 +390,7 @@ def crt_strms_rltn_tree(
             stms_prcssed_df.loc[stm, ['prcssed', 'optd']] = False
 
     for prcss_cat in prcss_cats_list:
-        assert prcss_cat in cats_prcssed_df.index
+        assert prcss_cat in cats_prcssed_df.index, prcss_cat
 
     for stm_no in in_dem_net_df.index:
         if (in_dem_net_df.loc[stm_no, dem_net_header[0]]
