@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=False
+# cython: boundscheck=True
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -71,6 +71,7 @@ cdef DT_D obj_ftn(
     ) nogil except +:
 
     cdef:
+        Py_ssize_t i
         DT_D res, obj_ftn_wts_sum
 
     tfm_opt_to_hbv_prms(
@@ -126,9 +127,13 @@ cdef DT_D obj_ftn(
 
         else:
             cmpt_resampled_arr(
-                qsim_arr, 
+                qsim_arr,
                 qsim_resamp_arr,
                 obj_ftn_resamp_tags_arr)
+
+#     with gil:
+#         for i in range(obj_ftn_resamp_tags_arr.shape[0] - 1):
+#             print(qsim_resamp_arr[i])
 
     if obj_ftn_wts[0]:
         if obj_longs[resamp_obj_ftns_flag_i]:

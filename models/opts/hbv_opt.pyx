@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=False
+# cython: boundscheck=True
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -107,6 +107,7 @@ cpdef dict hbv_opt(args):
         DT_UL opt_flag = 1, use_obs_flow_flag, use_step_flag
         DT_UL max_iters, max_cont_iters, off_idx, n_prms, n_hm_prms
         DT_UL iter_curr = 0, last_succ_i = 0, n_succ = 0, cont_iter = 0
+        DT_UL resamp_obj_ftns_flag
 
         DT_D obj_ftn_tol, res, prm_pcnt_tol
         DT_D tol_curr = np.inf, tol_pre = np.inf
@@ -182,7 +183,7 @@ cpdef dict hbv_opt(args):
 
         #======================================================================
         # All other variables
-        DT_UL n_cpus, resamp_obj_ftns_flag, n_resamp_tags = 0, a_zero = 0
+        DT_UL n_cpus, n_resamp_tags = 0, a_zero = 0
 
         DT_D min_q_thresh, mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
 
@@ -247,16 +248,16 @@ cpdef dict hbv_opt(args):
      n_hm_prms,
      use_step_flag,
      use_step_arr,
-     min_q_thresh,
-     resamp_obj_ftns_flag,
-     obj_ftn_resamp_tags_arr) = args[6]
+     min_q_thresh) = args[6]
 
     (area_arr,
      prms_idxs, 
      prms_flags,
      prms_span_idxs,
      f_vars,
-     f_var_infos) = args[7]
+     f_var_infos,
+     resamp_obj_ftns_flag,
+     obj_ftn_resamp_tags_arr) = args[7]
 
     n_prms = bounds.shape[0]
     n_recs = cats_outflow_arr.shape[0]
@@ -325,11 +326,14 @@ cpdef dict hbv_opt(args):
 
     for stm in stm_to_idx_dict:
         stm_to_idx_map[stm] = stm_to_idx_dict[stm]
-
+ 
     if resamp_obj_ftns_flag:
         n_resamp_tags = obj_ftn_resamp_tags_arr.shape[0]
-        qsim_resamp_mult_arr = np.zeros((n_cpus, n_resamp_tags), dtype=DT_D_NP)
-        qact_resamp_arr = np.zeros(n_resamp_tags, dtype=DT_D_NP)
+
+        qsim_resamp_mult_arr = np.zeros(
+            (n_cpus, n_resamp_tags - 1), dtype=DT_D_NP)
+
+        qact_resamp_arr = np.zeros(n_resamp_tags - 1, dtype=DT_D_NP)
 
         if use_step_flag:
             cmpt_resampled_arr_prt(
@@ -386,6 +390,13 @@ cpdef dict hbv_opt(args):
             ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &off_idx)
 
             act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
+
+    print(mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev)
+
+    for i in range(n_resamp_tags - 1):
+        print(qact_resamp_arr[i])
+
+    raise Exception
 
     bds_dfs = np.zeros((n_prms, 2), dtype=DT_D_NP)
 
@@ -535,7 +546,7 @@ cpdef dict hbv_opt(args):
         schedule='dynamic', 
         nogil=True,
         num_threads=n_cpus):
-
+ 
         tid = threadid()
 
         for k in range(n_prms):
@@ -584,6 +595,8 @@ cpdef dict hbv_opt(args):
 
         else:
             pre_obj_vals[i] = res
+
+#     raise Exception(res)
 
     for i in range(n_prm_vecs):
 #         print('%d Ini res:' % i, pre_obj_vals[i])

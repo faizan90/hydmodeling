@@ -12,6 +12,7 @@ import pandas as pd
 
 from faizpy import get_ns
 from hydmodeling.models.solve_cats_sys import get_resample_tags_arr
+from hydmodeling.models.miscs.misc_ftns import get_resampled_arr_cy
 
 
 def get_resamp_ns(ref, sim, tags):
@@ -67,15 +68,25 @@ def main():
     main_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\test_resampled_obj_ftns')
     os.chdir(main_dir)
 
+#     in_df = pd.read_csv(
+#         r'cat_411_qsims.csv',
+#         sep=';',
+#         usecols=['obs', 'kf_01_sim_0000'])
+#
+#     in_df.index = pd.date_range('2005-01-01', periods=in_df.shape[0])
+#     in_df = in_df.loc['2007-06-05':'2014-07-14']
+
     in_df = pd.read_csv(
-        r'cat_411_qsims.csv',
+        r'neckar_daily_discharge_1961_2015.csv',
         sep=';',
-        usecols=['obs', 'kf_01_sim_0000'])
+        index_col=0)
 
-    in_df.index = pd.date_range('2005-01-01', periods=in_df.shape[0])
-    in_df = in_df.loc['2007-06-05':'2014-07-14']
+    in_df.index = pd.to_datetime(in_df.index, format='%Y-%m-%d')
+    in_df = in_df.loc['1961-06-01':'1971-12-31', ['411', '411']].iloc[365:]
 
-    resample_df = in_df.resample(rule='W').mean()
+    resample_df = in_df  # .resample(rule='Y').mean()
+    print(resample_df)
+    raise Exception
 
     orig_ns = get_ns(in_df.iloc[:, 0].values, in_df.iloc[:, 1].values)
     print(f'orig_ns: {orig_ns:0.8f}')
@@ -84,14 +95,26 @@ def main():
         resample_df.iloc[:, 0].values, resample_df.iloc[:, 1].values)
     print(f'resamp_ns_py: {resamp_ns_py:0.8f}')
 
-    resample_tags_arr = in_df.index.weekofyear
+    resample_tags_arr = in_df.index.dayofyear  # .weekofyear
 
-    tags = get_resample_tags_arr(resample_tags_arr)
+    tags = get_resample_tags_arr(resample_tags_arr, 365)
 
     resamp_ns_my = get_resamp_ns(
         in_df.iloc[:, 0].values, in_df.iloc[:, 1].values, tags)
 
     print(f'resamp_ns_my: {resamp_ns_my:0.8f}')
+
+    resampled_qact_cy = get_resampled_arr_cy(
+        in_df.iloc[:, 0].values.copy(order='c'), tags)
+
+    resampled_qsim_cy = get_resampled_arr_cy(
+        in_df.iloc[:, 1].values.copy(order='c'), tags)
+
+    resamp_ns_cy = get_ns(
+        resampled_qact_cy, resampled_qsim_cy)
+
+    print(f'resamp_ns_cy: {resamp_ns_cy:0.8f}')
+
     return
 
 

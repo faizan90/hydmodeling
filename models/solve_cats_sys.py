@@ -289,9 +289,6 @@ def solve_cats_sys(
 
         for sel_cat in sel_cats}
 
-    obj_ftn_resamp_tags_arr = get_resample_tags_arr(
-        fin_ppt_dfs_dict[sel_cats].index.month, warm_up_steps)
-
     dumm_dict = None
     kfold_prms_dict = {}
 
@@ -317,7 +314,7 @@ def solve_cats_sys(
         'min_q_thresh': min_q_thresh,
         'time_freq': time_freq,
         'cv_flag': cv_flag,
-        'obj_ftn_resamp_tags_arr': obj_ftn_resamp_tags_arr}
+        'resamp_obj_ftns_flag': 1}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -532,7 +529,11 @@ def solve_cat(
     min_q_thresh = float(kwargs['min_q_thresh'])
     time_freq = str(kwargs['time_freq'])
     cv_flag = int(kwargs['cv_flag'])
-    obj_ftn_resamp_tags_arr = kwargs['obj_ftn_resamp_tags_arr']
+    resamp_obj_ftns_flag = kwargs['resamp_obj_ftns_flag']
+
+    if resamp_obj_ftns_flag is not None:
+        obj_ftn_resamp_tags_arr = get_resample_tags_arr(
+            in_q_df.index.month, warm_up_steps)
 
     assert in_use_step_ser.shape[0] == in_q_df.shape[0]
 
@@ -1043,8 +1044,7 @@ def solve_cat(
             n_hm_params,
             use_step_flag,
             use_step_arr,
-            min_q_thresh,
-            obj_ftn_resamp_tags_arr])
+            min_q_thresh])
 
         assert cat_area_ratios_arr.shape[0] == n_cells
 
@@ -1055,7 +1055,9 @@ def solve_cat(
                 all_prms_flags,
                 prms_span_idxs,
                 aux_vars,
-                aux_var_infos])
+                aux_var_infos,
+                resamp_obj_ftns_flag,
+                obj_ftn_resamp_tags_arr])
 
             if opt_schm_vars_dict['opt_schm'] == 'DE':
                 curr_cat_params.append(1)

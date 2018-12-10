@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=False
+# cython: boundscheck=True
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -379,7 +379,7 @@ cdef void cmpt_resampled_arr(
 
         DT_D tag_vals_sum
 
-    for i in range(resamp_arr.shape[0] - 1):
+    for i in range(tags_arr.shape[0] - 1):
         beg_tag_idx = tags_arr[i]
         end_tag_idx = tags_arr[i + 1]
 
@@ -389,6 +389,14 @@ cdef void cmpt_resampled_arr(
 
         resamp_arr[i] = tag_vals_sum / (end_tag_idx - beg_tag_idx)
     return
+
+def get_resampled_arr_cy(ref_arr, tags_arr):
+
+    cdef:
+        DT_D[::1] resamp_arr = np.full(tags_arr.shape[0] - 1, np.nan)
+
+    cmpt_resampled_arr(ref_arr, resamp_arr, tags_arr)
+    return np.asarray(resamp_arr)
 
 
 def get_pcorr_cy(
