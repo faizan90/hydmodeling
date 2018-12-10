@@ -5,7 +5,7 @@
 # cython: language_level=3
 # cython: infer_types(None)
 
-from ..miscs.dtypes cimport DT_D, DT_UL
+from ..miscs.dtypes cimport DT_D, DT_UL, DT_ULL
 
 
 cdef DT_D get_mean(
@@ -166,3 +166,9 @@ cdef void cmpt_tt_from_scale_arr(
     const DT_D *exponent,
     const DT_UL *n_cells) nogil
 
+
+cdef void cmpt_resampled_arr(
+        const DT_D[::1] ref_arr, 
+              DT_D[::1] resamp_arr, 
+        const DT_ULL[::1] tags_arr,
+        ) nogil

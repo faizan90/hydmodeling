@@ -34,6 +34,8 @@ from hydmodeling import (
     plot_cats_vars_errors,
     plot_cats_qsims)
 
+raise Exception
+
 
 def load_pickle(in_file, mode='rb'):
     with open(in_file, mode) as _pkl_hdl:

@@ -97,6 +97,8 @@ def solve_cats_sys(
         assert isinstance(_df, pd.DataFrame)
         assert np.issubdtype(_df.values.dtype, np.float64)
 
+    _df = None
+
     assert isinstance(aux_cell_vars_dict, dict)
 
     assert isinstance(in_date_fmt, str)
@@ -202,23 +204,7 @@ def solve_cats_sys(
 
     n_steps = date_range.shape[0]
 
-    if time_freq == 'D':
-        pass
-    elif time_freq == '24H':
-        pass
-    elif time_freq == '12H':
-        pass
-    elif time_freq == '8H':
-        pass
-    elif time_freq == '6H':
-        pass
-    elif time_freq == '3H':
-        pass
-    elif time_freq == '2H':
-        pass
-    elif time_freq == 'H':
-        pass
-    else:
+    if time_freq not in ['D', '24H', '12H', '8H', '6H', '3H', '2H', 'H']:
         raise NotImplementedError(f'Invalid time-freq: {time_freq}')
 
     assert date_range.intersection(in_q_df.index).shape[0] == n_steps
@@ -303,6 +289,9 @@ def solve_cats_sys(
 
         for sel_cat in sel_cats}
 
+    obj_ftn_resamp_tags_arr = get_resample_tags_arr(
+        fin_ppt_dfs_dict[sel_cats].index.month, warm_up_steps)
+
     dumm_dict = None
     kfold_prms_dict = {}
 
@@ -327,7 +316,8 @@ def solve_cats_sys(
         'use_step_flag': use_step_flag,
         'min_q_thresh': min_q_thresh,
         'time_freq': time_freq,
-        'cv_flag': cv_flag}
+        'cv_flag': cv_flag,
+        'obj_ftn_resamp_tags_arr': obj_ftn_resamp_tags_arr}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -542,6 +532,7 @@ def solve_cat(
     min_q_thresh = float(kwargs['min_q_thresh'])
     time_freq = str(kwargs['time_freq'])
     cv_flag = int(kwargs['cv_flag'])
+    obj_ftn_resamp_tags_arr = kwargs['obj_ftn_resamp_tags_arr']
 
     assert in_use_step_ser.shape[0] == in_q_df.shape[0]
 
@@ -999,22 +990,32 @@ def solve_cat(
         else:
             stms_idxs = np.array([0], dtype=np.int32)
 
+        conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / 1000
+
         if time_freq == 'D':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400)
+            conv_ratio /= 86400
+
         elif time_freq == '24H':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400)
+            conv_ratio /= 86400
+
         elif time_freq == '12H':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400 * 0.5)
+            conv_ratio /= 86400 * 0.5
+
         elif time_freq == '8H':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 28800)
+            conv_ratio /= 28800
+
         elif time_freq == '6H':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 86400 * 0.25)
+            conv_ratio /= 86400 * 0.25
+
         elif time_freq == '3H':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 10800)
+            conv_ratio /= 10800
+
         elif time_freq == '2H':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 7200)
+            conv_ratio /= 7200
+
         elif time_freq == 'H':
-            conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / (1000. * 3600)
+            conv_ratio /= 3600
+
         else:
             raise ValueError(f'Incorrect time_freq: {time_freq}')
 
@@ -1042,7 +1043,8 @@ def solve_cat(
             n_hm_params,
             use_step_flag,
             use_step_arr,
-            min_q_thresh])
+            min_q_thresh,
+            obj_ftn_resamp_tags_arr])
 
         assert cat_area_ratios_arr.shape[0] == n_cells
 
@@ -1476,3 +1478,16 @@ def get_var_dicts(
     out_pets = get_var_dict_p(in_pets)
 
     return (out_ppts, out_tems, out_pets)
+
+
+def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
+
+    tags = [warm_up_steps]
+    n_vals = in_resamp_idxs.shape[0]
+
+    for i in range(warm_up_steps, n_vals):
+        if in_resamp_idxs[i] - in_resamp_idxs[i - 1]:
+            tags.append(i)
+
+    tags.append(n_vals)
+    return np.array(tags, dtype=np.uint64)

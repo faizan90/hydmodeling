@@ -1,4 +1,4 @@
-from ..miscs.dtypes cimport DT_D, DT_UL
+from ..miscs.dtypes cimport DT_D, DT_UL, DT_ULL
 from libcpp.map cimport map as cmap
 
 
@@ -10,6 +10,8 @@ cdef DT_D obj_ftn(
     const DT_UL[::1] obj_longs,
     const DT_UL[::1] use_step_arr,
 
+    const DT_ULL[::1] obj_ftn_resamp_tags_arr,
+
     const DT_UL[:, ::1] prms_flags,
     const DT_UL[:, ::1] f_var_infos,
 
@@ -18,6 +20,8 @@ cdef DT_D obj_ftn(
     const DT_D[::1] obj_ftn_wts,
           DT_D[::1] opt_prms,
     const DT_D[::1] qact_arr,
+    const DT_D[::1] qact_resamp_arr,
+          DT_D[::1] qsim_resamp_arr,
     const DT_D[::1] area_arr,
           DT_D[::1] qsim_arr,
           DT_D[::1] inflow_arr,

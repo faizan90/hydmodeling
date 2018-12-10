@@ -24,13 +24,15 @@ from ..miscs.misc_ftns cimport (
     get_mean,
     get_ln_mean,
     get_variance,
-    del_idx)
+    del_idx,
+    cmpt_resampled_arr)
 from ..miscs.misc_ftns_partial cimport (
     get_demr_prt, 
     get_ln_demr_prt,
     get_mean_prt,
     get_ln_mean_prt,
-    get_variance_prt)
+    get_variance_prt,
+    cmpt_resampled_arr_prt)
 from ..miscs.dtypes cimport (
     DT_D,
     DT_UL,
@@ -54,6 +56,8 @@ from ..miscs.dtypes cimport (
     n_cells_i,
     n_hbv_prms_i,
     use_step_flag_i,
+    resamp_obj_ftns_flag_i,
+    a_zero_i,
     rnof_q_conv_i,
     demr_i,
     ln_demr_i,
@@ -160,10 +164,13 @@ cpdef dict hbv_opt(args):
 
         DT_UL[::1] stms_idxs
 
-        DT_D[::1] inflow_arr, qact_arr, f_vars, area_arr
+        DT_ULL[::1] obj_ftn_resamp_tags_arr
+
+        DT_D[::1] inflow_arr, qact_arr, f_vars, area_arr, qact_resamp_arr
         DT_D[:, ::1] inis_arr, temp_arr, prec_arr, petn_arr, route_prms
         DT_D[:, ::1] dem_net_arr
         DT_D[:, ::1] qsim_mult_arr, inflow_mult_arr
+        DT_D[:, ::1] qsim_resamp_mult_arr
         DT_D[:, :, :, ::1] outs_mult_arr
 
         cmap[long, long] cat_to_idx_map, stm_to_idx_map
@@ -175,7 +182,7 @@ cpdef dict hbv_opt(args):
 
         #======================================================================
         # All other variables
-        DT_UL n_cpus
+        DT_UL n_cpus, resamp_obj_ftns_flag, n_resamp_tags = 0, a_zero = 0
 
         DT_D min_q_thresh, mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
 
@@ -240,7 +247,9 @@ cpdef dict hbv_opt(args):
      n_hm_prms,
      use_step_flag,
      use_step_arr,
-     min_q_thresh) = args[6]
+     min_q_thresh,
+     resamp_obj_ftns_flag,
+     obj_ftn_resamp_tags_arr) = args[6]
 
     (area_arr,
      prms_idxs, 
@@ -317,25 +326,66 @@ cpdef dict hbv_opt(args):
     for stm in stm_to_idx_dict:
         stm_to_idx_map[stm] = stm_to_idx_dict[stm]
 
-    if use_step_flag:
-        mean_ref = get_mean_prt(qact_arr, use_step_arr, &off_idx)
-        ln_mean_ref = get_ln_mean_prt(qact_arr, use_step_arr, &off_idx)
+    if resamp_obj_ftns_flag:
+        n_resamp_tags = obj_ftn_resamp_tags_arr.shape[0]
+        qsim_resamp_mult_arr = np.zeros((n_cpus, n_resamp_tags), dtype=DT_D_NP)
+        qact_resamp_arr = np.zeros(n_resamp_tags, dtype=DT_D_NP)
 
-        demr = get_demr_prt(qact_arr, use_step_arr, &mean_ref, &off_idx)
-        ln_demr = get_ln_demr_prt(
-            qact_arr, use_step_arr, &ln_mean_ref, &off_idx)
+        if use_step_flag:
+            cmpt_resampled_arr_prt(
+                qact_arr, 
+                qact_resamp_arr,
+                obj_ftn_resamp_tags_arr,
+                use_step_arr)
 
-        act_std_dev = get_variance_prt(
-            &mean_ref, qact_arr, use_step_arr, &off_idx)**0.5
+            mean_ref = get_mean_prt(qact_resamp_arr, use_step_arr, &a_zero)
+
+            ln_mean_ref = get_ln_mean_prt(
+                qact_resamp_arr, use_step_arr, &a_zero)
+
+            demr = get_demr_prt(
+                qact_resamp_arr, use_step_arr, &mean_ref, &a_zero)
+
+            ln_demr = get_ln_demr_prt(
+                qact_resamp_arr, use_step_arr, &ln_mean_ref, &a_zero)
+
+            act_std_dev = get_variance_prt(
+                &mean_ref, qact_resamp_arr, use_step_arr, &a_zero)**0.5
+
+        else:
+            cmpt_resampled_arr(
+                qact_arr, 
+                qact_resamp_arr,
+                obj_ftn_resamp_tags_arr)
+
+            mean_ref = get_mean(qact_arr, &a_zero)
+            ln_mean_ref = get_ln_mean(qact_arr, &a_zero)
+
+            demr = get_demr(qact_arr, &mean_ref, &a_zero)
+            ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &a_zero)
+
+            act_std_dev = get_variance(&mean_ref, qact_arr, &a_zero)**0.5
 
     else:
-        mean_ref = get_mean(qact_arr, &off_idx)
-        ln_mean_ref = get_ln_mean(qact_arr, &off_idx)
+        if use_step_flag:
+            mean_ref = get_mean_prt(qact_arr, use_step_arr, &off_idx)
+            ln_mean_ref = get_ln_mean_prt(qact_arr, use_step_arr, &off_idx)
 
-        demr = get_demr(qact_arr, &mean_ref, &off_idx)
-        ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &off_idx)
+            demr = get_demr_prt(qact_arr, use_step_arr, &mean_ref, &off_idx)
+            ln_demr = get_ln_demr_prt(
+                qact_arr, use_step_arr, &ln_mean_ref, &off_idx)
 
-        act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
+            act_std_dev = get_variance_prt(
+                &mean_ref, qact_arr, use_step_arr, &off_idx)**0.5
+
+        else:
+            mean_ref = get_mean(qact_arr, &off_idx)
+            ln_mean_ref = get_ln_mean(qact_arr, &off_idx)
+
+            demr = get_demr(qact_arr, &mean_ref, &off_idx)
+            ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &off_idx)
+
+            act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
 
     bds_dfs = np.zeros((n_prms, 2), dtype=DT_D_NP)
 
@@ -418,6 +468,8 @@ cpdef dict hbv_opt(args):
     obj_longs[n_cells_i] = n_cells
     obj_longs[n_hbv_prms_i] = n_hbv_prms
     obj_longs[use_step_flag_i] = use_step_flag
+    obj_longs[resamp_obj_ftns_flag_i] = resamp_obj_ftns_flag
+    obj_longs[a_zero_i] = a_zero
 
     obj_doubles = np.full(obj_doubles_ct, np.nan, dtype=DT_D_NP)
     obj_doubles[rnof_q_conv_i] = rnof_q_conv
@@ -496,12 +548,15 @@ cpdef dict hbv_opt(args):
             stms_idxs,
             obj_longs,
             use_step_arr,
+            obj_ftn_resamp_tags_arr,
             prms_flags,
             f_var_infos,
             prms_idxs,
             obj_ftn_wts,
             curr_opt_prms[tid],
             qact_arr,
+            qact_resamp_arr,
+            qsim_resamp_mult_arr[tid],
             area_arr,
             qsim_mult_arr[tid],
             inflow_mult_arr[tid],
@@ -637,12 +692,15 @@ cpdef dict hbv_opt(args):
                 stms_idxs,
                 obj_longs,
                 use_step_arr,
+                obj_ftn_resamp_tags_arr,
                 prms_flags,
                 f_var_infos,
                 prms_idxs,
                 obj_ftn_wts,
                 curr_opt_prms[tid],
                 qact_arr,
+                qact_resamp_arr,
+                qsim_resamp_mult_arr[tid],
                 area_arr,
                 qsim_mult_arr[tid],
                 inflow_mult_arr[tid],
@@ -741,12 +799,15 @@ cpdef dict hbv_opt(args):
         stms_idxs,
         obj_longs,
         use_step_arr,
+        obj_ftn_resamp_tags_arr,
         prms_flags,
         f_var_infos,
         prms_idxs,
         obj_ftn_wts,
         curr_opt_prms[tid],
         qact_arr,
+        qact_resamp_arr,
+        qsim_resamp_mult_arr[tid],
         area_arr,
         qsim_mult_arr[tid],
         inflow_mult_arr[tid],

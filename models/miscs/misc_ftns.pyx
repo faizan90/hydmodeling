@@ -22,9 +22,9 @@ cdef extern from "math.h" nogil:
 
 
 cdef DT_D get_mean(
-    const DT_D[::1] in_arr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] in_arr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -36,9 +36,9 @@ cdef DT_D get_mean(
 
 
 cdef DT_D get_ln_mean(
-    const DT_D[::1] in_arr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] in_arr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -50,10 +50,10 @@ cdef DT_D get_ln_mean(
 
 
 cdef DT_D get_demr(
-    const DT_D[::1] x_arr,
-    const DT_D *mean_ref,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D *mean_ref,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i;
@@ -65,10 +65,10 @@ cdef DT_D get_demr(
 
 
 cdef DT_D get_ln_demr(
-    const DT_D[::1] x_arr,
-    const DT_D *ln_mean_ref,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D *ln_mean_ref,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -80,11 +80,11 @@ cdef DT_D get_ln_demr(
 
 
 cdef DT_D get_ns(
-    const DT_D[::1] x_arr,
-    const DT_D[::1] y_arr,
-    const DT_D *demr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D[::1] y_arr,
+        const DT_D *demr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -96,11 +96,11 @@ cdef DT_D get_ns(
 
 
 cdef DT_D get_ln_ns(
-    const DT_D[::1] x_arr,
-    const DT_D[::1] y_arr,    
-    const DT_D *demr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D[::1] y_arr,    
+        const DT_D *demr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -112,10 +112,10 @@ cdef DT_D get_ln_ns(
 
 
 cdef DT_D get_variance(
-    const DT_D *in_mean,
-    const DT_D[::1] in_arr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D *in_mean,
+        const DT_D[::1] in_arr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -127,12 +127,12 @@ cdef DT_D get_variance(
         
 
 cdef DT_D get_covariance(
-    const DT_D *in_mean_1,
-    const DT_D *in_mean_2,
-    const DT_D[::1] in_arr_1,
-    const DT_D[::1] in_arr_2,
-    const DT_UL *off_idx,
-    ) nogil: 
+        const DT_D *in_mean_1,
+        const DT_D *in_mean_2,
+        const DT_D[::1] in_arr_1,
+        const DT_D[::1] in_arr_2,
+        const DT_UL *off_idx,
+        ) nogil: 
 
     cdef:
         Py_ssize_t i
@@ -145,21 +145,21 @@ cdef DT_D get_covariance(
 
 
 cdef DT_D _get_pcorr(
-    const DT_D *in_arr_1_std_dev,
-    const DT_D *in_arr_2_std_dev,
-    const DT_D *arrs_covar
-    ) nogil:
+        const DT_D *in_arr_1_std_dev,
+        const DT_D *in_arr_2_std_dev,
+        const DT_D *arrs_covar
+        ) nogil:
 
     return arrs_covar[0] / (in_arr_1_std_dev[0] * in_arr_2_std_dev[0])
 
 
 cdef DT_D get_kge(
-    const DT_D[::1] act_arr,
-    const DT_D[::1] sim_arr,
-    const DT_D *act_mean,
-    const DT_D *act_std_dev,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] act_arr,
+        const DT_D[::1] sim_arr,
+        const DT_D *act_mean,
+        const DT_D *act_std_dev,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         DT_D sim_mean, sim_std_dev, covar, correl, b, g, kge
@@ -178,10 +178,10 @@ cdef DT_D get_kge(
 
 
 cdef DT_D get_pcorr_coeff(
-    const DT_D[::1] x_arr,
-    const DT_D[::1] y_arr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D[::1] y_arr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         DT_D x_mean, y_mean, x_std_dev, y_std_dev, covar
@@ -197,10 +197,10 @@ cdef DT_D get_pcorr_coeff(
 
 
 cdef void del_idx(
-    const DT_UL[::1] x_arr,
-    DT_UL[::1] y_arr,
-    const long *idx,
-    ) nogil:
+        const DT_UL[::1] x_arr,
+        DT_UL[::1] y_arr,
+        const long *idx,
+        ) nogil:
 
     cdef:
         DT_UL i = 0, j = 0
@@ -219,14 +219,14 @@ cdef void del_idx(
 
 
 cdef void lin_regsn(
-    const DT_D[::1] x_arr,
-    const DT_D[::1] y_arr,
-          DT_D[::1] y_arr_interp,
-    const DT_UL *off_idx,
-    DT_D *corr,
-    DT_D *slope,
-    DT_D *intercept,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D[::1] y_arr,
+              DT_D[::1] y_arr_interp,
+        const DT_UL *off_idx,
+        DT_D *corr,
+        DT_D *slope,
+        DT_D *intercept,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -251,10 +251,10 @@ cdef void lin_regsn(
 
 
 cdef DT_D get_sum_sq_diff(
-    const DT_D[::1] x_arr,
-    const DT_D[::1] y_arr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D[::1] y_arr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -266,10 +266,10 @@ cdef DT_D get_sum_sq_diff(
 
 
 cdef DT_D get_ln_sum_sq_diff(
-    const DT_D[::1] x_arr,
-    const DT_D[::1] y_arr,
-    const DT_UL *off_idx,
-    ) nogil:
+        const DT_D[::1] x_arr,
+        const DT_D[::1] y_arr,
+        const DT_UL *off_idx,
+        ) nogil:
 
     cdef:
         Py_ssize_t i
@@ -285,9 +285,9 @@ cdef inline DT_D cmpt_aspect_scale(const DT_D *in_aspect) nogil:
 
 
 cdef void cmpt_aspect_scale_arr(
-    const DT_D *in_aspect_arr,
-          DT_D *out_scale_arr,
-    const DT_UL *n_cells) nogil:
+        const DT_D *in_aspect_arr,
+              DT_D *out_scale_arr,
+        const DT_UL *n_cells) nogil:
 
     cdef:
         Py_ssize_t i
@@ -302,9 +302,9 @@ cdef inline DT_D cmpt_slope_scale(const DT_D *in_slope) nogil:
 
 
 cdef void cmpt_slope_scale_arr(
-    const DT_D *in_slope_arr,
-          DT_D *out_scale_arr,
-    const DT_UL *n_cells) nogil:
+        const DT_D *in_slope_arr,
+              DT_D *out_scale_arr,
+        const DT_UL *n_cells) nogil:
 
     cdef:
         Py_ssize_t i
@@ -315,16 +315,16 @@ cdef void cmpt_slope_scale_arr(
 
 
 cdef inline DT_D cmpt_aspect_and_slope_scale(
-    const DT_D *in_aspect,
-    const DT_D *in_slope) nogil:
+        const DT_D *in_aspect,
+        const DT_D *in_slope) nogil:
     return 0.5 * ((cos(in_aspect[0]) * sin(in_slope[0])) + 1)
 
 
 cdef void cmpt_aspect_and_slope_scale_arr(
-    const DT_D *in_aspect_arr,
-    const DT_D *in_slope_arr,
-          DT_D *out_scale_arr,
-    const DT_UL *n_cells) nogil:
+        const DT_D *in_aspect_arr,
+        const DT_D *in_slope_arr,
+              DT_D *out_scale_arr,
+        const DT_UL *n_cells) nogil:
 
     cdef:
         Py_ssize_t i
@@ -337,21 +337,22 @@ cdef void cmpt_aspect_and_slope_scale_arr(
 
 
 cdef inline DT_D cmpt_tt_from_scale(
-    const DT_D *in_scale,
-    const DT_D *min_tt,
-    const DT_D *max_tt,
-    const DT_D *exponent) nogil:
+        const DT_D *in_scale,
+        const DT_D *min_tt,
+        const DT_D *max_tt,
+        const DT_D *exponent) nogil:
+
     return min_tt[0] + ((max_tt[0] - min_tt[0]) * 
                         (in_scale[0]**exponent[0]))
 
 
 cdef void cmpt_tt_from_scale_arr(
-    const DT_D *in_scale_arr,
-          DT_D *out_tt_arr,
-    const DT_D *min_tt,
-    const DT_D *max_tt,
-    const DT_D *exponent,
-    const DT_UL *n_cells) nogil:
+        const DT_D *in_scale_arr,
+              DT_D *out_tt_arr,
+        const DT_D *min_tt,
+        const DT_D *max_tt,
+        const DT_D *exponent,
+        const DT_UL *n_cells) nogil:
 
     cdef:
         Py_ssize_t i
@@ -365,10 +366,35 @@ cdef void cmpt_tt_from_scale_arr(
     return
 
 
+cdef void cmpt_resampled_arr(
+        const DT_D[::1] ref_arr, 
+              DT_D[::1] resamp_arr, 
+        const DT_ULL[::1] tags_arr,
+        ) nogil:
+
+    cdef:
+        Py_ssize_t i, j
+
+        DT_ULL beg_tag_idx, end_tag_idx
+
+        DT_D tag_vals_sum
+
+    for i in range(resamp_arr.shape[0] - 1):
+        beg_tag_idx = tags_arr[i]
+        end_tag_idx = tags_arr[i + 1]
+
+        tag_vals_sum = 0
+        for j in range(beg_tag_idx, end_tag_idx):
+            tag_vals_sum += ref_arr[j]
+
+        resamp_arr[i] = tag_vals_sum / (end_tag_idx - beg_tag_idx)
+    return
+
+
 def get_pcorr_cy(
-    const DT_D[::1] x_arr, 
-    const DT_D[::1] y_arr, 
-    const DT_UL off_idx):
+        const DT_D[::1] x_arr, 
+        const DT_D[::1] y_arr, 
+        const DT_UL off_idx):
 
     assert x_arr.shape[0] > off_idx    
     assert x_arr.shape[0] == y_arr.shape[0]
@@ -377,9 +403,9 @@ def get_pcorr_cy(
 
 
 def get_ns_cy(
-    const DT_D[::1] x_arr, 
-    const DT_D[::1] y_arr, 
-    const DT_UL off_idx):
+        const DT_D[::1] x_arr, 
+        const DT_D[::1] y_arr, 
+        const DT_UL off_idx):
 
     cdef:
         DT_D demr, mean
@@ -393,9 +419,9 @@ def get_ns_cy(
 
 
 def get_ln_ns_cy(
-    const DT_D[::1] x_arr, 
-    const DT_D[::1] y_arr, 
-    const DT_UL off_idx):
+        const DT_D[::1] x_arr, 
+        const DT_D[::1] y_arr, 
+        const DT_UL off_idx):
 
     cdef:
         DT_D demr, mean
@@ -409,9 +435,9 @@ def get_ln_ns_cy(
 
 
 def get_kge_cy(
-    const DT_D[::1] x_arr, 
-    const DT_D[::1] y_arr, 
-    const DT_UL off_idx):
+        const DT_D[::1] x_arr, 
+        const DT_D[::1] y_arr, 
+        const DT_UL off_idx):
 
     cdef:
         DT_D mean_ref, act_std_dev
@@ -424,7 +450,7 @@ def get_kge_cy(
     return get_kge(x_arr, y_arr, &mean_ref, &act_std_dev, &off_idx)
 
 
-def get_aspect_scale_arr_cy(DT_D[::1] in_aspect_arr):
+def get_aspect_scale_arr_cy(const DT_D[::1] in_aspect_arr):
 
     cdef:
         DT_UL n_cells = in_aspect_arr.shape[0]
@@ -436,7 +462,7 @@ def get_aspect_scale_arr_cy(DT_D[::1] in_aspect_arr):
     return np.asarray(out_scale_arr)
 
 
-def get_slope_scale_arr_cy(DT_D[::1] in_slope_arr):
+def get_slope_scale_arr_cy(const DT_D[::1] in_slope_arr):
 
     cdef:
         DT_UL n_cells = in_slope_arr.shape[0]
@@ -449,7 +475,8 @@ def get_slope_scale_arr_cy(DT_D[::1] in_slope_arr):
 
 
 def get_aspect_and_slope_scale_arr_cy(
-    DT_D[::1] in_aspect_arr, DT_D[::1] in_slope_arr):
+        const DT_D[::1] in_aspect_arr, 
+        const DT_D[::1] in_slope_arr):
 
     cdef:
         DT_UL n_cells = in_aspect_arr.shape[0]
@@ -468,10 +495,10 @@ def get_aspect_and_slope_scale_arr_cy(
 
 
 def get_ns_var_res_cy(
-        DT_D[::1] ref_arr, 
-        DT_D[::1] sim_arr,
-        DT_D[::1] cycle_arr,
-        DT_UL off_idx):
+        const DT_D[::1] ref_arr, 
+        const DT_D[::1] sim_arr,
+        const DT_D[::1] cycle_arr,
+        const DT_UL off_idx):
 
     assert ref_arr.shape[0] == sim_arr.shape[0] == cycle_arr.shape[0], (
         'Inputs have unequal shapes!')
@@ -486,10 +513,10 @@ def get_ns_var_res_cy(
 
 
 def get_ln_ns_var_res_cy(
-        DT_D[::1] ref_arr,
-        DT_D[::1] sim_arr,
-        DT_D[::1] cycle_arr,
-        DT_UL off_idx):
+        const DT_D[::1] ref_arr,
+        const DT_D[::1] sim_arr,
+        const DT_D[::1] cycle_arr,
+        const DT_UL off_idx):
 
     assert ref_arr.shape[0] == sim_arr.shape[0] == cycle_arr.shape[0], (
         'Inputs have unequal shapes!')
@@ -504,9 +531,9 @@ def get_ln_ns_var_res_cy(
 
 
 def lin_regsn_cy(
-    const DT_D[::1] x_arr,
-    const DT_D[::1] y_arr,
-    const DT_UL off_idx):
+        const DT_D[::1] x_arr,
+        const DT_D[::1] y_arr,
+        const DT_UL off_idx):
 
     cdef:
         DT_D corr, slope, intercept
