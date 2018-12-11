@@ -187,6 +187,8 @@ cpdef dict hbv_opt(args):
 
         DT_D min_q_thresh, mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
 
+#         DT_D qact_resamp_arr_sum
+
         dict out_dict
 
         DT_UL[::1] n_calls
@@ -326,15 +328,15 @@ cpdef dict hbv_opt(args):
 
     for stm in stm_to_idx_dict:
         stm_to_idx_map[stm] = stm_to_idx_dict[stm]
- 
+
+    n_resamp_tags = obj_ftn_resamp_tags_arr.shape[0]
+
+    qact_resamp_arr = np.zeros(n_resamp_tags - 1, dtype=DT_D_NP)
+
+    qsim_resamp_mult_arr = np.zeros(
+        (n_cpus, n_resamp_tags - 1), dtype=DT_D_NP)
+
     if resamp_obj_ftns_flag:
-        n_resamp_tags = obj_ftn_resamp_tags_arr.shape[0]
-
-        qsim_resamp_mult_arr = np.zeros(
-            (n_cpus, n_resamp_tags - 1), dtype=DT_D_NP)
-
-        qact_resamp_arr = np.zeros(n_resamp_tags - 1, dtype=DT_D_NP)
-
         if use_step_flag:
             cmpt_resampled_arr_prt(
                 qact_arr, 
@@ -362,13 +364,14 @@ cpdef dict hbv_opt(args):
                 qact_resamp_arr,
                 obj_ftn_resamp_tags_arr)
 
-            mean_ref = get_mean(qact_arr, &a_zero)
-            ln_mean_ref = get_ln_mean(qact_arr, &a_zero)
+            mean_ref = get_mean(qact_resamp_arr, &a_zero)
+            ln_mean_ref = get_ln_mean(qact_resamp_arr, &a_zero)
 
-            demr = get_demr(qact_arr, &mean_ref, &a_zero)
-            ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &a_zero)
+            demr = get_demr(qact_resamp_arr, &mean_ref, &a_zero)
+            ln_demr = get_ln_demr(qact_resamp_arr, &ln_mean_ref, &a_zero)
 
-            act_std_dev = get_variance(&mean_ref, qact_arr, &a_zero)**0.5
+            act_std_dev = get_variance(
+                &mean_ref, qact_resamp_arr, &a_zero)**0.5
 
     else:
         if use_step_flag:
@@ -390,13 +393,6 @@ cpdef dict hbv_opt(args):
             ln_demr = get_ln_demr(qact_arr, &ln_mean_ref, &off_idx)
 
             act_std_dev = get_variance(&mean_ref, qact_arr, &off_idx)**0.5
-
-    print(mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev)
-
-    for i in range(n_resamp_tags - 1):
-        print(qact_resamp_arr[i])
-
-    raise Exception
 
     bds_dfs = np.zeros((n_prms, 2), dtype=DT_D_NP)
 
@@ -546,7 +542,7 @@ cpdef dict hbv_opt(args):
         schedule='dynamic', 
         nogil=True,
         num_threads=n_cpus):
- 
+  
         tid = threadid()
 
         for k in range(n_prms):

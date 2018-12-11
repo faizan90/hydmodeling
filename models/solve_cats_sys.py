@@ -69,7 +69,9 @@ def solve_cats_sys(
         use_obs_flow_flag,
         run_as_lump_flag,
         opt_schm_vars_dict,
-        cv_list):
+        cv_list,
+        use_resampled_obj_ftns_flag,
+        discharge_resampling_freq):
 
     '''Optimize parameters for a given catchment
 
@@ -140,6 +142,10 @@ def solve_cats_sys(
     assert (len(cv_list) == 2) or (len(cv_list) == 4)
     for tstamp in cv_list:
         assert isinstance(tstamp, pd.Timestamp)
+
+    assert isinstance(use_resampled_obj_ftns_flag, bool)
+    assert isinstance(discharge_resampling_freq, str)
+    assert discharge_resampling_freq in ['Y', 'A', 'M', 'W']
 
     sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
     assert np.all(np.isfinite(sel_cats))
@@ -314,7 +320,8 @@ def solve_cats_sys(
         'min_q_thresh': min_q_thresh,
         'time_freq': time_freq,
         'cv_flag': cv_flag,
-        'resamp_obj_ftns_flag': 1}
+        'resamp_obj_ftns_flag': use_resampled_obj_ftns_flag,
+        'discharge_resampling_freq': discharge_resampling_freq}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -530,10 +537,28 @@ def solve_cat(
     time_freq = str(kwargs['time_freq'])
     cv_flag = int(kwargs['cv_flag'])
     resamp_obj_ftns_flag = kwargs['resamp_obj_ftns_flag']
+    discharge_resampling_freq = kwargs['discharge_resampling_freq']
 
-    if resamp_obj_ftns_flag is not None:
+    if resamp_obj_ftns_flag:
+        if discharge_resampling_freq in ['Y', 'A']:
+            tag_idxs = in_q_df.index.year
+
+        elif discharge_resampling_freq == 'M':
+            tag_idxs = in_q_df.index.month
+
+        elif discharge_resampling_freq == 'W':
+            tag_idxs = in_q_df.index.weekofyear
+
+        else:
+            raise ValueError(
+                'Incorrect value of discharge_resampling_freq:',
+                discharge_resampling_freq)
+
         obj_ftn_resamp_tags_arr = get_resample_tags_arr(
-            in_q_df.index.month, warm_up_steps)
+            tag_idxs, warm_up_steps)
+
+    else:
+        obj_ftn_resamp_tags_arr = np.array([0, 1], dtype=np.uint64)
 
     assert in_use_step_ser.shape[0] == in_q_df.shape[0]
 
@@ -1487,9 +1512,13 @@ def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
     tags = [warm_up_steps]
     n_vals = in_resamp_idxs.shape[0]
 
-    for i in range(warm_up_steps, n_vals):
+    for i in range(warm_up_steps + 1, n_vals):
         if in_resamp_idxs[i] - in_resamp_idxs[i - 1]:
             tags.append(i)
 
     tags.append(n_vals)
-    return np.array(tags, dtype=np.uint64)
+    tags = np.array(tags, dtype=np.uint64)
+
+    assert np.all(tags[1:] - tags[:-1] > 0)
+
+    return tags

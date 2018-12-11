@@ -98,7 +98,7 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-#     create_stms_rels_flag = True
+    create_stms_rels_flag = True
     optimize_flag = True
     plot_kfold_perfs_flag = True
     plot_best_kfold_prms_flag = True
@@ -288,6 +288,12 @@ def main():
     obj_ftn_wts = np.array(
         cfp['OPT_HYD_MODEL']['obj_ftn_wts'].split(sep), dtype=np.float64)
 
+    use_resampled_obj_ftns_flag = cfp['OPT_HYD_MODEL'].getboolean(
+        'use_resampled_obj_ftns_flag')
+
+    discharge_resampling_freq = cfp['OPT_HYD_MODEL'][
+        'discharge_resampling_freq']
+
     in_opt_schm_vars_dict = cfp['OPT_SCHM_VARS']
 
     opt_schm_vars_dict = {}
@@ -473,7 +479,9 @@ def main():
             use_obs_flow_flag,
             run_as_lump_flag,
             opt_schm_vars_dict,
-            cv_list)
+            cv_list,
+            use_resampled_obj_ftns_flag,
+            discharge_resampling_freq)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t

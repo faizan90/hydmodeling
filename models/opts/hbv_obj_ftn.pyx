@@ -131,10 +131,6 @@ cdef DT_D obj_ftn(
                 qsim_resamp_arr,
                 obj_ftn_resamp_tags_arr)
 
-#     with gil:
-#         for i in range(obj_ftn_resamp_tags_arr.shape[0] - 1):
-#             print(qsim_resamp_arr[i])
-
     if obj_ftn_wts[0]:
         if obj_longs[resamp_obj_ftns_flag_i]:
             if obj_longs[use_step_flag_i]:
@@ -145,7 +141,7 @@ cdef DT_D obj_ftn(
                         use_step_arr,
                         &obj_doubles[demr_i],
                         &obj_longs[a_zero_i]))
-    
+
             else:
                 res = obj_ftn_wts[0] * get_ns(
                         qact_resamp_arr,
@@ -181,7 +177,7 @@ cdef DT_D obj_ftn(
                         qact_resamp_arr,
                         qsim_resamp_arr,
                         use_step_arr,
-                        &obj_doubles[demr_i],
+                        &obj_doubles[ln_demr_i],
                         &obj_longs[a_zero_i]))
     
             else:
@@ -189,7 +185,7 @@ cdef DT_D obj_ftn(
                     obj_ftn_wts[1] * get_ln_ns(
                         qact_resamp_arr,
                         qsim_resamp_arr,
-                        &obj_doubles[demr_i],
+                        &obj_doubles[ln_demr_i],
                         &obj_longs[a_zero_i]))
 
         else:
