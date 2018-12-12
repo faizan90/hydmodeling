@@ -908,97 +908,97 @@ def plot_cat_prm_vecs_evo_kf(
 
         blines = 10  # buffer lines on all sides for gifs
 
-    for fig_no in range(tot_figs):
-        if stop_plotting:
-            break
-
-        fig = plt.figure(figsize=(19, 9), dpi=200)
-        axes = GridSpec(prm_rows, prm_cols)
-
-        for i in range(prm_rows):
-            for j in range(prm_cols):
-
-                ax = plt.subplot(axes[i, j])
-
-                for k in range(iter_prm_vecs.shape[1]):
-                    ax.plot(
-                        iter_prm_vecs[prm_iter_ct, k],
-                        alpha=0.005,
-                        color='k')
-
-                ax.text(
-                    0.95,
-                    0.95,
-                    f'({prm_iter_ct})',
-                    horizontalalignment='right',
-                    verticalalignment='top',
-                    transform=ax.transAxes)
-
-                ax.set_xticklabels([])
-                ax.set_yticklabels([])
-
-                ax.set_ylim(min_lim, max_lim)
-
-                prm_iter_ct += 1
-
-                if prm_iter_ct >= tot_iters:
-                    stop_plotting = True
-                    break
-
-            if stop_plotting:
-                break
-
-        plt.suptitle(
-            f'Parameter vector evolution per iteration\n'
-            f'Vectors per iteration: {iter_prm_vecs.shape[1]}')
-
-        if save_png_flag:
-            out_fig_name = (
-                f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_fig_{fig_no:02d}.png')
-
-            plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
-
-        if save_gif_flag:
-            fig.canvas.draw()  # calling draw is important here
-
-            fig_arr = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            fig_arr = fig_arr.reshape(
-                fig.canvas.get_width_height()[::-1] + (3,))
-
-            mins_arr = fig_arr[:, :, :].min(axis=2)
-
-            not_white_idxs = np.where(mins_arr < 255)
-
-            r_top = not_white_idxs[0].min()
-            r_bot = not_white_idxs[0].max()
-
-            c_left = not_white_idxs[1].min()
-            c_rght = not_white_idxs[1].max()
-
-            r_top -= min(blines, r_top)
-            r_bot += min(blines, mins_arr.shape[0] - r_bot)
-
-            c_left -= min(blines, c_left)
-            c_rght += min(blines, mins_arr.shape[1] - c_rght)
-
-            fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1, :]
-
-            opt_vecs_fig_arrs_list.append(fig_arr)
-
-        plt.close()
-
-    if save_gif_flag:
-        out_fig_name = (
-            f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_anim.png')
-
-        write_apng(
-            str(Path(out_dir, out_fig_name)),
-            opt_vecs_fig_arrs_list,
-            delay=1000,
-            use_palette=True,
-            num_plays=1)
-
-        del opt_vecs_fig_arrs_list
+#     for fig_no in range(tot_figs):
+#         if stop_plotting:
+#             break
+#
+#         fig = plt.figure(figsize=(19, 9), dpi=200)
+#         axes = GridSpec(prm_rows, prm_cols)
+#
+#         for i in range(prm_rows):
+#             for j in range(prm_cols):
+#
+#                 ax = plt.subplot(axes[i, j])
+#
+#                 for k in range(iter_prm_vecs.shape[1]):
+#                     ax.plot(
+#                         iter_prm_vecs[prm_iter_ct, k],
+#                         alpha=0.005,
+#                         color='k')
+#
+#                 ax.text(
+#                     0.95,
+#                     0.95,
+#                     f'({prm_iter_ct})',
+#                     horizontalalignment='right',
+#                     verticalalignment='top',
+#                     transform=ax.transAxes)
+#
+#                 ax.set_xticklabels([])
+#                 ax.set_yticklabels([])
+#
+#                 ax.set_ylim(min_lim, max_lim)
+#
+#                 prm_iter_ct += 1
+#
+#                 if prm_iter_ct >= tot_iters:
+#                     stop_plotting = True
+#                     break
+#
+#             if stop_plotting:
+#                 break
+#
+#         plt.suptitle(
+#             f'Parameter vector evolution per iteration\n'
+#             f'Vectors per iteration: {iter_prm_vecs.shape[1]}')
+#
+#         if save_png_flag:
+#             out_fig_name = (
+#                 f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_fig_{fig_no:02d}.png')
+#
+#             plt.savefig(str(Path(out_dir, out_fig_name)), bbox_inches='tight')
+#
+#         if save_gif_flag:
+#             fig.canvas.draw()  # calling draw is important here
+#
+#             fig_arr = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+#             fig_arr = fig_arr.reshape(
+#                 fig.canvas.get_width_height()[::-1] + (3,))
+#
+#             mins_arr = fig_arr[:, :, :].min(axis=2)
+#
+#             not_white_idxs = np.where(mins_arr < 255)
+#
+#             r_top = not_white_idxs[0].min()
+#             r_bot = not_white_idxs[0].max()
+#
+#             c_left = not_white_idxs[1].min()
+#             c_rght = not_white_idxs[1].max()
+#
+#             r_top -= min(blines, r_top)
+#             r_bot += min(blines, mins_arr.shape[0] - r_bot)
+#
+#             c_left -= min(blines, c_left)
+#             c_rght += min(blines, mins_arr.shape[1] - c_rght)
+#
+#             fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1, :]
+#
+#             opt_vecs_fig_arrs_list.append(fig_arr)
+#
+#         plt.close()
+#
+#     if save_gif_flag:
+#         out_fig_name = (
+#             f'hbv_prm_vecs_evo_{cat}_kf_{kf_i:02d}_anim.png')
+#
+#         write_apng(
+#             str(Path(out_dir, out_fig_name)),
+#             opt_vecs_fig_arrs_list,
+#             delay=1000,
+#             use_palette=True,
+#             num_plays=1)
+#
+#         del opt_vecs_fig_arrs_list
 
     ##########################################################################
     if save_gif_flag:
@@ -1048,7 +1048,7 @@ def plot_cat_prm_vecs_evo_kf(
         plt.suptitle(
             f'Convex hull of {n_dims}D in 2D\n'
             f'Total points: {iter_prm_vecs.shape[1]}\n'
-            f'Iteration no.: {opt_iter} out of {iter_prm_vecs.shape[0]}',
+            f'Iteration no.: {opt_iter + 1} out of {iter_prm_vecs.shape[0]}',
             x=0.4,
             y=0.5,
             va='bottom',

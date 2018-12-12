@@ -155,6 +155,8 @@ cpdef dict hbv_opt(args):
 
         DT_UL[::1] use_prm_vec_flags
         DT_UL[::1] last_idxs_vec
+
+        DT_D[:, :, ::1] iter_acc_prm_vecs
         #======================================================================
 
         #======================================================================
@@ -297,7 +299,6 @@ cpdef dict hbv_opt(args):
     curr_opt_prms = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
     prm_vecs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
     temp_prm_vecs = prm_vecs.copy()
-
     
     n_route_prms = n_prms - n_hm_prms
 
@@ -473,7 +474,12 @@ cpdef dict hbv_opt(args):
 
         last_idxs_vec = np.zeros(n_prms, dtype=DT_UL_NP)
         last_idxs_vec[n_prms - 1] = -1  # this lets us start with zero idxs
-    
+
+        iter_acc_prm_vecs = np.full(
+            (1, max_iters, n_prms),
+            np.nan,
+            dtype=DT_D_NP)
+
         print('n_poss_combs:', n_poss_combs)
         print('max_iters:', max_iters)
 
@@ -582,7 +588,7 @@ cpdef dict hbv_opt(args):
         schedule='dynamic', 
         nogil=True,
         num_threads=n_cpus):
-  
+
         tid = threadid()
 
         for k in range(n_prms):
@@ -741,6 +747,13 @@ cpdef dict hbv_opt(args):
 
             tid = threadid()
 
+            if (opt_schm == 3) and not (use_prm_vec_flags[t_i]):
+
+                res = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
+                curr_obj_vals[t_i] = res
+
+                continue
+
             if opt_schm == 1:
                 for k in range(n_prms):
                     curr_opt_prms[tid, k] = u_j_gs[t_i, k]
@@ -839,6 +852,7 @@ cpdef dict hbv_opt(args):
                 best_prm_vec,
                 iobj_vals,
                 prm_vecs,
+                iter_acc_prm_vecs,
                 n_poss_combs,
                 &iter_curr,
                 &cont_opt_flag,
@@ -933,21 +947,23 @@ cpdef dict hbv_opt(args):
         'n_calls': np.asarray(n_calls),
         'qsim_arr': np.asarray(qsim_mult_arr[tid]),
         'pre_obj_vals' : np.asarray(pre_obj_vals),
-        'iter_prm_vecs': np.asarray(iter_prm_vecs[:iter_curr]),
         'gobj_vals': np.asarray(gobj_vals),
         'iobj_vals': np.asarray(iobj_vals)}
 
     if opt_schm == 1:
+        out_dict['iter_prm_vecs'] = np.asarray(iter_prm_vecs[:iter_curr])
         out_dict['prm_vecs'] = np.asarray(prm_vecs)
         out_dict['fin_tol'] = 0.5 * (tol_pre + tol_curr)
         out_dict['curr_obj_vals'] = np.asarray(curr_obj_vals)
 
     elif opt_schm == 2:
+        out_dict['iter_prm_vecs'] = np.asarray(iter_prm_vecs[:iter_curr])
         out_dict['prm_vecs'] = np.asarray(acc_vecs)
         out_dict['curr_obj_vals'] = np.asarray(
             sort_obj_vals[:acc_vecs.shape[0]])
 
     elif opt_schm == 3:
+        out_dict['iter_prm_vecs'] = np.asarray(iter_acc_prm_vecs)
         out_dict['prm_vecs'] = np.asarray(prm_vecs)
         out_dict['curr_obj_vals'] = np.asarray(curr_obj_vals)
 

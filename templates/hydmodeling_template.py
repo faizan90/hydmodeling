@@ -100,15 +100,15 @@ def main():
 #     create_cumm_cats_flag = True
     create_stms_rels_flag = True
     optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
     plot_opt_evo_flag = True
-    plot_var_errors_flag = True
-    plot_hbv_vars_flag = True
+#     plot_var_errors_flag = True
+#     plot_hbv_vars_flag = True
 #     plot_qsims_flag = True
 
     use_cv_time_flag = False
@@ -632,7 +632,7 @@ def main():
         plot_evo_obj_flag = cfp['PLOT_OPT_RES'].getboolean(
             'plot_evo_obj_flag')
 
-        if opt_schm_vars_dict['opt_schm'] == 'ROPE':
+        if opt_schm_vars_dict['opt_schm'] != 'DE':  # == 'ROPE':
             plot_evo_png_flag = cfp['PLOT_OPT_RES'].getboolean(
                 'plot_evo_png_flag')
 

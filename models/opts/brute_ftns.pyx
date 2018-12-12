@@ -8,9 +8,23 @@
 
 from ..miscs.dtypes cimport fc_i, pwp_i
 
+
 cdef extern from "cmath":
     bint isnan(DT_D x) nogil
     DT_D INFINITY
+
+
+cdef extern from "data_depths.h" nogil:
+    cdef:
+        void quick_sort(
+                double *arr,
+                long first_index,
+                long last_index)
+
+        long searchsorted(
+                const double *arr,
+                const double value,
+                const long arr_size)
 
 
 cdef void pre_brute(
@@ -28,7 +42,7 @@ cdef void pre_brute(
         const DT_UL n_discretize,
         const DT_UL n_hbv_prms,
               DT_ULL *comb_ctr,
-        ) except +:
+        ) nogil except +:
 
     cdef:
         Py_ssize_t i, j, k, m, t_i
@@ -95,6 +109,7 @@ cdef void post_brute(
               DT_D[::1] iobj_vals,
 
               DT_D[:, ::1] prm_vecs,
+              DT_D[:, :, ::1] iter_acc_prm_vecs,
 
         const DT_ULL n_poss_combs,
               DT_UL *iter_curr,
@@ -105,13 +120,31 @@ cdef void post_brute(
         ) nogil except +:
 
     cdef:
-        Py_ssize_t j, k
+        Py_ssize_t i, j, k
 
         DT_UL n_prms = prm_vecs.shape[1]
         DT_UL n_prm_vecs = prm_vecs.shape[0]
+        DT_UL min_obj_val_idx
 
-        DT_D fval_pre, fval_curr, ddmv, iobj = INFINITY
+        DT_D fval_pre, fval_curr, iobj
 
+    iobj = INFINITY
+    for i in range(n_prm_vecs):
+        if not use_prm_vec_flags[i]:
+            continue
+
+        fval_curr = curr_obj_vals[i]
+
+        if fval_curr < iobj:
+            iobj = fval_curr
+            min_obj_val_idx = i
+
+    if iobj != INFINITY:
+        for j in range(n_prms):
+            iter_acc_prm_vecs[0, iter_curr[0], j] = (
+                prm_vecs[min_obj_val_idx, j])
+
+    iobj = INFINITY
     for j in range(n_prm_vecs):
         if not use_prm_vec_flags[j]:
             continue

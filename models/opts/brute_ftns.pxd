@@ -16,7 +16,7 @@ cdef void pre_brute(
         const DT_UL n_discretize,
         const DT_UL n_hbv_prms,
               DT_ULL *comb_ctr,
-        ) except +
+        ) nogil except +
 
 
 cdef void post_brute(
@@ -28,6 +28,7 @@ cdef void post_brute(
               DT_D[::1] iobj_vals,
 
               DT_D[:, ::1] prm_vecs,
+              DT_D[:, :, ::1] iter_acc_prm_vecs,
 
         const DT_ULL n_poss_combs,
               DT_UL *iter_curr,
