@@ -483,8 +483,9 @@ cpdef dict hbv_opt(args):
         print('n_poss_combs:', n_poss_combs)
         print('max_iters:', max_iters)
 
-    iter_prm_vecs = np.full(
-        (max_iters + 1, n_prm_vecs, n_prms), np.nan, dtype=DT_D_NP)
+    if (opt_schm == 1) or (opt_schm == 2):
+        iter_prm_vecs = np.full(
+            (max_iters + 1, n_prm_vecs, n_prms), np.nan, dtype=DT_D_NP)
 
     iobj_vals = np.full((max_iters + 1), np.nan, dtype=DT_D_NP)
 
@@ -658,9 +659,10 @@ cpdef dict hbv_opt(args):
     print('Initial min. obj. value:', fval_pre_global)
 #     raise Exception('Stop!')
 
-    for i in range(n_prm_vecs):
-        for j in range(n_prms):
-            iter_prm_vecs[0, i, j] = prm_vecs[i, j]
+    if (opt_schm == 1) or (opt_schm == 2):
+        for i in range(n_prm_vecs):
+            for j in range(n_prms):
+                iter_prm_vecs[0, i, j] = prm_vecs[i, j]
 
     cont_opt_flag = 1
     while cont_opt_flag:
@@ -734,7 +736,7 @@ cpdef dict hbv_opt(args):
                 for j in range(n_prms):
                     iter_prm_vecs[iter_curr + 1, i, j] = u_j_gs[i, j]
 
-        elif (opt_schm == 2) or (opt_schm == 3):
+        elif opt_schm == 2:
             for i in range(n_prm_vecs):
                 for j in range(n_prms):
                     iter_prm_vecs[iter_curr + 1, i, j] = prm_vecs[i, j]
