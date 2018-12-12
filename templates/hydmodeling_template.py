@@ -325,18 +325,28 @@ def main():
         opt_schm_vars_dict['min_pts_in_chull'] = (
             in_opt_schm_vars_dict.getint('min_pts_in_chull'))
 
+    elif in_opt_schm_vars_dict['opt_schm'] == 'BRUTE':
+        opt_schm_vars_dict['opt_schm'] = 'BRUTE'
+
+        opt_schm_vars_dict['n_discretize'] = (
+            in_opt_schm_vars_dict.getint('n_discretize'))
+
     else:
         raise NotImplementedError(
             'Incorrect opt_schm: %s' % in_opt_schm_vars_dict['opt_schm'])
 
-    opt_schm_vars_dict['max_iters'] = in_opt_schm_vars_dict.getint(
-        'max_iters')
-    opt_schm_vars_dict['max_cont_iters'] = in_opt_schm_vars_dict.getint(
-        'max_cont_iters')
-    opt_schm_vars_dict['obj_ftn_tol'] = in_opt_schm_vars_dict.getfloat(
-        'obj_ftn_tol')
-    opt_schm_vars_dict['prm_pcnt_tol'] = in_opt_schm_vars_dict.getfloat(
-        'prm_pcnt_tol')
+    if ((in_opt_schm_vars_dict['opt_schm'] == 'DE') or (
+         in_opt_schm_vars_dict['opt_schm'] == 'ROPE')):
+
+        opt_schm_vars_dict['max_iters'] = in_opt_schm_vars_dict.getint(
+            'max_iters')
+        opt_schm_vars_dict['max_cont_iters'] = in_opt_schm_vars_dict.getint(
+            'max_cont_iters')
+        opt_schm_vars_dict['obj_ftn_tol'] = in_opt_schm_vars_dict.getfloat(
+            'obj_ftn_tol')
+        opt_schm_vars_dict['prm_pcnt_tol'] = in_opt_schm_vars_dict.getfloat(
+            'prm_pcnt_tol')
+
     opt_schm_vars_dict['n_prm_vecs_exp'] = in_opt_schm_vars_dict.getfloat(
         'n_prm_vecs_exp')
 

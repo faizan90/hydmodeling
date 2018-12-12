@@ -1,5 +1,5 @@
 # cython: nonecheck=False
-# cython: boundscheck=True
+# cython: boundscheck=False
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
@@ -18,6 +18,7 @@ cimport numpy as np
 from .hbv_obj_ftn cimport obj_ftn
 from .de_ftns cimport pre_de, post_de
 from .rope_ftns cimport get_new_chull_vecs, pre_rope, post_rope
+from .brute_ftns cimport pre_brute, post_brute
 from ..miscs.misc_ftns cimport (
     get_demr, 
     get_ln_demr,
@@ -147,6 +148,13 @@ cpdef dict hbv_opt(args):
         DT_D[:, ::1] acc_vecs, chull_vecs, rope_bds_dfs, uvecs
         DT_D[:, ::1] prms_mean_thrs_arr
         DT_D[:, ::1] dot_ref, dot_test, dot_test_sort, temp_rope_prm_vecs
+
+        # Brute-Force related parameters
+        DT_UL n_discretize
+        DT_ULL n_poss_combs, comb_ctr = 0
+
+        DT_UL[::1] use_prm_vec_flags
+        DT_UL[::1] last_idxs_vec
         #======================================================================
 
         #======================================================================
@@ -187,8 +195,6 @@ cpdef dict hbv_opt(args):
 
         DT_D min_q_thresh, mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
 
-#         DT_D qact_resamp_arr_sum
-
         dict out_dict
 
         DT_UL[::1] n_calls
@@ -222,7 +228,11 @@ cpdef dict hbv_opt(args):
          max_cont_iters, 
          obj_ftn_tol,
          prm_pcnt_tol) = args[2]
-
+    
+    elif opt_schm == 3:
+        (n_discretize,
+         n_prm_vecs,) = args[2]
+         
     (inis_arr,
      temp_arr,
      prec_arr,
@@ -288,15 +298,7 @@ cpdef dict hbv_opt(args):
     prm_vecs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
     temp_prm_vecs = prm_vecs.copy()
 
-    iter_prm_vecs = np.full(
-        (max_iters + 1, n_prm_vecs, n_prms), np.nan, dtype=DT_D_NP)
-
-    iobj_vals = np.full((max_iters + 1), np.nan, dtype=DT_D_NP)
-
-    gobj_vals = np.full((max_iters + 1), np.nan, dtype=DT_D_NP)
-
-    hbv_prms = np.zeros((n_cpus, n_cells, n_hbv_prms), dtype=DT_D_NP)
-
+    
     n_route_prms = n_prms - n_hm_prms
 
     if not n_route_prms:
@@ -460,6 +462,30 @@ cpdef dict hbv_opt(args):
             n_prms,
             n_cpus)
 
+    elif opt_schm == 3:
+        comb_ctr = 0
+        n_poss_combs = n_discretize ** n_prms
+
+        max_iters = (n_poss_combs // n_prm_vecs) + (
+            bool(n_poss_combs % n_prm_vecs))
+
+        use_prm_vec_flags = np.zeros(n_prm_vecs, dtype=DT_UL_NP)
+
+        last_idxs_vec = np.zeros(n_prms, dtype=DT_UL_NP)
+        last_idxs_vec[n_prms - 1] = -1  # this lets us start with zero idxs
+    
+        print('n_poss_combs:', n_poss_combs)
+        print('max_iters:', max_iters)
+
+    iter_prm_vecs = np.full(
+        (max_iters + 1, n_prm_vecs, n_prms), np.nan, dtype=DT_D_NP)
+
+    iobj_vals = np.full((max_iters + 1), np.nan, dtype=DT_D_NP)
+
+    gobj_vals = np.full((max_iters + 1), np.nan, dtype=DT_D_NP)
+
+    hbv_prms = np.zeros((n_cpus, n_cells, n_hbv_prms), dtype=DT_D_NP)
+
     # size and other constants needed in the obj_ftn
     # so that all are in a single variable
     obj_longs = np.zeros(obj_longs_ct, dtype=DT_UL_NP)
@@ -491,40 +517,6 @@ cpdef dict hbv_opt(args):
         bds_dfs[k, 0] = bounds[k, 0]
         bds_dfs[k, 1] = bounds[k, 1] - bounds[k, 0]
 
-    for i in range(n_prm_vecs):
-        for k in range(n_prms):
-            temp_prm_vecs[i, k] = (<DT_D> i) / n_prm_vecs_ol
-
-    for i in range(n_prms):
-        random.shuffle(idxs_shuff_list)
-        for j in range(n_prm_vecs):
-            prms_tmp[j] = temp_prm_vecs[<DT_UL> idxs_shuff_list[j], i]
-
-        for j in range(n_prm_vecs):
-            prm_vecs[j, i] = prms_tmp[j]
-
-    for i in range(n_prm_vecs):
-        for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
-            if (prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] <
-                prm_vecs[i, prms_span_idxs[fc_i, 0] + j]):
-
-                continue
-
-            # arbitrary decrease
-            prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] = (
-                0.99 * rand_c() * prm_vecs[i, prms_span_idxs[fc_i, 0] + j])
-
-        for j in range(n_hbv_prms):
-            for m in range(3, 6):
-                if not prms_flags[j, m]:
-                    continue
-
-                k = prms_idxs[j, m, 0]
-                if prm_vecs[i, k + 1] >= prm_vecs[i, k]:
-                    continue 
-
-                prm_vecs[i, k] = 0.99 * rand_c() * prm_vecs[i, k + 1]
-
     for i in range(n_cpus):
         for j in range(n_recs):
             for k in range(stms_inflow_arr.shape[1]):
@@ -533,6 +525,54 @@ cpdef dict hbv_opt(args):
 
             for k in range(cats_outflow_arr.shape[1]):
                 cats_outflow_mult_arr[j, k, i] = cats_outflow_arr[j, k]
+
+    if (opt_schm == 1) or (opt_schm == 2):
+        for i in range(n_prm_vecs):
+            for k in range(n_prms):
+                temp_prm_vecs[i, k] = (<DT_D> i) / n_prm_vecs_ol
+    
+        for i in range(n_prms):
+            random.shuffle(idxs_shuff_list)
+            for j in range(n_prm_vecs):
+                prms_tmp[j] = temp_prm_vecs[<DT_UL> idxs_shuff_list[j], i]
+    
+            for j in range(n_prm_vecs):
+                prm_vecs[j, i] = prms_tmp[j]
+    
+        for i in range(n_prm_vecs):
+            for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
+                if (prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] <
+                    prm_vecs[i, prms_span_idxs[fc_i, 0] + j]):
+    
+                    continue
+    
+                # arbitrary decrease
+                prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] = (
+                    0.99 * rand_c() * prm_vecs[i, prms_span_idxs[fc_i, 0] + j])
+    
+            for j in range(n_hbv_prms):
+                for m in range(3, 6):
+                    if not prms_flags[j, m]:
+                        continue
+    
+                    k = prms_idxs[j, m, 0]
+                    if prm_vecs[i, k + 1] >= prm_vecs[i, k]:
+                        continue 
+    
+                    prm_vecs[i, k] = 0.99 * rand_c() * prm_vecs[i, k + 1]
+
+    elif opt_schm == 3:
+        pre_brute(
+            last_idxs_vec,
+            use_prm_vec_flags,
+            prms_flags,
+            prms_span_idxs,
+            prms_idxs,
+            prm_vecs,
+            n_poss_combs,
+            n_discretize,
+            n_hbv_prms,
+            &comb_ctr)
 
     # for the selected parameters, get obj vals
 #     tid = 0
@@ -666,7 +706,21 @@ cpdef dict hbv_opt(args):
                 depth_ftn_type,
                 min_pts_in_chull)
 
+        elif opt_schm == 3:
+            pre_brute(
+                last_idxs_vec,
+                use_prm_vec_flags,
+                prms_flags,
+                prms_span_idxs,
+                prms_idxs,
+                prm_vecs,
+                n_poss_combs,
+                n_discretize,
+                n_hbv_prms,
+                &comb_ctr)
+
         if not cont_opt_flag:
+            # This is just for ROPE
             break
 
         if opt_schm == 1:
@@ -674,7 +728,7 @@ cpdef dict hbv_opt(args):
                 for j in range(n_prms):
                     iter_prm_vecs[iter_curr + 1, i, j] = u_j_gs[i, j]
 
-        elif opt_schm == 2:
+        elif (opt_schm == 2) or (opt_schm == 3):
             for i in range(n_prm_vecs):
                 for j in range(n_prms):
                     iter_prm_vecs[iter_curr + 1, i, j] = prm_vecs[i, j]
@@ -691,7 +745,7 @@ cpdef dict hbv_opt(args):
                 for k in range(n_prms):
                     curr_opt_prms[tid, k] = u_j_gs[t_i, k]
 
-            elif opt_schm == 2:
+            elif (opt_schm == 2) or (opt_schm == 3):
                 for k in range(n_prms):
                     curr_opt_prms[tid, k] = prm_vecs[t_i, k]
 
@@ -733,7 +787,7 @@ cpdef dict hbv_opt(args):
             if res == err_val:
                 res = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
 
-            if opt_schm == 1:
+            if (opt_schm == 1) or (opt_schm == 3):
                 curr_obj_vals[t_i] = res
 
             elif opt_schm == 2:
@@ -776,8 +830,23 @@ cpdef dict hbv_opt(args):
                 &cont_iter,
                 &cont_opt_flag,
                 &fval_pre_global)
+        
+        elif opt_schm == 3:
+            post_brute(
+                use_prm_vec_flags,
+                curr_obj_vals,
+                pre_obj_vals,
+                best_prm_vec,
+                iobj_vals,
+                prm_vecs,
+                n_poss_combs,
+                &iter_curr,
+                &cont_opt_flag,
+                &comb_ctr,
+                &fval_pre_global)
 
         gobj_vals[iter_curr] = fval_pre_global
+#         print('iter_curr:', iter_curr, 'comb_ctr:', comb_ctr)
 
 #     if opt_schm == 2:
 #         get_new_chull_vecs(
@@ -877,5 +946,9 @@ cpdef dict hbv_opt(args):
         out_dict['prm_vecs'] = np.asarray(acc_vecs)
         out_dict['curr_obj_vals'] = np.asarray(
             sort_obj_vals[:acc_vecs.shape[0]])
+
+    elif opt_schm == 3:
+        out_dict['prm_vecs'] = np.asarray(prm_vecs)
+        out_dict['curr_obj_vals'] = np.asarray(curr_obj_vals)
 
     return out_dict

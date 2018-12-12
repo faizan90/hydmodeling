@@ -987,16 +987,23 @@ def solve_cat(
                 print(f'n_uvecs: {n_uvecs}')
                 print(f'max_chull_tries: {max_chull_tries}')
 
+            elif opt_schm_vars_dict['opt_schm'] == 'BRUTE':
+                n_discretize = opt_schm_vars_dict['n_discretize']
+                assert n_discretize >= 2
+
+                _opt_list.extend([n_discretize, n_prm_vecs])
+
             else:
-                raise Exception
+                raise Exception('Incorrect opt_schm!')
 
             print(f'n_prm_vecs: {n_prm_vecs}')
-            _opt_list.extend([
-                n_prm_vecs,
-                opt_schm_vars_dict['max_iters'],
-                opt_schm_vars_dict['max_cont_iters'],
-                opt_schm_vars_dict['obj_ftn_tol'],
-                opt_schm_vars_dict['prm_pcnt_tol']])
+            if opt_schm_vars_dict['opt_schm'] != 'BRUTE':
+                _opt_list.extend([
+                    n_prm_vecs,
+                    opt_schm_vars_dict['max_iters'],
+                    opt_schm_vars_dict['max_cont_iters'],
+                    opt_schm_vars_dict['obj_ftn_tol'],
+                    opt_schm_vars_dict['prm_pcnt_tol']])
 
             curr_cat_params.append(_opt_list)
 
@@ -1090,6 +1097,9 @@ def solve_cat(
             elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
                 curr_cat_params.append(2)
 
+            elif opt_schm_vars_dict['opt_schm'] == 'BRUTE':
+                curr_cat_params.append(3)
+
             else:
                 raise ValueError(opt_schm_vars_dict['opt_schm'])
 
@@ -1100,14 +1110,14 @@ def solve_cat(
             opt_strt_time = timeit.default_timer()
 
             if ((opt_schm_vars_dict['opt_schm'] == 'DE') or
-                (opt_schm_vars_dict['opt_schm'] == 'ROPE')):
+                (opt_schm_vars_dict['opt_schm'] == 'ROPE') or
+                (opt_schm_vars_dict['opt_schm'] == 'BRUTE')):
 
                 out_db_dict = hbv_opt(curr_cat_params)
 
             else:
                 raise ValueError(
-                    f'opt_schm ({opt_schm_vars_dict["opt_schm"]}) '
-                    'can only be DE!')
+                    f'Incorrect opt_schm ({opt_schm_vars_dict["opt_schm"]})')
 
             prms_dict[cat] = (
                 out_db_dict['hbv_prms'], out_db_dict['route_prms'])

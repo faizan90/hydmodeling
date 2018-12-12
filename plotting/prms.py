@@ -301,7 +301,7 @@ def plot_cats_best_prms_2d_kf(
                 plot_grid[rows_dict[cat], cols_dict[cat]] = cell_prms
 
                 if lumped_prms_flag:
-                    val = str(cell_prms[0])
+                    val = '%0.16f' % cell_prms[0]
                     bf_pt, af_pt = val.split('.')
                     af_pt = af_pt[:(5 - len(bf_pt))]
                     val = f'{bf_pt}.{af_pt}'
@@ -839,6 +839,7 @@ def plot_cat_obj_evo_kf(
 
     '''Plot the objective function evolution for a given kfold and catchment.
     '''
+    max_obj_lim = 2
 
     plt.figure(figsize=(20, 10))
 
@@ -854,12 +855,19 @@ def plot_cat_obj_evo_kf(
     plt.xlabel('Iteration number (-)')
     plt.ylabel('Objective function value(-)')
 
+    plt.ylim(0, max_obj_lim)
+
     plt.grid()
     plt.legend()
 
+    above_limit_ct = int((iobj_vals > max_obj_lim).sum())
+    tot_obj_vals = iobj_vals.shape[0]
+
     plt.title(
         f'Objective function value evolution for the catchment {cat} '
-        f'and kfold no. {kf_i:02d}\n Min. obj. val: {min_gobj:0.5f}')
+        f'and kfold no. {kf_i:02d}\n Min. obj. val: {min_gobj:0.5f}\n'
+        f'{above_limit_ct} out of {tot_obj_vals} above the y-limit '
+        f'of this figure')
 
     out_fig_name = f'obj_val_evo_{cat}_kf_{kf_i:02d}.png'
 
