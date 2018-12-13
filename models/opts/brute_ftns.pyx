@@ -17,14 +17,14 @@ cdef extern from "cmath":
 cdef extern from "data_depths.h" nogil:
     cdef:
         void quick_sort(
-                double *arr,
-                long first_index,
-                long last_index)
+            DT_D *arr,
+            DT_UL first_index,
+            DT_UL last_index)
 
         long searchsorted(
-                const double *arr,
-                const double value,
-                const long arr_size)
+            const DT_D *arr,
+            const DT_D value,
+            const DT_UL arr_size)
 
 
 cdef void pre_brute(
@@ -74,7 +74,7 @@ cdef void pre_brute(
         # check if pwp is ge than fc and adjust
         for i in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
 
-            if (prm_vecs[t_i, prms_span_idxs[pwp_i, 0] + i] <=
+            if (prm_vecs[t_i, prms_span_idxs[pwp_i, 0] + i] <
                 prm_vecs[t_i, prms_span_idxs[fc_i, 0] + i]):
                 continue
 

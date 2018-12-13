@@ -85,11 +85,11 @@ cdef extern from "./data_depths.h" nogil:
     cdef:
         void gen_usph_vecs_norm_dist_c(
             unsigned long long *seeds_arr,
-            double *rn_ct_arr,
-            double *ndim_usph_vecs,
-            long n_vecs,
-            long n_dims,
-            long n_cpus)
+            DT_D *rn_ct_arr,
+            DT_D *ndim_usph_vecs,
+            DT_UL n_vecs,
+            DT_UL n_dims,
+            DT_UL n_cpus)
 
 
 cpdef dict hbv_opt(args):
@@ -120,7 +120,7 @@ cpdef dict hbv_opt(args):
         DT_UL[:, ::1] prms_flags, prms_span_idxs, f_var_infos
         DT_UL[:, :, ::1] prms_idxs
 
-        DT_D[::1] pre_obj_vals, best_prm_vec, prms_tmp
+        DT_D[::1] pre_obj_vals, curr_obj_vals, best_prm_vec, prms_tmp
         DT_D[::1] obj_ftn_wts, obj_doubles, iobj_vals, gobj_vals
         DT_D[:, ::1] curr_opt_prms, bounds, bds_dfs
         DT_D[:, ::1] prm_vecs, temp_prm_vecs
@@ -134,7 +134,7 @@ cpdef dict hbv_opt(args):
         DT_UL[::1] idx_rng, r_r
         DT_UL[:, ::1] del_idx_rng, choice_arr
 
-        DT_D[::1] mu_sc_fac_bds, cr_cnst_bds, curr_obj_vals
+        DT_D[::1] mu_sc_fac_bds, cr_cnst_bds
         DT_D[:, ::1] v_j_g, u_j_gs
 
         # ROPE related parameters
@@ -168,7 +168,7 @@ cpdef dict hbv_opt(args):
 
         #======================================================================
         # Hydrological state and topology related parameters
-        long curr_us_stm
+        DT_UL curr_us_stm
 
         DT_UL n_cells, n_recs, cat, stm, n_route_prms, opt_schm
         DT_UL route_type, n_stms, cat_no, stm_idx, cat_idx
@@ -749,7 +749,7 @@ cpdef dict hbv_opt(args):
 
             tid = threadid()
 
-            if (opt_schm == 3) and not (use_prm_vec_flags[t_i]):
+            if (opt_schm == 3) and (not use_prm_vec_flags[t_i]):
 
                 res = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
                 curr_obj_vals[t_i] = res

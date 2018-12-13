@@ -3,6 +3,9 @@ Created on 23 Jun 2018
 
 @author: Faizan_TR
 '''
+import matplotlib
+matplotlib.use('Cairo')
+
 from .dem_hyd_ansys import (
     get_cumm_cats,
     get_stms,

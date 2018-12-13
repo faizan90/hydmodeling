@@ -264,10 +264,10 @@ cdef void cmpt_resampled_arr_prt(
         ) nogil:
 
     cdef:
-        Py_ssize_t i, j
-        
-        DT_ULL beg_tag_idx, end_tag_idx
-        
+        Py_ssize_t i
+
+        DT_ULL j, beg_tag_idx, end_tag_idx
+
         DT_UL tag_val_ct
 
         DT_D tag_vals_sum
