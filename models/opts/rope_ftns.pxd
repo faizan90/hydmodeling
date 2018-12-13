@@ -1,8 +1,5 @@
 from ..miscs.dtypes cimport DT_D, DT_UL
 
-import numpy as np
-cimport numpy as np
-
 
 cdef void get_new_chull_vecs(
               DT_UL[::1] depths_arr,

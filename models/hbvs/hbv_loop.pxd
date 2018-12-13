@@ -1,6 +1,5 @@
 from ..miscs.dtypes cimport DT_D, DT_UL
 
-
 cdef DT_D hbv_loop(
           DT_D[:, ::1] temp_arr,
           DT_D[:, ::1] prec_arr,

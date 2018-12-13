@@ -68,6 +68,7 @@ cdef DT_D obj_ftn(
 
           cmap[long, long] &cat_to_idx_map,
           cmap[long, long] &stm_to_idx_map,
+          ForFourTrans1DRealVec *q_ft_tfms,
     ) nogil except +:
 
     cdef:

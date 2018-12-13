@@ -1,6 +1,5 @@
 from ..miscs.dtypes cimport DT_D, DT_UL, DT_ULL
 
-
 cdef DT_D get_mean_prt(
         const DT_D[::1] in_arr,
         const DT_UL[::1] bool_arr,

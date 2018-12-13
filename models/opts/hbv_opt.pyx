@@ -12,6 +12,8 @@ import random
 
 from libcpp.map cimport map as cmap
 from cython.parallel import prange, threadid
+from libc.stdlib cimport malloc, free
+from libcpp.vector cimport vector
 import numpy as np
 cimport numpy as np
 
@@ -19,6 +21,7 @@ from .hbv_obj_ftn cimport obj_ftn
 from .de_ftns cimport pre_de, post_de
 from .rope_ftns cimport get_new_chull_vecs, pre_rope, post_rope
 from .brute_ftns cimport pre_brute, post_brute
+from ..fourtrans.dfti cimport cmpt_real_fourtrans_1d
 from ..miscs.misc_ftns cimport (
     get_demr, 
     get_ln_demr,
@@ -38,6 +41,9 @@ from ..miscs.dtypes cimport (
     DT_D,
     DT_UL,
     DT_ULL,
+    DT_DC,
+    ForFourTrans1DReal,
+    ForFourTrans1DRealVec,
     fc_i, 
     pwp_i, 
     n_hbv_cols, 
@@ -109,12 +115,18 @@ cpdef dict hbv_opt(args):
         DT_UL max_iters, max_cont_iters, off_idx, n_prms, n_hm_prms
         DT_UL iter_curr = 0, last_succ_i = 0, n_succ = 0, cont_iter = 0
         DT_UL resamp_obj_ftns_flag
+        
+        # size in bytes
+        DT_UL q_sorig, q_sft, q_sampang, q_stfm 
 
         DT_D obj_ftn_tol, res, prm_pcnt_tol
         DT_D tol_curr = np.inf, tol_pre = np.inf
         DT_D fval_pre_global = np.inf, fval_pre, fval_curr
 
         list idxs_shuff_list
+
+        ForFourTrans1DReal *q_ft
+        ForFourTrans1DRealVec q_ft_tfms
 
         DT_UL[::1] prm_opt_stop_arr, obj_longs, use_step_arr
         DT_UL[:, ::1] prms_flags, prms_span_idxs, f_var_infos
@@ -581,6 +593,25 @@ cpdef dict hbv_opt(args):
             n_hbv_prms,
             &comb_ctr)
 
+    if obj_ftn_wts[2]:
+        q_sorig = qact_arr.shape[0] * sizeof(DT_D)
+        q_sft = ((qact_arr.shape[0] // 2) + 1) * sizeof(DT_DC)
+        q_sampang = (2 * ((qact_arr.shape[0] // 2) - 1) * sizeof(DT_D))
+        q_stfm = q_sorig + q_sft + q_sampang + sizeof(DT_UL)
+
+        for i in range(n_cpus + 1):
+            q_ft_tfms.push_back(<ForFourTrans1DReal *> malloc(q_stfm))
+
+            q_ft_tfms[i].ft = <DT_DC *> (<DT_ULL> q_ft_tfms[i].orig + <DT_ULL> q_sorig)
+
+            q_ft_tfms[i].amps = <DT_D *> (<DT_ULL> q_ft_tfms[i].ft + <DT_ULL> q_sft)
+
+            q_ft_tfms[i].angs = <DT_D *> (<DT_ULL> q_ft_tfms[i].amps + <DT_ULL> (q_sampang // 2)) 
+
+            q_ft_tfms[i].n_pts = qact_arr.shape[0] 
+
+        cmpt_real_fourtrans_1d(q_ft_tfms[0])
+
     # for the selected parameters, get obj vals
 #     tid = 0
 #     for i in range(n_prm_vecs):
@@ -629,7 +660,8 @@ cpdef dict hbv_opt(args):
             bds_dfs,
             outs_mult_arr[tid],
             cat_to_idx_map,
-            stm_to_idx_map)
+            stm_to_idx_map,
+            &q_ft_tfms)
 
 #         print('%d Ini res:' % i, res)
 #         raise Exception(res)
@@ -797,7 +829,8 @@ cpdef dict hbv_opt(args):
                 bds_dfs,
                 outs_mult_arr[tid],
                 cat_to_idx_map,
-                stm_to_idx_map)
+                stm_to_idx_map,
+                &q_ft_tfms)
 
             if res == err_val:
                 res = (2 + rand_c_mp(&seeds_arr[tid])) * err_val
@@ -920,7 +953,8 @@ cpdef dict hbv_opt(args):
         bds_dfs,
         outs_mult_arr[tid],
         cat_to_idx_map,
-        stm_to_idx_map)
+        stm_to_idx_map,
+        &q_ft_tfms)
 
     print('Number of iterations:', iter_curr)
     print('Final min. obj. value:', fval_pre_global)

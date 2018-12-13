@@ -6,7 +6,6 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
-
 cdef DT_D min(const DT_D a, const DT_D b) nogil:
     if a <= b:
         return a

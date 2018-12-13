@@ -1,4 +1,6 @@
 from ..miscs.dtypes cimport DT_D, DT_UL, DT_ULL
+from ..miscs.dtypes cimport ForFourTrans1DRealVec
+
 from libcpp.map cimport map as cmap
 
 
@@ -44,4 +46,5 @@ cdef DT_D obj_ftn(
 
           cmap[long, long] &cat_to_idx_map,
           cmap[long, long] &stm_to_idx_map,
+          ForFourTrans1DRealVec *q_ft_tfms,
     ) nogil except +

@@ -1,9 +1,21 @@
+from libcpp.vector cimport vector
+
 import numpy as np
 cimport numpy as np
 
 ctypedef double DT_D
 ctypedef long DT_UL  # unfortunately, this has to stay signed
 ctypedef unsigned long long DT_ULL
+ctypedef double complex DT_DC
+
+ctypedef struct ForFourTrans1DReal:
+    DT_D *orig   # The input array. N should be even.
+    DT_DC *ft    # Fourier transform of orig.
+    DT_D *amps   # Amplitudes of ft. Starting from index 1 to N//2.
+    DT_D *angs   # Angles of ft. Starting from index 1 to N//2.
+    DT_UL n_pts  # number of values in orig
+
+ctypedef vector[ForFourTrans1DReal *] ForFourTrans1DRealVec
 
 cdef Py_ssize_t fc_i, pwp_i
 
