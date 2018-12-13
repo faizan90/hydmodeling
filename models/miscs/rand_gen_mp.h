@@ -3,15 +3,19 @@
 #include <limits.h>
 //#include <stdlib.h>
 
+
 typedef double DT_D;
 typedef long DT_UL;
 typedef unsigned long long DT_ULL;
 
+
 const DT_D MOD_long_long = (DT_D) ULLONG_MAX;
 const DT_ULL A = 21, B = 35, C = 4;
 
+
 static DT_ULL SEED = time(NULL) * 1000;
 static DT_ULL rnd_i = SEED;
+
 
 DT_D rand_c() {
     rnd_i ^= rnd_i << A;

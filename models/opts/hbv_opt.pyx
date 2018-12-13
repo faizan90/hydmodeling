@@ -311,7 +311,7 @@ cpdef dict hbv_opt(args):
     curr_opt_prms = np.zeros((n_cpus, n_prms), dtype=DT_D_NP)
     prm_vecs = np.zeros((n_prm_vecs, n_prms), dtype=DT_D_NP)
     temp_prm_vecs = prm_vecs.copy()
-    
+
     n_route_prms = n_prms - n_hm_prms
 
     if not n_route_prms:
@@ -375,7 +375,7 @@ cpdef dict hbv_opt(args):
 
         else:
             cmpt_resampled_arr(
-                qact_arr, 
+                qact_arr,
                 qact_resamp_arr,
                 obj_ftn_resamp_tags_arr)
 
@@ -428,7 +428,7 @@ cpdef dict hbv_opt(args):
     elif opt_schm == 2:
         # donot use shape of these six in any ftn
         mins = np.full(
-            (n_cpus, n_temp_rope_prm_vecs),  
+            (n_cpus, n_temp_rope_prm_vecs),
             n_temp_rope_prm_vecs, 
             dtype=DT_UL_NP)
 
@@ -549,35 +549,35 @@ cpdef dict hbv_opt(args):
         for i in range(n_prm_vecs):
             for k in range(n_prms):
                 temp_prm_vecs[i, k] = (<DT_D> i) / n_prm_vecs_ol
-    
+
         for i in range(n_prms):
             random.shuffle(idxs_shuff_list)
             for j in range(n_prm_vecs):
                 prms_tmp[j] = temp_prm_vecs[<DT_UL> idxs_shuff_list[j], i]
-    
+
             for j in range(n_prm_vecs):
                 prm_vecs[j, i] = prms_tmp[j]
-    
+
         for i in range(n_prm_vecs):
             for j in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
                 if (prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] <
                     prm_vecs[i, prms_span_idxs[fc_i, 0] + j]):
-    
+
                     continue
-    
+
                 # arbitrary decrease
                 prm_vecs[i, prms_span_idxs[pwp_i, 0] + j] = (
                     0.99 * rand_c() * prm_vecs[i, prms_span_idxs[fc_i, 0] + j])
-    
+
             for j in range(n_hbv_prms):
                 for m in range(3, 6):
                     if not prms_flags[j, m]:
                         continue
-    
+
                     k = prms_idxs[j, m, 0]
                     if prm_vecs[i, k + 1] >= prm_vecs[i, k]:
                         continue 
-    
+
                     prm_vecs[i, k] = 0.99 * rand_c() * prm_vecs[i, k + 1]
 
     elif opt_schm == 3:
@@ -602,11 +602,14 @@ cpdef dict hbv_opt(args):
         for i in range(n_cpus + 1):
             q_ft_tfms.push_back(<ForFourTrans1DReal *> malloc(q_stfm))
 
-            q_ft_tfms[i].ft = <DT_DC *> (<DT_ULL> q_ft_tfms[i].orig + <DT_ULL> q_sorig)
+            q_ft_tfms[i].ft = <DT_DC *> (
+                <DT_ULL> q_ft_tfms[i].orig + <DT_ULL> q_sorig)
 
-            q_ft_tfms[i].amps = <DT_D *> (<DT_ULL> q_ft_tfms[i].ft + <DT_ULL> q_sft)
+            q_ft_tfms[i].amps = <DT_D *> (
+                <DT_ULL> q_ft_tfms[i].ft + <DT_ULL> q_sft)
 
-            q_ft_tfms[i].angs = <DT_D *> (<DT_ULL> q_ft_tfms[i].amps + <DT_ULL> (q_sampang // 2)) 
+            q_ft_tfms[i].angs = <DT_D *> (
+                <DT_ULL> q_ft_tfms[i].amps + <DT_ULL> (q_sampang // 2)) 
 
             q_ft_tfms[i].n_pts = qact_arr.shape[0] 
 
@@ -878,7 +881,7 @@ cpdef dict hbv_opt(args):
                 &cont_iter,
                 &cont_opt_flag,
                 &fval_pre_global)
-        
+
         elif opt_schm == 3:
             post_brute(
                 use_prm_vec_flags,

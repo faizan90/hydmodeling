@@ -3,15 +3,25 @@
 # cython: wraparound=False
 # cython: cdivision=True
 # cython: language_level=3
+# cython: infer_types=False
+# cython: embedsignature=True
 
-from libc.math cimport atan2, cos
 
-cdef extern from "./intel_dfti.h":
+from libc.math cimport cos, atan2
+
+
+cdef extern from "intel_dfti.h" nogil:
     cdef:
-        void mkl_real_1d_dft(
+        void mkl_real_dft(
                 double *in_reals_arr,
-                _Dcomplex *out_comps_arr,
+                DT_DC *out_comps_arr,
                 long n_pts)
+
+
+cdef extern from "complex.h" nogil:
+    cdef:
+        DT_D creal(DT_DC)
+        DT_D cimag(DT_DC)
 
 
 cdef void cmpt_real_fourtrans_1d(
@@ -22,7 +32,7 @@ cdef void cmpt_real_fourtrans_1d(
 
         DT_UL n_pts = for_four_trans_struct.n_pts
 
-        complex ft
+        DT_DC ft
 
         DT_D *amps
         DT_D *angs
@@ -30,15 +40,14 @@ cdef void cmpt_real_fourtrans_1d(
     amps = for_four_trans_struct.amps
     angs = for_four_trans_struct.angs
 
-    mkl_real_1d_dft(
-        for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
+    mkl_real_dft(for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
 
     for i in range((n_pts // 2) - 1):
         ft = for_four_trans_struct.ft[i + 1]
 
-        angs[i] = atan2(ft.imag, ft.real)
+        angs[i] = atan2(cimag(ft), creal(ft))
 
-        amps[i] = ((ft.real**2) + (ft.imag**2))**0.5
+        amps[i] = ((creal(ft)**2) + (cimag(ft)**2))**0.5
     return
 
 
@@ -74,8 +83,8 @@ cpdef void cmpt_real_four_trans_1d_cy(
         DT_D[::1] orig, 
         DT_DC[::1] ft,
         DT_D[::1] amps,
-        DT_D[::1] angs) nogil:
-    
+        DT_D[::1] angs) nogil except +:
+
     cdef:
         ForFourTrans1DReal for_four_trans_struct
 

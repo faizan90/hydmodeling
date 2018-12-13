@@ -12,8 +12,8 @@ from ..miscs.dtypes cimport fc_i, pwp_i
 from ..miscs.misc_ftns cimport del_idx
 
 
-cdef extern from "cmath":
-    bint isnan(DT_D x) nogil
+cdef extern from "cmath" nogil:
+    bint isnan(DT_D x)
     DT_D INFINITY
 
 
@@ -50,7 +50,7 @@ cdef void pre_de(
     const DT_UL n_cpus,
           DT_UL *cont_iter,
     ) nogil except +:
-    
+
     cdef:
         Py_ssize_t tid, i, k, m, ch_r_i, ch_r_j, ch_r_l
         DT_UL t_i

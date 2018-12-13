@@ -9,8 +9,8 @@
 from ..miscs.dtypes cimport fc_i, pwp_i
 
 
-cdef extern from "cmath":
-    bint isnan(DT_D x) nogil
+cdef extern from "cmath" nogil:
+    bint isnan(DT_D x)
     DT_D INFINITY
 
 

@@ -12,13 +12,14 @@ cimport numpy as np
 from ..miscs.dtypes cimport fc_i, pwp_i
 from .data_depths cimport depth_ftn, pre_depth, post_depth
 
+
 cdef DT_D NaN = np.NaN
 cdef DT_D INF = np.inf
 cdef DT_UL use_c = 1
 
 
-cdef extern from "cmath":
-    bint isnan(DT_D x) nogil
+cdef extern from "cmath" nogil:
+    bint isnan(DT_D x)
 
 
 cdef extern from "../miscs/rand_gen_mp.h" nogil:

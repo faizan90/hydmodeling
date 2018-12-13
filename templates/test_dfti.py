@@ -51,6 +51,8 @@ def main():
     assert np.all(np.isclose(ft, np_ft))
     assert np.all(np.isclose(amps, np_amps))
     assert np.all(np.isclose(angs, np_angs))
+
+    print('All tests passed!')
     return
 
 

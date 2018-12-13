@@ -105,7 +105,7 @@ cdef DT_D get_ln_ns(
     cdef:
         Py_ssize_t i
         DT_D numr = 0.0
-    
+
     for i in range(off_idx[0], x_arr.shape[0]):
         numr += (log(x_arr[i] / y_arr[i]))**2
     return (1.0 - (numr / demr[0]))
@@ -342,8 +342,8 @@ cdef inline DT_D cmpt_tt_from_scale(
         const DT_D *max_tt,
         const DT_D *exponent) nogil:
 
-    return min_tt[0] + ((max_tt[0] - min_tt[0]) * 
-                        (in_scale[0]**exponent[0]))
+    return min_tt[0] + (
+        (max_tt[0] - min_tt[0]) * (in_scale[0]**exponent[0]))
 
 
 cdef void cmpt_tt_from_scale_arr(
@@ -552,4 +552,5 @@ def lin_regsn_cy(
 
     y_arr_interp = np.full(x_arr.shape[0], np.nan)
     lin_regsn(x_arr, y_arr, y_arr_interp, &off_idx, &corr, &slope, &intercept)
+
     return np.asarray(y_arr_interp), corr, slope, intercept

@@ -3,7 +3,7 @@
 #include <mkl_dfti.h>
 
 
-void mkl_real_1d_dft(
+void mkl_real_dft(
 		double *in_reals_arr,
 		_Dcomplex *out_comps_arr,
 		long n_pts) {
@@ -37,5 +37,4 @@ void mkl_real_1d_dft(
 
 	status = DftiFreeDescriptor(&desc_hdl);
 
-	return;
 }

@@ -8,10 +8,10 @@
 
 
 cdef void tfm_opt_to_route_prms(
-    const DT_D[::1] opt_prms,
-          DT_D[::1] route_prms,
-    const DT_D[:, ::1] bds_dfs,
-    ) nogil except +:
+        const DT_D[::1] opt_prms,
+              DT_D[::1] route_prms,
+        const DT_D[:, ::1] bds_dfs,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t i
@@ -22,24 +22,24 @@ cdef void tfm_opt_to_route_prms(
 
 
 cdef void musk_route(
-    const DT_D[::1] inflow_arr, 
-          DT_D[::1, :] outflow_arr,
+        const DT_D[::1] inflow_arr, 
+              DT_D[::1, :] outflow_arr,
 
-    const DT_D *lag, 
-    const DT_D *wt, 
-    const DT_D *del_t,
+        const DT_D *lag, 
+        const DT_D *wt, 
+        const DT_D *del_t,
 
-    const long *n_recs, 
-    const long *stm_idx,
-    const long *n_stms,
-    ) nogil except +:
+        const long *n_recs, 
+        const long *stm_idx,
+        const long *n_stms,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t i
         DT_D C0, C1, C2, C3
 
     C0 = (2 * lag[0] * (1 - wt[0])) + del_t[0]
-    
+
     C1 = (del_t[0] - (2 * lag[0] * wt[0])) / C0
 
     C2 = (del_t[0] + (2 * lag[0] * wt[0])) / C0
@@ -48,30 +48,31 @@ cdef void musk_route(
 
     outflow_arr[0, stm_idx[0]] = inflow_arr[0]
     for i in range(1, n_recs[0]):
-        outflow_arr[i, stm_idx[0]] = ((inflow_arr[i] * C1) + 
-                                      (inflow_arr[i - 1] * C2) + 
-                                      (outflow_arr[i - 1, stm_idx[0]] * C3))
+        outflow_arr[i, stm_idx[0]] = (
+            (inflow_arr[i] * C1) +
+            (inflow_arr[i - 1] * C2) +
+            (outflow_arr[i - 1, stm_idx[0]] * C3))
     return
 
 
 cdef void route_strms(
-    const DT_UL[::1] stm_idxs,
+        const DT_UL[::1] stm_idxs,
 
-    cmap[long, long] &cat_to_idx_map,
-    cmap[long, long] &stm_to_idx_map,
+        cmap[long, long] &cat_to_idx_map,
+        cmap[long, long] &stm_to_idx_map,
 
-          DT_D[::1] inflow_arr,
-          DT_D[::1] route_prms,
+              DT_D[::1] inflow_arr,
+              DT_D[::1] route_prms,
 
-    const DT_D[:, ::1] dem_net_arr,
-          DT_D[::1, :] cats_outflow_arr,
-          DT_D[::1, :] stms_inflow_arr,
-          DT_D[::1, :] stms_outflow_arr,
+        const DT_D[:, ::1] dem_net_arr,
+              DT_D[::1, :] cats_outflow_arr,
+              DT_D[::1, :] stms_inflow_arr,
+              DT_D[::1, :] stms_outflow_arr,
 
-    const DT_UL *n_stms,
-    const DT_UL *route_type,
-    ) nogil except +:
-    
+        const DT_UL *n_stms,
+        const DT_UL *route_type,
+        ) nogil except +:
+
     cdef:
         Py_ssize_t i, j, opt_k, us_cat_idx, us1_idx, us2_idx
         long stm_idx, ds_cat, us_cat, us_01, us_02, stm
@@ -91,7 +92,7 @@ cdef void route_strms(
         us_cat = <long> dem_net_arr[stm, 5]
         us_01 = <long> dem_net_arr[stm, 3]
         us_02 = <long> dem_net_arr[stm, 4]
-        
+
         if (us_cat != ds_cat):
             us_cat_idx = cat_to_idx_map[us_cat]
             for j in range(n_recs):
@@ -121,14 +122,15 @@ cdef void route_strms(
             lag = route_prms[opt_k]
             wt = route_prms[opt_k + 1]
 
-            musk_route(inflow_arr,
-                       stms_outflow_arr,
-                       &lag,
-                       &wt,
-                       &del_t,
-                       &n_recs,
-                       &stm_idx,
-                       &n_tot_stms)
+            musk_route(
+                inflow_arr,
+                stms_outflow_arr,
+                &lag,
+                &wt,
+                &del_t,
+                &n_recs,
+                &stm_idx,
+                &n_tot_stms)
 
         else:
             with gil: print(('Incorrect route_type: %d' % route_type[0]))

@@ -28,7 +28,7 @@ cdef DT_D get_mean_prt(
         Py_ssize_t i
         DT_UL ctr = 0
         DT_D _sum = 0.0
-        
+
     for i in range(off_idx[0], in_arr.shape[0]):
         if bool_arr[i]:
             _sum += in_arr[i]
@@ -95,11 +95,11 @@ cdef DT_D get_ns_prt(
         const DT_D *demr,
         const DT_UL *off_idx,
         ) nogil:
-    
+
     cdef:
         Py_ssize_t i
         DT_D numr = 0.0
-    
+
     for i in range(off_idx[0], x_arr.shape[0]):
         if bool_arr[i]:
             numr += (x_arr[i] - y_arr[i])**2
@@ -113,11 +113,11 @@ cdef DT_D get_ln_ns_prt(
         const DT_D *demr,
         const DT_UL *off_idx,
         ) nogil:
-    
+
     cdef:
         Py_ssize_t i
         DT_D numr = 0.0
-    
+
     for i in range(off_idx[0], x_arr.shape[0]):
         if bool_arr[i]:
             numr += (log(x_arr[i] / y_arr[i]))**2
@@ -141,7 +141,7 @@ cdef DT_D get_variance_prt(
             _sum += (in_arr[i] - in_mean[0])**2
             ctr += 1
     return _sum / ctr
-        
+
 
 cdef DT_D get_covariance_prt(
         const DT_D *in_mean_1,
@@ -236,8 +236,8 @@ cdef DT_D get_sum_sq_diff_prt(
         if bool_arr[i]:
             sum_sq_diff += (x_arr[i] - y_arr[i])**2
     return sum_sq_diff
-    
-    
+
+
 cdef DT_D get_ln_sum_sq_diff_prt(
         const DT_D[::1] x_arr,
         const DT_D[::1] y_arr,
@@ -346,6 +346,7 @@ def get_kge_prt_cy(
 
     mean_ref = get_mean_prt(x_arr, bool_arr, &off_idx)
     act_std_dev = get_variance_prt(&mean_ref, x_arr, bool_arr, &off_idx)**0.5
+
     return get_kge_prt(
         x_arr, y_arr, bool_arr, &mean_ref, &act_std_dev, &off_idx)
 
@@ -361,6 +362,7 @@ def get_ns_var_res_prt_cy(
             sim_arr.shape[0] == 
             cycle_arr.shape[0] == 
             bool_arr.shape[0]), 'Inputs have unequal shapes!'
+
     assert off_idx < ref_arr.shape[0], 'off_idx is too big!'
     
     cdef:
@@ -382,6 +384,7 @@ def get_ln_ns_var_res_prt_cy(
             sim_arr.shape[0] == 
             cycle_arr.shape[0] == 
             bool_arr.shape[0]), 'Inputs have unequal shapes!'
+
     assert off_idx < ref_arr.shape[0], 'off_idx is too big!'
     
     cdef:

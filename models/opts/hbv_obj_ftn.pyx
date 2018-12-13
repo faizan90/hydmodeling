@@ -27,49 +27,49 @@ from ..miscs.dtypes cimport (
 
 
 cdef DT_D obj_ftn(
-    const long *tid,
+        const long *tid,
 
-          DT_UL[::1] n_calls,
-    const DT_UL[::1] stm_idxs,
-    const DT_UL[::1] obj_longs,
-    const DT_UL[::1] use_step_arr,
+              DT_UL[::1] n_calls,
+        const DT_UL[::1] stm_idxs,
+        const DT_UL[::1] obj_longs,
+        const DT_UL[::1] use_step_arr,
 
-    const DT_ULL[::1] obj_ftn_resamp_tags_arr,
+        const DT_ULL[::1] obj_ftn_resamp_tags_arr,
 
-    const DT_UL[:, ::1] prms_flags,
-    const DT_UL[:, ::1] f_var_infos,
+        const DT_UL[:, ::1] prms_flags,
+        const DT_UL[:, ::1] f_var_infos,
 
-    const DT_UL[:, :, ::1] prms_idxs,
+        const DT_UL[:, :, ::1] prms_idxs,
 
-    const DT_D[::1] obj_ftn_wts,
-          DT_D[::1] opt_prms,
-    const DT_D[::1] qact_arr,
-    const DT_D[::1] qact_resamp_arr,
-          DT_D[::1] qsim_resamp_arr,
-    const DT_D[::1] area_arr,
-          DT_D[::1] qsim_arr,
-          DT_D[::1] inflow_arr,
-    const DT_D[::1] f_vars,
-    const DT_D[::1] obj_doubles,
-          DT_D[::1] route_prms,
+        const DT_D[::1] obj_ftn_wts,
+              DT_D[::1] opt_prms,
+        const DT_D[::1] qact_arr,
+        const DT_D[::1] qact_resamp_arr,
+              DT_D[::1] qsim_resamp_arr,
+        const DT_D[::1] area_arr,
+              DT_D[::1] qsim_arr,
+              DT_D[::1] inflow_arr,
+        const DT_D[::1] f_vars,
+        const DT_D[::1] obj_doubles,
+              DT_D[::1] route_prms,
 
-    const DT_D[:, ::1] inis_arr,
-          DT_D[:, ::1] temp_arr,
-          DT_D[:, ::1] prec_arr,
-          DT_D[:, ::1] petn_arr,
-          DT_D[::1, :] cats_outflow_arr,
-          DT_D[::1, :] stms_inflow_arr,
-          DT_D[::1, :] stms_outflow_arr,
-    const DT_D[:, ::1] dem_net_arr,
-          DT_D[:, ::1] hbv_prms,    
-    const DT_D[:, ::1] bds_dfs,
+        const DT_D[:, ::1] inis_arr,
+              DT_D[:, ::1] temp_arr,
+              DT_D[:, ::1] prec_arr,
+              DT_D[:, ::1] petn_arr,
+              DT_D[::1, :] cats_outflow_arr,
+              DT_D[::1, :] stms_inflow_arr,
+              DT_D[::1, :] stms_outflow_arr,
+        const DT_D[:, ::1] dem_net_arr,
+              DT_D[:, ::1] hbv_prms,
+        const DT_D[:, ::1] bds_dfs,
 
-          DT_D[:, :, ::1] outs_arr,
+              DT_D[:, :, ::1] outs_arr,
 
-          cmap[long, long] &cat_to_idx_map,
-          cmap[long, long] &stm_to_idx_map,
-          ForFourTrans1DRealVec *q_ft_tfms,
-    ) nogil except +:
+              cmap[long, long] &cat_to_idx_map,
+              cmap[long, long] &stm_to_idx_map,
+              ForFourTrans1DRealVec *q_ft_tfms,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t i
@@ -159,7 +159,7 @@ cdef DT_D obj_ftn(
                         use_step_arr,
                         &obj_doubles[demr_i],
                         &obj_longs[off_idx_i]))
-    
+
             else:
                 res = obj_ftn_wts[0] * (
                        get_ns(
@@ -180,7 +180,7 @@ cdef DT_D obj_ftn(
                         use_step_arr,
                         &obj_doubles[ln_demr_i],
                         &obj_longs[a_zero_i]))
-    
+
             else:
                 res = res + (
                     obj_ftn_wts[1] * get_ln_ns(
@@ -198,7 +198,7 @@ cdef DT_D obj_ftn(
                         use_step_arr,
                         &obj_doubles[ln_demr_i],
                         &obj_longs[off_idx_i]))
-    
+
             else:
                 res = res + (
                     obj_ftn_wts[1] * get_ln_ns(
@@ -220,7 +220,7 @@ cdef DT_D obj_ftn(
                         &obj_doubles[mean_ref_i],
                         &obj_doubles[act_std_dev_i],
                         &obj_longs[a_zero_i]))
-    
+
             else:
                 res = res + (
                     obj_ftn_wts[2] * get_kge(
@@ -240,7 +240,7 @@ cdef DT_D obj_ftn(
                         &obj_doubles[mean_ref_i],
                         &obj_doubles[act_std_dev_i],
                         &obj_longs[off_idx_i]))
-    
+
             else:
                 res = res + (
                     obj_ftn_wts[2] * get_kge(
@@ -249,7 +249,7 @@ cdef DT_D obj_ftn(
                         &obj_doubles[mean_ref_i],
                         &obj_doubles[act_std_dev_i],
                         &obj_longs[off_idx_i]))
-            
+
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[2]
 
     return obj_ftn_wts_sum - res

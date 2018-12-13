@@ -5,6 +5,7 @@ from ..miscs.dtypes cimport ForFourTrans1DReal
 cdef void cmpt_real_fourtrans_1d(
     ForFourTrans1DReal *for_four_trans_struct) nogil except +
 
+
 cdef void cmpt_freq_corrs(
         ForFourTrans1DReal *obs_for_four_trans_struct,
         ForFourTrans1DReal *sim_for_four_trans_struct,

@@ -44,30 +44,30 @@ DT_UL_NP = np.int32
 cdef extern from "../hbvs/hbv_c_loop.h" nogil:
     cdef:
         DT_D hbv_c_loop(
-            const DT_D *temp_arr,
-            const DT_D *prec_arr,
-            const DT_D *petn_arr,
-            const DT_D *prms_arr,
-            const DT_D *inis_arr,
-            const DT_D *area_arr,
-                  DT_D *qsim_arr,
-                  DT_D *outs_arr,
-            const DT_UL *n_time_steps,
-            const DT_UL *n_cells,
-            const DT_UL *n_hbv_prms,
-            const DT_UL *n_hbv_cols,
-            const DT_D *rnof_q_conv,
-            const DT_UL *opt_flag)
+                const DT_D *temp_arr,
+                const DT_D *prec_arr,
+                const DT_D *petn_arr,
+                const DT_D *prms_arr,
+                const DT_D *inis_arr,
+                const DT_D *area_arr,
+                      DT_D *qsim_arr,
+                      DT_D *outs_arr,
+                const DT_UL *n_time_steps,
+                const DT_UL *n_cells,
+                const DT_UL *n_hbv_prms,
+                const DT_UL *n_hbv_cols,
+                const DT_D *rnof_q_conv,
+                const DT_UL *opt_flag)
 
 
 cpdef dict hbv_loop_py(
-          DT_D[:, ::1] temp_arr,
-          DT_D[:, ::1] prec_arr,
-          DT_D[:, ::1] petn_arr,
-          DT_D[:, ::1] prms_arr,
-    const DT_D[:, ::1] inis_arr,
-    const DT_D[::1] area_arr,
-    const DT_D rnof_q_conv):
+              DT_D[:, ::1] temp_arr,
+              DT_D[:, ::1] prec_arr,
+              DT_D[:, ::1] petn_arr,
+              DT_D[:, ::1] prms_arr,
+        const DT_D[:, ::1] inis_arr,
+        const DT_D[::1] area_arr,
+        const DT_D rnof_q_conv):
 
     cdef:
         DT_UL n_time_steps = temp_arr.shape[1], opt_flag = 0
@@ -108,13 +108,13 @@ cpdef dict hbv_loop_py(
 
 
 cpdef dict hbv_c_loop_py(
-    const DT_D[:, ::1] temp_arr,
-    const DT_D[:, ::1] prec_arr,
-    const DT_D[:, ::1] petn_arr,
-    const DT_D[:, ::1] prms_arr,
-    const DT_D[:, ::1] inis_arr,
-    const DT_D[::1] area_arr,
-    const DT_D rnof_q_conv):
+        const DT_D[:, ::1] temp_arr,
+        const DT_D[:, ::1] prec_arr,
+        const DT_D[:, ::1] petn_arr,
+        const DT_D[:, ::1] prms_arr,
+        const DT_D[:, ::1] inis_arr,
+        const DT_D[::1] area_arr,
+        const DT_D rnof_q_conv):
 
     cdef:
         DT_UL n_time_steps = temp_arr.shape[1], opt_flag = 0
@@ -260,24 +260,23 @@ cpdef dict hbv_mult_cat_loop_py(args):
     if signal:
         print('\nWARNING: signal was %f for cat: %d!\n' % (signal, cat_no))
 
-        qsim_arr = np.full(cats_outflow_arr.shape[0], 
-                           np.nan, 
-                           dtype=DT_D_NP)
+        qsim_arr = np.full(
+            cats_outflow_arr.shape[0], np.nan, dtype=DT_D_NP)
 
     return {'outs_arr': np.array(outs_arr[:, 1:, :]),
             'qsim_arr': np.asarray(qsim_arr),
             'inflow_arr': np.asarray(inflow_arr)}
 
 cpdef np.ndarray tfm_opt_to_hbv_prms_py(
-    const DT_UL[:, ::1] prms_flags,
-    const DT_UL[:, ::1] f_var_infos,
+        const DT_UL[:, ::1] prms_flags,
+        const DT_UL[:, ::1] f_var_infos,
 
-    const DT_UL[:, :, ::1] prms_idxs,
+        const DT_UL[:, :, ::1] prms_idxs,
 
-    const DT_D[::1] f_vars,
-    const DT_D[::1] opt_prms,
-    const DT_D[:, ::1] bds_arr,
-    const DT_UL n_cells):
+        const DT_D[::1] f_vars,
+        const DT_D[::1] opt_prms,
+        const DT_D[:, ::1] bds_arr,
+        const DT_UL n_cells):
 
     cdef:
         Py_ssize_t k

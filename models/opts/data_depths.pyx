@@ -8,7 +8,9 @@
 
 from cython.parallel import prange, threadid
 
+
 cdef double shrink_cnst = 1e-6
+
 
 cdef extern from "data_depths.h" nogil:
     cdef:
