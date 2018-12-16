@@ -6,7 +6,7 @@ cdef void cmpt_real_fourtrans_1d(
     ForFourTrans1DReal *for_four_trans_struct) nogil except +
 
 
-cdef void cmpt_freq_corrs(
+cdef void cmpt_cumm_freq_pcorrs(
         ForFourTrans1DReal *obs_for_four_trans_struct,
         ForFourTrans1DReal *sim_for_four_trans_struct,
-        DT_D[::1] freq_corrs) nogil except +
+        DT_D *freq_corrs) nogil except +

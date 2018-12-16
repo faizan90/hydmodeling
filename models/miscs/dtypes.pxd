@@ -9,11 +9,12 @@ ctypedef unsigned long long DT_ULL
 ctypedef double complex DT_DC
 
 ctypedef struct ForFourTrans1DReal:
-    DT_D *orig   # The input array. N should be even.
-    DT_DC *ft    # Fourier transform of orig.
-    DT_D *amps   # Amplitudes of ft. Starting from index 1 to N//2.
-    DT_D *angs   # Angles of ft. Starting from index 1 to N//2.
-    DT_UL n_pts  # number of values in orig
+    DT_D *orig      # The input array. N should be even.
+    DT_DC *ft       # Fourier transform of orig.
+    DT_D *amps      # Amplitudes of ft. Starting from index 1 to N//2.
+    DT_D *angs      # Angles of ft. Starting from index 1 to N//2.
+    DT_D *pcorrs    # Cummulative pearson corrs for each frequency
+    DT_UL n_pts     # number of values in orig
 
 ctypedef vector[ForFourTrans1DReal *] ForFourTrans1DRealVec
 

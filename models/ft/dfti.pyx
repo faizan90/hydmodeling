@@ -51,15 +51,19 @@ cdef void cmpt_real_fourtrans_1d(
     return
 
 
-cdef void cmpt_freq_corrs(
+cdef void cmpt_cumm_freq_pcorrs(
         ForFourTrans1DReal *obs_for_four_trans_struct,
         ForFourTrans1DReal *sim_for_four_trans_struct,
-        DT_D[::1] freq_corrs) nogil except +:
+        DT_D *freq_corrs) nogil except +:
 
     cdef:
         Py_ssize_t i
 
         DT_UL n_pts = obs_for_four_trans_struct.n_pts
+
+        DT_D tot_cov = 0
+        DT_D obs_amps_sq_sum = 0, sim_amps_sq_sum = 0
+        DT_D pcorr, freq_cov_scale
 
         DT_D *obs_amps
         DT_D *sim_amps
@@ -73,9 +77,20 @@ cdef void cmpt_freq_corrs(
     sim_angs = sim_for_four_trans_struct.angs
 
     for i in range((n_pts // 2) - 1):
+        obs_amps_sq_sum += obs_amps[i]**2
+        sim_amps_sq_sum += sim_amps[i]**2
+
         freq_corrs[i] = (obs_amps[i] * sim_amps[i]) * (
             cos(obs_angs[i] - sim_angs[i]))
 
+        tot_cov += freq_corrs[i]
+
+    pcorr = tot_cov / (obs_amps_sq_sum * sim_amps_sq_sum)**0.5
+    freq_cov_scale = pcorr / tot_cov
+
+    freq_corrs[0] = freq_cov_scale * freq_corrs[0]
+    for i in range(1, (n_pts // 2) - 1):
+        freq_corrs[i] = freq_corrs[i - 1] + (freq_cov_scale * freq_corrs[i])
     return
 
 
