@@ -1076,7 +1076,7 @@ def plot_cat_qsims(cat_db):
     with h5py.File(cat_db, 'r') as db:
 
         opt_iters = [None]
-        long_short_break_freqs = ['month']
+        long_short_break_freqs = ['week']
 
         cv_flag = db['data'].attrs['cv_flag']
 
@@ -1185,6 +1185,12 @@ class PlotCatQSims:
         if long_short_break_freq == 'month':
             pass
 
+        elif long_short_break_freq == 'year':
+            pass
+
+        elif long_short_break_freq == 'week':
+            pass
+
         else:
             raise ValueError(
                 f'Undefined long_short_break_freq: {long_short_break_freq}!')
@@ -1204,14 +1210,21 @@ class PlotCatQSims:
         for k in range(1, self.kfolds + 1):
             kf_str = f'kf_{k:02d}'
 
-            if opt_iter is None:
-                prm_vecs = self.calib_db[kf_str + '/prm_vecs'][...]
+            if self.opt_schm == 'DE':
+                prm_vecs = self.calib_db[kf_str + '/opt_prms'][...][None, :]
 
             else:
-                iter_prm_vecs = self.calib_db[kf_str + '/iter_prm_vecs'][...]
-                prm_vecs = iter_prm_vecs[opt_iter, :, :].copy('c')
+                if opt_iter is None:
+                    prm_vecs = self.calib_db[kf_str + '/prm_vecs'][...]
+
+                else:
+                    iter_prm_vecs = self.calib_db[
+                        kf_str + '/iter_prm_vecs'][...]
+                    prm_vecs = iter_prm_vecs[opt_iter, :, :].copy('c')
 
             n_prms = prm_vecs.shape[0]
+
+            alpha = 0.7 / n_prms
 
             probs = (np.arange(1.0, n_prms + 1) / (n_prms + 1))
 
@@ -1255,7 +1268,7 @@ class PlotCatQSims:
                 if self.extra_flow_flag:
                     qsim_arr = qsim_arr + us_inflow_arr
 
-                plt.plot(qsim_arr, color='k', alpha=0.01, lw=0.5)
+                plt.plot(qsim_arr, color='k', alpha=alpha, lw=0.5)
 
                 out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
 
@@ -1315,13 +1328,13 @@ class PlotCatQSims:
                     bbox_inches='tight')
                 plt.close()
 
-#         out_df.to_csv(
-#             os.path.join(
-#                 self.qsims_dir,
-#                 f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.csv'),
-#             float_format='%0.3f',
-#             index=False,
-#             sep=';')
+        out_df.to_csv(
+            os.path.join(
+                self.qsims_dir,
+                f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.csv'),
+            float_format='%0.3f',
+            index=False,
+            sep=';')
 
         return self._classify_short_long_term(
             out_df, sim_lab, opt_iter_lab, long_short_break_freq, *args)
@@ -1336,6 +1349,12 @@ class PlotCatQSims:
 
         if long_short_break_freq == 'month':
             break_idx = int(n_steps // 30)
+
+        elif long_short_break_freq == 'year':
+            break_idx = int(n_steps // 365)
+
+        elif long_short_break_freq == 'week':
+            break_idx = int(n_steps // 7)
 
         sims_arr = sims_df.values[:n_steps, :]
 
@@ -1404,6 +1423,10 @@ class PlotCatQSims:
         max_corr_diff = corr_diffs.max()
         min_max_corr_diff = max_corr_diff - min_corr_diff
 
+        # For cases with only one vector
+        if fin_cumm_rho_arrs.shape[0] == 1:
+            min_max_corr_diff = 1
+
         for i in range(n_sims - 1):
             fin_cumm_rho_arr = fin_cumm_rho_arrs[i]
 
@@ -1414,7 +1437,7 @@ class PlotCatQSims:
             else:
                 clr_val = clr_vals[i]
 
-            assert 0 <= clr_val <= 1
+            assert 0 <= clr_val <= 1, (i, clr_val)
 
             sim_clr = cmap(clr_val)
 

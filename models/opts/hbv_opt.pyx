@@ -65,6 +65,7 @@ from ..miscs.dtypes cimport (
     use_step_flag_i,
     resamp_obj_ftns_flag_i,
     a_zero_i,
+    ft_maxi_freq_idx_i,
     rnof_q_conv_i,
     demr_i,
     ln_demr_i,
@@ -114,10 +115,10 @@ cpdef dict hbv_opt(args):
         DT_UL opt_flag = 1, use_obs_flow_flag, use_step_flag
         DT_UL max_iters, max_cont_iters, off_idx, n_prms, n_hm_prms
         DT_UL iter_curr = 0, last_succ_i = 0, n_succ = 0, cont_iter = 0
-        DT_UL resamp_obj_ftns_flag
+        DT_UL resamp_obj_ftns_flag, ft_maxi_freq_idx
         
         # size in bytes
-        DT_UL q_sorig, q_sft, q_sampang, q_spcorrs, q_stfm
+        DT_UL q_sorig, q_sft, q_sampang, q_stfm
 
         DT_D obj_ftn_tol, res, prm_pcnt_tol
         DT_D tol_curr = np.inf, tol_pre = np.inf
@@ -184,6 +185,7 @@ cpdef dict hbv_opt(args):
 
         DT_UL n_cells, n_recs, cat, stm, n_route_prms, opt_schm
         DT_UL route_type, n_stms, cat_no, stm_idx, cat_idx
+        DT_UL n_pts_ft  # always even
 
         DT_UL[::1] stms_idxs
 
@@ -218,6 +220,9 @@ cpdef dict hbv_opt(args):
     bounds = args[0]
 
     obj_ftn_wts = args[1]
+
+    if obj_ftn_wts[3]:
+        ft_maxi_freq_idx = args[9]
 
     opt_schm = args[8]
 
@@ -275,7 +280,7 @@ cpdef dict hbv_opt(args):
      use_step_flag,
      use_step_arr,
      min_q_thresh) = args[6]
-
+    
     (area_arr,
      prms_idxs, 
      prms_flags,
@@ -522,7 +527,7 @@ cpdef dict hbv_opt(args):
     obj_longs[use_step_flag_i] = use_step_flag
     obj_longs[resamp_obj_ftns_flag_i] = resamp_obj_ftns_flag
     obj_longs[a_zero_i] = a_zero
-
+    
     obj_doubles = np.full(obj_doubles_ct, np.nan, dtype=DT_D_NP)
     obj_doubles[rnof_q_conv_i] = rnof_q_conv
     obj_doubles[demr_i] = demr
@@ -594,11 +599,14 @@ cpdef dict hbv_opt(args):
             &comb_ctr)
 
     if obj_ftn_wts[3]:
-        q_sorig = qact_arr.shape[0] * sizeof(DT_D)
-        q_sft = ((qact_arr.shape[0] // 2) + 1) * sizeof(DT_DC)
-        q_sampang = (((qact_arr.shape[0] // 2) - 1) * sizeof(DT_D))
-        q_spcorrs = ((qact_arr.shape[0] // 2) - 1) * sizeof(DT_D)
-        q_stfm = q_sorig + q_sft + q_sampang + q_spcorrs + sizeof(DT_UL)
+        n_pts_ft = n_recs
+        if n_recs % 2:
+            n_pts_ft -= 1
+
+        q_sorig = n_pts_ft * sizeof(DT_D)
+        q_sft = ((n_pts_ft // 2) + 1) * sizeof(DT_DC)
+        q_sampang = (((n_pts_ft // 2) - 1) * sizeof(DT_D))
+        q_stfm = q_sorig + q_sft + q_sampang + sizeof(DT_UL)
 
         for i in range(n_cpus + 1):
             q_ft_tfms.push_back(<ForFourTrans1DReal *> malloc(
@@ -614,12 +622,14 @@ cpdef dict hbv_opt(args):
 
             q_ft_tfms[i].pcorrs = <DT_D *> malloc(q_sampang)
 
-            q_ft_tfms[i].n_pts = qact_arr.shape[0]
+            q_ft_tfms[i].n_pts = n_pts_ft
 
-        for i in range(qact_arr.shape[0]):
+        for i in range(n_pts_ft):
             q_ft_tfms[0].orig[i] = qact_arr[i]
-# 
+
         cmpt_real_fourtrans_1d(q_ft_tfms[0])
+
+        obj_longs[ft_maxi_freq_idx_i] = ft_maxi_freq_idx
 
     # for the selected parameters, get obj vals
 #     tid = 0
@@ -976,6 +986,22 @@ cpdef dict hbv_opt(args):
 
     if opt_schm == 1:
         print('Final tolerance:', 0.5 * (tol_pre + tol_curr))
+
+    if obj_ftn_wts[3]:
+        for i in range(n_cpus + 1):
+            free(q_ft_tfms[i].orig)
+    
+            free(q_ft_tfms[i].ft)
+    
+            free(q_ft_tfms[i].amps)
+    
+            free(q_ft_tfms[i].angs)
+    
+            free(q_ft_tfms[i].pcorrs)
+    
+            free(q_ft_tfms[i])
+    
+        q_ft_tfms.clear()
 
     tid = 0
     out_dict = {

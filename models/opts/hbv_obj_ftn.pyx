@@ -21,6 +21,7 @@ from ..miscs.dtypes cimport (
     use_step_flag_i,
     resamp_obj_ftns_flag_i,
     a_zero_i,
+    ft_maxi_freq_idx_i,
     demr_i,
     ln_demr_i,
     mean_ref_i,
@@ -71,6 +72,8 @@ cdef DT_D obj_ftn(
               cmap[long, long] &stm_to_idx_map,
               ForFourTrans1DRealVec &q_ft_tfms,
         ) nogil except +:
+
+    '''NOTE: All used obj. ftns. should have a maximum value of one.'''
 
     cdef:
         Py_ssize_t i
@@ -284,15 +287,16 @@ cdef DT_D obj_ftn(
 #         else:
         for i in range(qsim_arr.shape[0]):
             q_ft_tfms[tid[0] + 1].orig[i] = qsim_arr[i]
- 
+
         cmpt_real_fourtrans_1d(q_ft_tfms[tid[0] + 1])
- 
+
         cmpt_cumm_freq_pcorrs(
-            q_ft_tfms[0], q_ft_tfms[tid[0] + 1], q_ft_tfms[tid[0] + 1].pcorrs)
- 
+            q_ft_tfms[0], 
+            q_ft_tfms[tid[0] + 1], 
+            q_ft_tfms[tid[0] + 1].pcorrs)
+
         res = obj_ftn_wts[3] * (
-               q_ft_tfms[tid[0] + 1].pcorrs[
-                   (q_ft_tfms[tid[0] + 1].n_pts // 2) - 2])
+               q_ft_tfms[tid[0] + 1].pcorrs[obj_longs[ft_maxi_freq_idx_i]])
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[3]
 

@@ -52,9 +52,9 @@ cdef void cmpt_real_fourtrans_1d(
 
 
 cdef void cmpt_cumm_freq_pcorrs(
-        ForFourTrans1DReal *obs_for_four_trans_struct,
-        ForFourTrans1DReal *sim_for_four_trans_struct,
-        DT_D *freq_corrs) nogil except +:
+        const ForFourTrans1DReal *obs_for_four_trans_struct,
+        const ForFourTrans1DReal *sim_for_four_trans_struct,
+              DT_D *freq_corrs) nogil except +:
 
     cdef:
         Py_ssize_t i
@@ -110,4 +110,42 @@ cpdef void cmpt_real_four_trans_1d_cy(
     for_four_trans_struct.n_pts = orig.shape[0]
 
     cmpt_real_fourtrans_1d(&for_four_trans_struct)
+    return
+
+
+cpdef void cmpt_cumm_freq_pcorrs_cy(
+        DT_D[::1] obs_orig, 
+        DT_DC[::1] obs_ft,
+        DT_D[::1] obs_amps,
+        DT_D[::1] obs_angs,
+        DT_D[::1] sim_orig, 
+        DT_DC[::1] sim_ft,
+        DT_D[::1] sim_amps,
+        DT_D[::1] sim_angs,
+        DT_D[::1] cumm_corrs,
+        ) nogil except +:
+
+    cdef:
+        ForFourTrans1DReal obs_for_four_trans_struct
+        ForFourTrans1DReal sim_for_four_trans_struct
+
+    obs_for_four_trans_struct.orig = &obs_orig[0]
+    obs_for_four_trans_struct.ft = &obs_ft[0]
+    obs_for_four_trans_struct.amps = &obs_amps[0]
+    obs_for_four_trans_struct.angs = &obs_angs[0]
+    obs_for_four_trans_struct.n_pts = obs_orig.shape[0]
+
+    sim_for_four_trans_struct.orig = &sim_orig[0]
+    sim_for_four_trans_struct.ft = &sim_ft[0]
+    sim_for_four_trans_struct.amps = &sim_amps[0]
+    sim_for_four_trans_struct.angs = &sim_angs[0]
+    sim_for_four_trans_struct.n_pts = sim_orig.shape[0]
+
+    cmpt_real_fourtrans_1d(&obs_for_four_trans_struct)
+    cmpt_real_fourtrans_1d(&sim_for_four_trans_struct)
+
+    cmpt_cumm_freq_pcorrs(
+        &obs_for_four_trans_struct, 
+        &sim_for_four_trans_struct,
+        &cumm_corrs[0])
     return

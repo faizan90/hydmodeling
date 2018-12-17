@@ -539,6 +539,9 @@ def solve_cat(
     resamp_obj_ftns_flag = kwargs['resamp_obj_ftns_flag']
     discharge_resampling_freq = kwargs['discharge_resampling_freq']
 
+    ft_maxi_freq = 'W'
+    ft_maxi_freq_idx = get_ft_maxi_freq_idx(ft_maxi_freq, in_q_df.shape[0])
+
     if resamp_obj_ftns_flag:
         if discharge_resampling_freq in ['Y', 'A']:
             tag_idxs = in_q_df.index.year
@@ -1106,6 +1109,8 @@ def solve_cat(
         else:
             curr_cat_params.append(cat_area_ratios_arr)
 
+        curr_cat_params.append(ft_maxi_freq_idx)
+
         if calib_run:
             opt_strt_time = timeit.default_timer()
 
@@ -1532,3 +1537,34 @@ def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
     assert np.all(tags[1:] - tags[:-1] > 0)
 
     return tags
+
+
+def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs):
+
+    if n_recs % 2:
+        n_recs -= 1  # same is used inside the opt
+
+    if (ft_maxi_freq == 'A') or (ft_maxi_freq == 'Y'):
+        # assuming 365 days a year
+        assert n_recs > 365
+
+        ft_maxi_freq_idx = n_recs // 365  # leap years?
+
+    elif ft_maxi_freq == 'M':
+        # assuming a 30 day month
+        assert n_recs > 30
+
+        ft_maxi_freq_idx = n_recs // 30
+
+    elif ft_maxi_freq == 'W':
+        assert n_recs > 7
+
+        ft_maxi_freq_idx = n_recs // 7
+
+    else:
+        raise ValueError(f'ft_maxi_freq not defined for: {ft_maxi_freq}!')
+
+    assert ft_maxi_freq_idx > 1, 'No. of values is too little!'
+
+    return ft_maxi_freq_idx - 1
+
