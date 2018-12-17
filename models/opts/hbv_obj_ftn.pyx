@@ -257,34 +257,6 @@ cdef DT_D obj_ftn(
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[2]
 
     if obj_ftn_wts[3]:
-#         if obj_longs[resamp_obj_ftns_flag_i]:
-#             if obj_longs[use_step_flag_i]:
-#                 res = obj_ftn_wts[0] * (
-#                        get_ns_prt(
-#                         qact_resamp_arr,
-#                         qsim_resamp_arr,
-#                         use_step_arr,
-#                         &obj_doubles[demr_i],
-#                         &obj_longs[a_zero_i]))
-# 
-#             else:
-#                 res = obj_ftn_wts[0] * get_ns(
-#                         qact_resamp_arr,
-#                         qsim_resamp_arr,
-#                         &obj_doubles[demr_i],
-#                         &obj_longs[a_zero_i])
-# 
-#         else:
-#         if obj_longs[use_step_flag_i]:
-#             res = obj_ftn_wts[3] * (
-#                    get_ns_prt(
-#                     qact_arr,
-#                     qsim_arr,
-#                     use_step_arr,
-#                     &obj_doubles[demr_i],
-#                     &obj_longs[off_idx_i]))
-# 
-#         else:
         for i in range(qsim_arr.shape[0]):
             q_ft_tfms[tid[0] + 1].orig[i] = qsim_arr[i]
 

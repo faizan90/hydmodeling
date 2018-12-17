@@ -632,13 +632,12 @@ cpdef dict hbv_opt(args):
         obj_longs[ft_maxi_freq_idx_i] = ft_maxi_freq_idx
 
     # for the selected parameters, get obj vals
-#     tid = 0
-#     for i in range(n_prm_vecs):
     for i in prange(
         n_prm_vecs,
         schedule='dynamic', 
         nogil=True,
         num_threads=n_cpus):
+#         num_threads=1):
 
         tid = threadid()
 
