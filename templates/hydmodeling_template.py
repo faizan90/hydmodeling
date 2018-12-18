@@ -98,17 +98,17 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-#     create_stms_rels_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-#     plot_hbv_vars_flag = True
+    create_stms_rels_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_var_errors_flag = True
+    plot_hbv_vars_flag = True
     plot_qsims_flag = True
 
     use_cv_time_flag = False
@@ -293,6 +293,9 @@ def main():
 
     discharge_resampling_freq = cfp['OPT_HYD_MODEL'][
         'discharge_resampling_freq']
+
+    fourtrans_maxi_freq = cfp['OPT_HYD_MODEL'][
+        'fourtrans_maxi_freq']
 
     in_opt_schm_vars_dict = cfp['OPT_SCHM_VARS']
 
@@ -491,7 +494,8 @@ def main():
             opt_schm_vars_dict,
             cv_list,
             use_resampled_obj_ftns_flag,
-            discharge_resampling_freq)
+            discharge_resampling_freq,
+            fourtrans_maxi_freq)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t

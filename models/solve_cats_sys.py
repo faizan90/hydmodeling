@@ -71,7 +71,8 @@ def solve_cats_sys(
         opt_schm_vars_dict,
         cv_list,
         use_resampled_obj_ftns_flag,
-        discharge_resampling_freq):
+        discharge_resampling_freq,
+        fourtrans_maxi_freq):
 
     '''Optimize parameters for a given catchment
 
@@ -144,8 +145,12 @@ def solve_cats_sys(
         assert isinstance(tstamp, pd.Timestamp)
 
     assert isinstance(use_resampled_obj_ftns_flag, bool)
+
     assert isinstance(discharge_resampling_freq, str)
     assert discharge_resampling_freq in ['Y', 'A', 'M', 'W']
+
+    assert isinstance(fourtrans_maxi_freq, str)
+    assert fourtrans_maxi_freq in ['Y', 'A', 'M', 'W']
 
     sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
     assert np.all(np.isfinite(sel_cats))
@@ -321,7 +326,8 @@ def solve_cats_sys(
         'time_freq': time_freq,
         'cv_flag': cv_flag,
         'resamp_obj_ftns_flag': use_resampled_obj_ftns_flag,
-        'discharge_resampling_freq': discharge_resampling_freq}
+        'discharge_resampling_freq': discharge_resampling_freq,
+        'fourtrans_maxi_freq': fourtrans_maxi_freq}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -538,8 +544,8 @@ def solve_cat(
     cv_flag = int(kwargs['cv_flag'])
     resamp_obj_ftns_flag = kwargs['resamp_obj_ftns_flag']
     discharge_resampling_freq = kwargs['discharge_resampling_freq']
+    ft_maxi_freq = kwargs['fourtrans_maxi_freq']
 
-    ft_maxi_freq = 'W'
     ft_maxi_freq_idx = get_ft_maxi_freq_idx(ft_maxi_freq, in_q_df.shape[0])
 
     if resamp_obj_ftns_flag:
