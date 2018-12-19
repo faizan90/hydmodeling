@@ -1183,6 +1183,14 @@ class PlotCatQSims:
 
             opt_iter_lab = f'{opt_iter}'
 
+        plot_qsims_flag = False
+
+        if sim_lab == 'calib':
+            clr_vals_list = []
+
+        else:
+            clr_vals_list = args[0]
+
         sim_opt_data = self._get_data(sim_lab)
 
         tem_arr, ppt_arr, pet_arr, qact_arr = sim_opt_data[0][:4]
@@ -1296,21 +1304,23 @@ class PlotCatQSims:
 
             obj_ftns_dict['pcorr'] = [get_pcorr_cy, 'PCorr.', []]
 
-            plt.figure(figsize=(17, 8))
+            if plot_qsims_flag:
+                plt.figure(figsize=(17, 8))
 
             fin_cumm_rho_arrs = []
+
+            sim_perfs_df = pd.DataFrame(
+                index=np.arange(n_prms),
+                columns=list(obj_ftns_dict.keys()) + ['clrs'],
+                dtype=np.float64)
 
             if sim_lab == 'calib':
                 clr_vals = []
 
-                sim_perfs_df = pd.DataFrame(
-                    index=np.arange(n_prms),
-                    columns=list(obj_ftns_dict.keys()) + ['clrs'],
-                    dtype=np.float64)
-
             else:
-                clr_vals = args[0]
-                sim_perfs_df = args[1]
+                clr_vals = clr_vals_list[k - 1]
+
+                sim_perfs_df['clrs'][:] = clr_vals
 
             for i in range(n_prms):
                 opt_prms = prm_vecs[i]
@@ -1340,7 +1350,8 @@ class PlotCatQSims:
                 if self.extra_flow_flag:
                     qsim_arr = qsim_arr + us_inflow_arr
 
-                plt.plot(qsim_arr, color='k', alpha=alpha, lw=0.5)
+                if plot_qsims_flag:
+                    plt.plot(qsim_arr, color='k', alpha=alpha, lw=0.5)
 
                 out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
 
@@ -1350,8 +1361,7 @@ class PlotCatQSims:
 
                     obj_ftns_dict[obj_key][2].append(obj_val)
 
-                    if sim_lab == 'calib':
-                        sim_perfs_df.loc[i, obj_key] = obj_val
+                    sim_perfs_df.loc[i, obj_key] = obj_val
 
                 sim_arr = qsim_arr
 
@@ -1380,28 +1390,29 @@ class PlotCatQSims:
 
             fin_cumm_rho_arrs = np.array(fin_cumm_rho_arrs)
 
-            plt.plot(qact_arr, color='r', alpha=0.7, lw=0.5)
+            if plot_qsims_flag:
+                plt.plot(qact_arr, color='r', alpha=0.7, lw=0.5)
 
-            plt.xlabel('Step no.')
-            plt.ylabel('Discharge')
+                plt.xlabel('Step no.')
+                plt.ylabel('Discharge')
 
-            plt.grid()
+                plt.grid()
 
-            plt.title(
-                f'Discharge simulation using {self.opt_schm} parameters '
-                f'(n={n_prms}) for the catchment: {self.cat}, kf: {k:02d}\n'
-                f'Optimization iteration: {opt_iter_lab}\n'
-                f'Long-short dividing freq.: {long_short_break_freq}')
+                plt.title(
+                    f'Discharge simulation using {self.opt_schm} parameters '
+                    f'(n={n_prms}) for the catchment: {self.cat}, kf: {k:02d}\n'
+                    f'Optimization iteration: {opt_iter_lab}\n'
+                    f'Long-short dividing freq.: {long_short_break_freq}')
 
-            out_fig_name = (
-                f'{kf_str}_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.png')
+                out_fig_name = (
+                    f'{kf_str}_{self.cat}_{sim_lab}_{opt_iter_lab}_opt_qsims.png')
 
-            plt.savefig(
-                os.path.join(self.qsims_dir, out_fig_name),
-                bbox_inches='tight',
-                dpi=150)
+                plt.savefig(
+                    os.path.join(self.qsims_dir, out_fig_name),
+                    bbox_inches='tight',
+                    dpi=150)
 
-            plt.close()
+                plt.close()
 
             # FT corrs
             n_sims = n_prms
@@ -1411,7 +1422,7 @@ class PlotCatQSims:
             full_fig = plt.figure(figsize=fig_size)
             part_fig = plt.figure(figsize=fig_size)
 
-            sim_plot_alpha = min(0.1, 5 / (n_sims / 2))
+            sim_plot_alpha = alpha  # max(0.01, 5 / (n_sims / 2))
 
             corr_diffs = fin_cumm_rho_arrs[:, -1] - fin_cumm_rho_arrs[:, break_idx]
             min_corr_diff = corr_diffs.min()
@@ -1527,14 +1538,13 @@ class PlotCatQSims:
 
             plt.close()
 
-            if sim_lab == 'calib':
-                out_perf_df_name = (
-                    f'perfs_clrs_cat_{self.cat}_{sim_lab}_{kf_str}_{opt_iter_lab}.csv')
+            out_perf_df_name = (
+                f'perfs_clrs_cat_{self.cat}_{sim_lab}_{kf_str}_{opt_iter_lab}.csv')
 
-                sim_perfs_df.to_csv(
-                    os.path.join(self.qsims_dir, out_perf_df_name),
-                    float_format='%0.8f',
-                    sep=';')
+            sim_perfs_df.to_csv(
+                os.path.join(self.qsims_dir, out_perf_df_name),
+                float_format='%0.8f',
+                sep=';')
 
             # obj_vals
             clr_vals_arr = np.array(clr_vals)
@@ -1591,6 +1601,9 @@ class PlotCatQSims:
                     bbox_inches='tight')
                 plt.close()
 
+            if sim_lab == 'calib':
+                clr_vals_list.append(clr_vals)
+
             self._plot_best_hi_lo_freq_sims(
                 sim_perfs_df, out_df, k, sim_lab, opt_iter_lab)
 
@@ -1602,7 +1615,7 @@ class PlotCatQSims:
             index=False,
             sep=';')
 
-        return [clr_vals, sim_perfs_df]
+        return [clr_vals_list]
 
     def _plot_best_hi_lo_freq_sims(
             self, perfs_df, sims_df, kf, sim_lab, opt_iter_lab):
