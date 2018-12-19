@@ -6,6 +6,8 @@ Created on %(date)s
 """
 
 import os
+import sys
+import traceback as tb
 from fnmatch import filter
 
 import h5py
@@ -1074,23 +1076,31 @@ class PlotCatHBVSimKf:
 
 def plot_cat_qsims(cat_db):
 
-    with h5py.File(cat_db, 'r') as db:
+    try:
+        with h5py.File(cat_db, 'r') as db:
+            opt_iters = [9]
+            long_short_break_freqs = ['91D']
 
-        opt_iters = [9]
-        long_short_break_freqs = ['91D']
+            cv_flag = db['data'].attrs['cv_flag']
 
-        cv_flag = db['data'].attrs['cv_flag']
+            plot_sims_cls = PlotCatQSims(db)
 
-        plot_sims_cls = PlotCatQSims(db)
+            for long_short_break_freq in long_short_break_freqs:
+                for opt_iter in opt_iters:
+                    cv_args = plot_sims_cls.run_prm_sims(
+                        'calib', opt_iter, long_short_break_freq)
 
-        for long_short_break_freq in long_short_break_freqs:
-            for opt_iter in opt_iters:
-                cv_args = plot_sims_cls.run_prm_sims(
-                    'calib', opt_iter, long_short_break_freq)
+                    if not cv_flag:
+                        continue
 
-                if cv_flag:
                     plot_sims_cls.run_prm_sims(
                         'valid', opt_iter, long_short_break_freq, *cv_args)
+
+    except Exception as msg:
+        print('Error in plot_cat_qsims:', msg)
+
+        * _, exc_traceback = sys.exc_info()
+        tb.print_tb(exc_traceback, limit=None, file=sys.stdout)
     return
 
 
@@ -1289,8 +1299,9 @@ class PlotCatQSims:
                     prm_vecs = iter_prm_vecs[opt_iter, :, :].copy('c')
 
             n_prms = prm_vecs.shape[0]
+            print(f'Plotting {n_prms} sims only!')
 
-            alpha = 0.005
+            alpha = 0.01
 
             probs = (np.arange(1.0, n_prms + 1) / (n_prms + 1))
 
@@ -1424,7 +1435,13 @@ class PlotCatQSims:
 
             sim_plot_alpha = alpha  # max(0.01, 5 / (n_sims / 2))
 
-            corr_diffs = fin_cumm_rho_arrs[:, -1] - fin_cumm_rho_arrs[:, break_idx]
+            corr_diffs = 1 - fin_cumm_rho_arrs[:, break_idx]
+
+#             corr_diffs = (
+#                 fin_cumm_rho_arrs[:, -1] - fin_cumm_rho_arrs[:, break_idx])
+#
+#             corr_diffs /= fin_cumm_rho_arrs[:, -1]
+
             min_corr_diff = corr_diffs.min()
             max_corr_diff = corr_diffs.max()
             min_max_corr_diff = max_corr_diff - min_corr_diff
@@ -1440,7 +1457,9 @@ class PlotCatQSims:
                 fin_cumm_rho_arr = fin_cumm_rho_arrs[i]
 
                 if sim_lab == 'calib':
-                    clr_val = (corr_diffs[i] - min_corr_diff) / min_max_corr_diff
+                    clr_val = (
+                        corr_diffs[i] - min_corr_diff) / min_max_corr_diff
+
                     clr_vals.append(clr_val)
 
                     sim_perfs_df.loc[i, 'clrs'] = clr_val
@@ -1617,6 +1636,33 @@ class PlotCatQSims:
 
         return [clr_vals_list]
 
+    def _get_resamp_perfs(self, ref_arr, sim_arr):
+
+        resamp_freqs = [7, 30, 91, 365]
+
+        n_steps = ref_arr.shape[0]
+
+        effs = []
+
+        for resamp_freq in resamp_freqs:
+            extra_steps = n_steps % resamp_freq
+
+            ref_rshp = ref_arr[extra_steps:].reshape(
+                -1, resamp_freq).mean(axis=1)
+
+            sim_rshp = sim_arr[extra_steps:].reshape(
+                -1, resamp_freq).mean(axis=1)
+
+            ns = get_ns_cy(
+                ref_rshp, sim_rshp, self.off_idx // resamp_freq)
+
+            ln_ns = get_ln_ns_cy(
+                ref_rshp, sim_rshp, self.off_idx // resamp_freq)
+
+            effs.append((resamp_freq, ns, ln_ns))
+
+        return effs
+
     def _plot_best_hi_lo_freq_sims(
             self, perfs_df, sims_df, kf, sim_lab, opt_iter_lab):
 
@@ -1649,8 +1695,46 @@ class PlotCatQSims:
             [hi_corr_sim, 'Hi. long', 'green', 0.5],
             [lo_corr_sim, 'Lo. long', 'blue', 0.5]]
 
+        hi_effs = self._get_resamp_perfs(
+            qact_arr.astype(np.float64), hi_corr_sim.astype(np.float64))
+
+        lo_effs = self._get_resamp_perfs(
+            qact_arr.astype(np.float64), lo_corr_sim.astype(np.float64))
+
+        hi_effs = [(
+            1,
+            perfs_df.loc[hi_long_corr_idx, 'ns'],
+            perfs_df.loc[hi_long_corr_idx, 'ln_ns'])
+            ] + hi_effs
+
+        lo_effs = [(
+            1,
+            perfs_df.loc[lo_long_corr_idx, 'ns'],
+            perfs_df.loc[lo_long_corr_idx, 'ln_ns'])
+            ] + lo_effs
+
         pre_idx = 0
         lst_idx = steps_per_plot
+
+        corr_tit_str = 'Hi. Long NS: '
+        for hi_eff in hi_effs:
+            corr_tit_str += f'({hi_eff[0]}: {hi_eff[1]:7.6f}), '
+        corr_tit_str = corr_tit_str[:-2] + '\n'
+
+        corr_tit_str += 'Lo. Long NS: '
+        for lo_eff in lo_effs:
+            corr_tit_str += f'({lo_eff[0]}: {lo_eff[1]:7.6f}), '
+        corr_tit_str = corr_tit_str[:-2] + '\n'
+
+        corr_tit_str += 'Hi. Long ln_NS: '
+        for hi_eff in hi_effs:
+            corr_tit_str += f'({hi_eff[0]}: {hi_eff[2]:7.6f}), '
+        corr_tit_str = corr_tit_str[:-2] + '\n'
+
+        corr_tit_str += 'Lo. Long ln_NS: '
+        for lo_eff in lo_effs:
+            corr_tit_str += f'({lo_eff[0]}: {lo_eff[2]:7.6f}), '
+        corr_tit_str = corr_tit_str[:-2]
 
         while lst_idx < n_steps:
             x_arr = np.arange(pre_idx, lst_idx)
@@ -1672,10 +1756,14 @@ class PlotCatQSims:
             plt.xlabel('Time')
             plt.ylabel('Discharge ($m^3/s$)')
 
-            plt.title(
+            title_str = (
                 f'Observed vs. high and low long term correlation '
-                f'simulations.\n'
-                f'pre_idx: {pre_idx}, lst_idx: {lst_idx}')
+                f'simulations '
+                f'(pre_idx: {pre_idx}, lst_idx: {lst_idx})\n')
+
+            title_str += corr_tit_str
+
+            plt.title(title_str)
 
             fig_name = (
                 f'cat_{self.cat}_{sim_lab}_{opt_iter_lab}_qsims_{pre_idx}'
