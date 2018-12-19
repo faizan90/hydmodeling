@@ -1078,7 +1078,7 @@ def plot_cat_qsims(cat_db):
 
     try:
         with h5py.File(cat_db, 'r') as db:
-            opt_iters = [9]
+            opt_iters = [None]
             long_short_break_freqs = ['91D']
 
             cv_flag = db['data'].attrs['cv_flag']
@@ -1090,7 +1090,7 @@ def plot_cat_qsims(cat_db):
                     cv_args = plot_sims_cls.run_prm_sims(
                         'calib', opt_iter, long_short_break_freq)
 
-                    if not cv_flag:
+                    if (not cv_flag) or (cv_args is None):
                         continue
 
                     plot_sims_cls.run_prm_sims(
@@ -1190,6 +1190,11 @@ class PlotCatQSims:
 
         else:
             assert (opt_iter >= 0) and isinstance(opt_iter, int)
+
+            n_max_opt_iters = self.calib_db['kf_01/iter_prm_vecs'].shape[0] - 1
+            if n_max_opt_iters < opt_iter:
+                print(f'Only {n_max_opt_iters} iterations available!')
+                return
 
             opt_iter_lab = f'{opt_iter}'
 
