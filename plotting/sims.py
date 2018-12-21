@@ -1078,10 +1078,10 @@ def plot_cat_qsims(cat_db):
 
     try:
         with h5py.File(cat_db, 'r') as db:
-            opt_iters = [None]
-            long_short_break_freqs = ['91D']
+            opt_iters = [3, 10, 17, 24, None]
+            long_short_break_freqs = ['A']
 
-            cv_flag = db['data'].attrs['cv_flag']
+            cv_flag = False  # db['data'].attrs['cv_flag']
 
             plot_sims_cls = PlotCatQSims(db)
 
@@ -1288,6 +1288,14 @@ class PlotCatQSims:
 
         cmap = plt.get_cmap('winter')
 
+        ft_corrs_dir = os.path.join(self.qsims_dir, 'ft_corrs')
+        if not os.path.exists(ft_corrs_dir):
+            os.mkdir(ft_corrs_dir)
+
+        perfs_dir = os.path.join(self.qsims_dir, 'perf_cdfs')
+        if not os.path.exists(perfs_dir):
+            os.mkdir(perfs_dir)
+
         for k in range(1, self.kfolds + 1):
             kf_str = f'kf_{k:02d}'
 
@@ -1440,7 +1448,7 @@ class PlotCatQSims:
 
             sim_plot_alpha = alpha  # max(0.01, 5 / (n_sims / 2))
 
-            corr_diffs = 1 - fin_cumm_rho_arrs[:, break_idx]
+            corr_diffs = 1 - (fin_cumm_rho_arrs[:, break_idx] / fin_cumm_rho_arrs[:, -1])
 
 #             corr_diffs = (
 #                 fin_cumm_rho_arrs[:, -1] - fin_cumm_rho_arrs[:, break_idx])
@@ -1524,7 +1532,7 @@ class PlotCatQSims:
                 f'ft_corrs_cat_{self.cat}_{sim_lab}_{kf_str}_{opt_iter_lab}_all_freqs.png')
 
             plt.savefig(
-                os.path.join(self.qsims_dir, out_fig_name),
+                os.path.join(ft_corrs_dir, out_fig_name),
                 bbox_inches='tight')
 
             plt.close()
@@ -1557,7 +1565,7 @@ class PlotCatQSims:
                 f'{part_freq_idx}_freqs.png')
 
             plt.savefig(
-                os.path.join(self.qsims_dir, out_fig_name),
+                os.path.join(ft_corrs_dir, out_fig_name),
                 bbox_inches='tight')
 
             plt.close()
@@ -1566,7 +1574,7 @@ class PlotCatQSims:
                 f'perfs_clrs_cat_{self.cat}_{sim_lab}_{kf_str}_{opt_iter_lab}.csv')
 
             sim_perfs_df.to_csv(
-                os.path.join(self.qsims_dir, out_perf_df_name),
+                os.path.join(perfs_dir, out_perf_df_name),
                 float_format='%0.8f',
                 sep=';')
 
@@ -1621,12 +1629,15 @@ class PlotCatQSims:
                     f'{obj_key}_{opt_iter_lab}_opt_qsims.png')
 
                 plt.savefig(
-                    os.path.join(self.qsims_dir, out_obj_fig),
+                    os.path.join(perfs_dir, out_obj_fig),
                     bbox_inches='tight')
                 plt.close()
 
             if sim_lab == 'calib':
                 clr_vals_list.append(clr_vals)
+
+            self._plot_effs(sim_perfs_df, sim_lab, opt_iter_lab)
+            self._plot_effs2(sim_perfs_df, sim_lab, opt_iter_lab)
 
             self._plot_best_hi_lo_freq_sims(
                 sim_perfs_df, out_df, k, sim_lab, opt_iter_lab)
@@ -1640,6 +1651,122 @@ class PlotCatQSims:
             sep=';')
 
         return [clr_vals_list]
+
+    def _plot_effs(self, perfs_df, sim_lab, opt_iter_lab):
+
+        plt.figure(figsize=(10, 10))
+
+        plt.title(f'NS. vs. Pcorr (n={perfs_df.shape[0]})')
+
+        plt.scatter(
+            perfs_df['ns'].values,
+            perfs_df['pcorr'].values,
+            c=perfs_df['clrs'].values,
+            alpha=0.05)
+
+        plt.scatter(
+            perfs_df['ns'].values.mean(),
+            perfs_df['pcorr'].values.mean(),
+            c='k',
+            alpha=0.5,
+            label='Mean')
+
+        (hi_long_corr_idx,
+         lo_long_corr_idx) = self._get_lo_hi_corr_idxs(perfs_df)
+
+        plt.scatter(
+            perfs_df.loc[hi_long_corr_idx, 'ns'],
+            perfs_df.loc[hi_long_corr_idx, 'pcorr'],
+            c='red',
+            alpha=0.5,
+            label='Hi. Long')
+
+        plt.scatter(
+            perfs_df.loc[lo_long_corr_idx, 'ns'],
+            perfs_df.loc[lo_long_corr_idx, 'pcorr'],
+            c='orange',
+            alpha=0.5,
+            label='Lo. Long')
+
+        plt.xlabel('NS.')
+        plt.ylabel('Pcorr.')
+
+        plt.grid()
+        plt.legend()
+
+#         plt.xlim(-0.1, 1.1)
+#         plt.ylim(-0.1, 1.1)
+
+        out_dir = os.path.join(self.qsims_dir, 'ns_vs_pcorr')
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+
+        out_fig_name = f'{self.cat}_eff_scatter_{sim_lab}_{opt_iter_lab}.png'
+
+        plt.savefig(
+            os.path.join(out_dir, out_fig_name),
+            bbox_inches='tight')
+
+        plt.close()
+        return
+
+    def _plot_effs2(self, perfs_df, sim_lab, opt_iter_lab):
+
+        plt.figure(figsize=(10, 10))
+
+        plt.title(f'NS. vs. Clrs (n={perfs_df.shape[0]})')
+
+        plt.scatter(
+            perfs_df['ns'].values,
+            perfs_df['clrs'].values,
+            c=perfs_df['clrs'].values,
+            alpha=0.05)
+
+        plt.scatter(
+            perfs_df['ns'].values.mean(),
+            perfs_df['clrs'].values.mean(),
+            c='k',
+            alpha=0.5,
+            label='Mean')
+
+        (hi_long_corr_idx,
+         lo_long_corr_idx) = self._get_lo_hi_corr_idxs(perfs_df)
+
+        plt.scatter(
+            perfs_df.loc[hi_long_corr_idx, 'ns'],
+            perfs_df.loc[hi_long_corr_idx, 'clrs'],
+            c='red',
+            alpha=0.5,
+            label='Hi. Long')
+
+        plt.scatter(
+            perfs_df.loc[lo_long_corr_idx, 'ns'],
+            perfs_df.loc[lo_long_corr_idx, 'clrs'],
+            c='orange',
+            alpha=0.5,
+            label='Lo. Long')
+
+        plt.xlabel('NS.')
+        plt.ylabel('Clrs.')
+
+        plt.grid()
+        plt.legend()
+
+#         plt.xlim(-0.1, 1.1)
+#         plt.ylim(-0.1, 1.1)
+
+        out_dir = os.path.join(self.qsims_dir, 'ns_vs_clrs')
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+
+        out_fig_name = f'{self.cat}_eff_scatter_{sim_lab}_{opt_iter_lab}.png'
+
+        plt.savefig(
+            os.path.join(out_dir, out_fig_name),
+            bbox_inches='tight')
+
+        plt.close()
+        return
 
     def _get_resamp_perfs(self, ref_arr, sim_arr):
 
@@ -1668,6 +1795,22 @@ class PlotCatQSims:
 
         return effs
 
+    def _get_lo_hi_corr_idxs(self, perfs_df):
+
+        mean_ns = perfs_df['ns'].mean()
+
+        ns_buff = 0.01
+
+        acc_idxs = (
+            (perfs_df['ns'].values >= (mean_ns - (0.5 * ns_buff))) &
+            (perfs_df['ns'].values <= (mean_ns + (0.5 * ns_buff))))
+
+        assert acc_idxs.sum()
+
+        hi_idx = perfs_df.loc[acc_idxs, 'clrs'].idxmin()
+        lo_idx = perfs_df.loc[acc_idxs, 'clrs'].idxmax()
+        return (hi_idx, lo_idx)
+
     def _plot_best_hi_lo_freq_sims(
             self, perfs_df, sims_df, kf, sim_lab, opt_iter_lab):
 
@@ -1680,8 +1823,8 @@ class PlotCatQSims:
         sel_cols = filter(sims_df.columns, patt_str)
         assert sel_cols
 
-        hi_long_corr_idx = perfs_df.loc[:, 'clrs'].idxmin()
-        lo_long_corr_idx = perfs_df.loc[:, 'clrs'].idxmax()
+        (hi_long_corr_idx,
+         lo_long_corr_idx) = self._get_lo_hi_corr_idxs(perfs_df)
 
         n_steps = sims_df.shape[0]
 
