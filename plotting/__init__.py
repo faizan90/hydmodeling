@@ -5,7 +5,8 @@ import h5py
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 
-from .sims import plot_cat_hbv_sim, plot_cat_qsims
+from .sims import plot_cat_hbv_sim
+from .eval import plot_cat_qsims
 from .prms import (
     plot_cat_prm_vecs,
     plot_cat_prm_vecs_evo,

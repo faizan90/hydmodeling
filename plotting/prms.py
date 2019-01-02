@@ -636,7 +636,7 @@ def plot_cat_prm_vecs_kf(
         stats_arr,
         cmap=plt.get_cmap('Blues'),
         vmin=0.0,
-        vmax=1e30)
+        vmax=1e5)
 
     stats_xx, stats_yy = np.meshgrid(
         np.arange(n_stats_cols), np.arange(n_params))

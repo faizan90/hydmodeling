@@ -40,24 +40,6 @@ def load_pickle(in_file, mode='rb'):
         return pickle.load(_pkl_hdl)
     return
 
-# TODO: Plot Discharge, ppt, snow only. Add it to plot hbv ftn.
-# Have an option in simple_opt ftn that take the vars and plot them in the
-# same order.
-# TODO: Plot subset of the data in hi-res, to see events of interest.
-# TODO: Have a lower limit of the obj. val. if optmized obj. val is below this
-# choose observed flow for further downstream cats.
-# TODO: Have a fallback scenario for cats that cant be optimized.
-# TODO: Have an array to record time spent in each ftn during optimization.
-# TODO: Add a scaling factor to ppt (or pet) as an optimization parameter.
-# TODO: Somehow identify flows that might be erroneous.
-# passing flags from infilling?
-# TODO: Have months or years as the axis labels. This can be derived from units.
-# TODO: Have units, display them on figs.
-# TODO: Have a check on time frequency for all input
-# TODO: make snowmelt more physical.
-# These parameters vary the most among kfolds
-# TODO: Make plots of DS cats better
-
 
 def main():
     in_ini_file = r'config_hydmodeling_template.ini'
