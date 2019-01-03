@@ -794,6 +794,7 @@ def get_fdc(in_ser):
 
     probs = (in_ser.rank(ascending=False) / (in_ser.shape[0] + 1)).values
     vals = in_ser.values.copy()
+
     sort_idxs = np.argsort(probs)
 
     probs = probs[sort_idxs]
