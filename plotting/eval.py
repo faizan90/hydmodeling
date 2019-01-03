@@ -789,10 +789,10 @@ class PlotCatQSims:
 
         plt.title(
             f'Flow duration curve comparison for '
-            f'actual and simulated flows for the catchemnt {self.cat}')
+            f'actual and simulated flows for the catchemnt: {self.cat}')
 
-        plt.xlabel('Exceedence Probability (-)')
-        plt.ylabel('Discharge ($m^3/s$)')
+        plt.xlabel('Discharge ($m^3/s$)')
+        plt.ylabel('Exceedence Probability (-)')
 
         out_path = os.path.join(
             self.fdcs_dir,
