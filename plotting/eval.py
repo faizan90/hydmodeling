@@ -804,6 +804,26 @@ class PlotCatQSims:
         plt.close()
         return
 
+    def _save_best_prm_vecs_data(self):
+
+        out_name = (
+            f'best_prms_idxs_cat_{self.cat}_{self.opt_iter_lab}_'
+            f'freq_{self.long_short_break_freq}.txt')
+
+        with open(os.path.join(self.qsims_dir, out_name), 'w') as hdl:
+            *_, lc_labs = self.kf_corr_args_dict[1]
+            labs_str = f'labs;' + (';'.join(lc_labs)) + '\n'
+            hdl.write(labs_str)
+
+            for k in range(1, self.kfolds + 1):
+                lc_idxs, *_ = self.kf_corr_args_dict[k]
+
+                idxs_str = f'kf_{k:02d}_idxs;' + (
+                    ';'.join(map(str, lc_idxs))) + '\n'
+
+                hdl.write(idxs_str)
+        return
+
     def set_run_sim_prms(self, sim_lab, opt_iter, long_short_break_freq):
 
         assert not self._set_run_prms_flag
@@ -890,7 +910,7 @@ class PlotCatQSims:
 
                     prm_vecs = iter_prm_vecs[self.opt_iter, :, :].copy('c')
 
-            self.n_prm_vecs = prm_vecs.shape[0]
+            self.n_prm_vecs = 10  # prm_vecs.shape[0]
             print(f'Plotting {self.n_prm_vecs} sims only!')
 
             alpha = 0.01
@@ -1061,6 +1081,9 @@ class PlotCatQSims:
             float_format='%0.3f',
             index=False,
             sep=';')
+
+        if self.sim_lab == 'calib':
+            self._save_best_prm_vecs_data()
 
         self._set_run_prms_flag = False
         self._set_lo_hi_corr_idxs_flag = False
