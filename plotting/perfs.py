@@ -7,12 +7,15 @@ Created on Oct 12, 2017
 
 import os
 import shelve
+from glob import  glob
 from pathlib import Path
 
 import h5py
 import numpy as np
 import pandas as pd
+from parse import search
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessPool
 
 from ..models import (
@@ -28,6 +31,348 @@ from ..models import (
     get_ln_ns_prt_cy,
     get_kge_prt_cy,
     get_pcorr_prt_cy)
+
+plt.ioff()
+
+
+def plot_cat_discharge_errors(plot_args):
+
+    (cat_db,) = plot_args
+
+    with h5py.File(cat_db, 'r') as db:
+        main_out_dir = db['data'].attrs['main']
+        off_idx = db['data'].attrs['off_idx']
+        kfolds = db['data'].attrs['kfolds']
+
+    qsims_dir = os.path.join(main_out_dir, '12_discharge_sims')
+    errors_dir = os.path.join(qsims_dir , 'errors')
+
+    if not os.path.exists(qsims_dir):
+        try:
+            os.mkdir(qsims_dir)
+
+        except FileExistsError:
+            pass
+
+    qsim_files_patt = 'cat_[0-9]*_*_[0-9]*_freq_*_opt_qsims.csv'
+    qsim_files = glob(os.path.join(qsims_dir, qsim_files_patt))
+
+    if not qsim_files:
+        print('Simulating discharges...')
+
+        from .eval import plot_cat_qsims
+
+        plot_cat_qsims(cat_db)
+
+        qsim_files = glob(os.path.join(qsims_dir, qsim_files_patt))
+
+    assert qsim_files
+
+    if not os.path.exists(errors_dir):
+        try:
+            os.mkdir(errors_dir)
+
+        except FileExistsError:
+            pass
+
+    parse_patt = 'cat_{:d}_{}_{:d}_freq_{}_opt_qsims.csv'
+
+    n_q_quants = 10
+
+    for qsim_file in qsim_files:
+        cat, calib_valid_lab, opt_iter, freq = search(
+            parse_patt, os.path.basename(qsim_file))
+
+        qsims_df = pd.read_csv(qsim_file, sep=';').iloc[off_idx:, :]
+
+        qobs_quants_masks_dict = get_quant_masks_dict(
+            qsims_df.iloc[:, 0], n_q_quants)
+
+        qobs_arr = qsims_df.iloc[:, 0].values
+
+        peaks_mask = get_peaks_mask(qobs_arr)
+
+        n_vals = qobs_arr.shape[0]
+        lorenz_x_vals = np.linspace(1., n_vals + 1., n_vals) / (n_vals + 1.)
+
+        best_prm_file_name = (
+            f'best_prms_idxs_cat_{cat}_{opt_iter}_freq_{freq}.csv')
+
+        best_prm_idxs_df = pd.read_csv(
+            os.path.join(qsims_dir, best_prm_file_name), sep=';', index_col=0)
+
+        lc_labs = best_prm_idxs_df.columns
+
+        eff_ftns_dict = {
+            'ns': get_ns_cy,
+            'ln_ns': get_ln_ns_cy,
+            'kge': get_kge_cy,
+            'pcorr': get_pcorr_cy,
+            }
+
+        for kf in range(1, kfolds + 1):
+            best_prms_lab = f'kf_{kf:02d}_idxs'
+
+            lc_idxs = list(map(int, best_prm_idxs_df.loc[best_prms_lab, :].values))
+
+            q_quant_effs_dicts = []
+            lorenz_y_vals_list = []
+            peak_effs = []
+
+            for lc_idx in lc_idxs:
+                qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
+                qsim_arr = qsims_df.loc[:, qsim_lab].values
+
+                q_quant_effs_dict = get_q_quant_effs_dict(
+                    qobs_arr, qsim_arr, qobs_quants_masks_dict, eff_ftns_dict)
+
+                q_quant_effs_dicts.append(q_quant_effs_dict)
+
+                lorenz_y_vals = get_lorenz_arr(qobs_arr, qsim_arr)
+                lorenz_y_vals_list.append(lorenz_y_vals)
+
+                peak_effs_dict = get_peaks_effs_dict(
+                    qobs_arr, qsim_arr, peaks_mask, eff_ftns_dict)
+
+                peak_effs.append(peak_effs_dict)
+
+            for eff_ftn_lab in eff_ftns_dict:
+                out_quants_fig_name = (
+                    f'quant_effs_cat_{cat}_{calib_valid_lab}_'
+                    f'{opt_iter}_kf_{kf}_{eff_ftn_lab}.png')
+
+                out_quants_fig_path = os.path.join(
+                    errors_dir, out_quants_fig_name)
+
+                plot_quant_effs(
+                    q_quant_effs_dicts,
+                    qobs_quants_masks_dict,
+                    eff_ftn_lab,
+                    lc_idxs,
+                    lc_labs,
+                    cat,
+                    out_quants_fig_path)
+
+            out_lorenz_name = (
+                f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
+                f'{opt_iter}_kf_{kf}.png')
+
+            out_lorenz_path = os.path.join(errors_dir, out_lorenz_name)
+
+            plot_lorenz_arr(
+                lorenz_x_vals,
+                lorenz_y_vals_list,
+                lc_idxs,
+                lc_labs,
+                cat,
+                out_lorenz_path)
+
+            out_peak_effs_name = (
+                f'peak_effs_cat_{cat}_{calib_valid_lab}_'
+                f'{opt_iter}_kf_{kf}.png')
+
+            out_peaks_path = os.path.join(errors_dir, out_peak_effs_name)
+
+            plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_peaks_path)
+
+    return
+
+
+def plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_path):
+
+    plt.figure(figsize=(15, 10))
+
+    eff_ftn_labs = list(peak_effs[0].keys())
+
+    x_crds = np.arange(len(peak_effs))
+
+    for eff_ftn_lab in eff_ftn_labs:
+        eff_vals = [
+            peak_effs[i][eff_ftn_lab] for i in range(len(lc_idxs))]
+
+        plt.plot(
+            x_crds,
+            eff_vals,
+            label=f'{eff_ftn_lab}',
+            marker='o',
+            alpha=0.5)
+
+    plt.xlabel('Simulation')
+    plt.ylabel('Efficiency')
+
+    x_crds_labs = [
+        f'{lc_labs[i]} - ({lc_idxs[i]})' for i in range(x_crds.shape[0])]
+
+    plt.xticks(x_crds, x_crds_labs, rotation=90)
+
+    plt.title(
+        f'Model efficiency for catchment: {cat} using various '
+        f'parameter vector(s)')
+
+    plt.grid()
+    plt.legend(loc=0, framealpha=0.7)
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
+    return
+
+
+def plot_lorenz_arr(
+        lorenz_x_vals, lorenz_y_vals_list, sim_idxs, sim_labs, cat, out_path):
+
+    plt.figure(figsize=(10, 10))
+
+    n_sims = len(sim_idxs)
+
+    plt.plot(
+        lorenz_x_vals,
+        lorenz_x_vals,
+        label=f'equal_contrib',
+        alpha=0.5)
+
+    for i in range(n_sims):
+        plt.plot(
+            lorenz_x_vals,
+            lorenz_y_vals_list[i],
+            label=f'{sim_labs[i]} ({sim_idxs[i]})',
+            alpha=0.5)
+
+    plt.xlabel('Rel. cumm. steps')
+    plt.ylabel('Rel. cumm. sq. diff.')
+
+    plt.title(
+        f'Lorenz curves for catchment: {cat} using various '
+        f'parameter vector(s)')
+
+    plt.grid()
+    plt.legend(loc=0, framealpha=0.7)
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
+    return
+
+
+def plot_quant_effs(
+        quant_effs_dict,
+        quants_masks_dict,
+        eff_ftn_lab,
+        sim_idxs,
+        sim_labs,
+        cat,
+        out_path):
+
+    plt.figure(figsize=(15, 7))
+
+    n_quants = len(quant_effs_dict[0][eff_ftn_lab])
+
+    bar_x_crds = (np.arange(1., n_quants + 1) / n_quants) - (0.5 / n_quants)
+
+    for i in range(len(sim_idxs)):
+        plt.plot(
+            bar_x_crds,
+            quant_effs_dict[i][eff_ftn_lab],
+            label=f'{sim_labs[i]} ({sim_idxs[i]})',
+            marker='o',
+            alpha=0.5)
+
+    plt.title(
+        eff_ftn_lab.upper() +
+        f' efficiency for {n_quants} quantiles for cat: {cat}')
+
+    bar_x_crds_labs = [
+        f'{bar_x_crds[i]:0.3f} - ({int(quants_masks_dict[i].sum())})'
+        for i in range(n_quants)]
+
+    plt.xticks(bar_x_crds, bar_x_crds_labs, rotation=90)
+
+    plt.xlabel('Mean quantile prob. - (N)')
+    plt.ylabel(eff_ftn_lab.upper())
+
+    plt.grid()
+    plt.legend(loc=0, framealpha=0.7)
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
+    return
+
+
+def get_lorenz_arr(ref_arr, sim_arr):
+
+    sorted_abs_diffs = np.sort(((ref_arr - sim_arr) ** 2))
+    sorted_abs_diffs = sorted_abs_diffs / sorted_abs_diffs[-1]
+    return sorted_abs_diffs
+
+
+def get_q_quant_effs_dict(
+        qobs_arr, qsim_arr, qobs_quants_masks_dict, eff_ftns_dict):
+
+    n_q_quants = len(qobs_quants_masks_dict)
+
+    quant_effs_dict = {}
+    for eff_ftn_key in eff_ftns_dict:
+        eff_ftn = eff_ftns_dict[eff_ftn_key]
+
+        quant_effs = []
+
+        for i in range(n_q_quants):
+            mask = qobs_quants_masks_dict[i]
+
+            assert mask.sum() > 0
+
+            quant_effs.append(eff_ftn(qobs_arr[mask], qsim_arr[mask], 0))
+
+        quant_effs_dict[eff_ftn_key] = quant_effs
+    return quant_effs_dict
+
+
+def get_quant_masks_dict(in_ser, n_quants):
+
+    n_steps = in_ser.shape[0]
+
+    probs = in_ser.rank().values / (n_steps + 1)
+    vals = in_ser.values
+
+    interp_ftn = interp1d(
+        np.sort(probs),
+        np.sort(vals),
+        bounds_error=False,
+        fill_value=(vals.min(), vals.max()))
+
+    quant_probs = np.linspace(
+        0.,
+        1.,
+        n_quants + 1,
+        endpoint=True)
+
+    quants = interp_ftn(quant_probs)
+    quants[-1] = quants[-1] * 1.1
+
+    masks_dict = {}
+    for i in range(n_quants):
+        masks_dict[i] = (vals >= quants[i]) & (vals < quants[i + 1])
+
+    return masks_dict
+
+
+def get_peaks_mask(qobs_arr):
+
+    rising = qobs_arr[1:] - qobs_arr[:-1] > 0
+    recing = qobs_arr[1:-1] - qobs_arr[2:] > 0
+
+    mask = np.concatenate(([False], rising[:-1] & recing, [False]))
+    return mask
+
+
+def get_peaks_effs_dict(qobs_arr, qsim_arr, mask, eff_ftns_dict):
+
+    peak_effs_dict = {}
+    for eff_ftn_key in eff_ftns_dict:
+        eff_ftn = eff_ftns_dict[eff_ftn_key]
+
+        peak_effs_dict[eff_ftn_key] = eff_ftn(
+            qobs_arr[mask], qsim_arr[mask], 0)
+
+    return peak_effs_dict
 
 
 def plot_cat_vars_errors(plot_args):

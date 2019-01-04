@@ -32,7 +32,8 @@ from hydmodeling import (
     plot_cats_prms_transfer_perfs,
     plot_cats_prm_vecs_evo,
     plot_cats_vars_errors,
-    plot_cats_qsims)
+    plot_cats_qsims,
+    plot_cats_discharge_errors)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -76,6 +77,7 @@ def main():
     plot_var_errors_flag = False
     plot_hbv_vars_flag = False
     plot_qsims_flag = False
+    plot_cats_discharge_errs_flag = False
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
@@ -91,7 +93,8 @@ def main():
 #     plot_opt_evo_flag = True
 #     plot_var_errors_flag = True
 #     plot_hbv_vars_flag = True
-    plot_qsims_flag = True
+#     plot_qsims_flag = True
+    plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
     use_cv_time_flag = True
@@ -672,7 +675,7 @@ def main():
 
         print('\n\n')
         print('#' * 10)
-        print('Plotting discharge errors...')
+        print('Plotting discharge errors against simulated variables...')
 
         print(f'err_var_labs: {err_var_labs}')
 
@@ -685,7 +688,7 @@ def main():
         print('#' * 10)
 
     #=========================================================================
-    # plot the ROPE discharge simulations
+    # plot the discharge simulations
     #=========================================================================
 
     if plot_qsims_flag:
@@ -696,6 +699,26 @@ def main():
         _beg_t = timeit.default_timer()
 
         plot_cats_qsims(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #=========================================================================
+    # plot the discharge simulations errors for different quantiles
+    #=========================================================================
+
+    if plot_cats_discharge_errs_flag:
+        print('\n\n')
+        print('#' * 10)
+        print(
+            'Plotting discharge simulations errors for various quantiles...')
+
+        _beg_t = timeit.default_timer()
+
+        plot_cats_discharge_errors(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t

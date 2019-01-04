@@ -55,6 +55,7 @@ from .plotting import (
     plot_cats_prms_transfer_perfs,
     plot_cats_ann_cycs_fdcs_comp,
     plot_cats_vars_errors,
+    plot_cats_discharge_errors,
 
     plot_cats_prm_vecs,
     plot_cats_prm_vecs_evo,

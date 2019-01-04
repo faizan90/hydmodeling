@@ -31,7 +31,7 @@ def plot_cat_qsims(cat_db):
 
     try:
         with h5py.File(cat_db, 'r') as db:
-            opt_iters = [3, 6, 10, 15, None]
+            opt_iters = [3, 6]  # , 10, 15, None]
             long_short_break_freqs = ['A']
 
             cv_flag = db['data'].attrs['cv_flag']
@@ -58,7 +58,6 @@ def plot_cat_qsims(cat_db):
 
         * _, exc_traceback = sys.exc_info()
         tb.print_tb(exc_traceback, limit=None, file=sys.stdout)
-        return
     return
 
 
@@ -808,7 +807,7 @@ class PlotCatQSims:
 
         out_name = (
             f'best_prms_idxs_cat_{self.cat}_{self.opt_iter_lab}_'
-            f'freq_{self.long_short_break_freq}.txt')
+            f'freq_{self.long_short_break_freq}.csv')
 
         with open(os.path.join(self.qsims_dir, out_name), 'w') as hdl:
             *_, lc_labs = self.kf_corr_args_dict[1]
@@ -910,7 +909,7 @@ class PlotCatQSims:
 
                     prm_vecs = iter_prm_vecs[self.opt_iter, :, :].copy('c')
 
-            self.n_prm_vecs = 10  # prm_vecs.shape[0]
+            self.n_prm_vecs = prm_vecs.shape[0]
             print(f'Plotting {self.n_prm_vecs} sims only!')
 
             alpha = 0.01
@@ -1077,7 +1076,7 @@ class PlotCatQSims:
             os.path.join(
                 self.qsims_dir,
                 f'cat_{self.cat}_{self.sim_lab}_{self.opt_iter_lab}'
-                f'_opt_qsims.csv'),
+                f'_freq_{self.long_short_break_freq}_opt_qsims.csv'),
             float_format='%0.3f',
             index=False,
             sep=';')
