@@ -285,7 +285,7 @@ def plot_quant_effs(
 
     plt.xticks(bar_x_crds, bar_x_crds_labs, rotation=90)
 
-    plt.xlabel('Mean quantile prob. - (N)')
+    plt.xlabel('Mean interval prob. - (N)')
     plt.ylabel(eff_ftn_lab.upper())
 
     plt.grid()
@@ -298,7 +298,7 @@ def plot_quant_effs(
 
 def get_lorenz_arr(ref_arr, sim_arr):
 
-    sorted_abs_diffs = np.sort(((ref_arr - sim_arr) ** 2))
+    sorted_abs_diffs = np.sort(((ref_arr - sim_arr) ** 2)).cumsum()
     sorted_abs_diffs = sorted_abs_diffs / sorted_abs_diffs[-1]
     return sorted_abs_diffs
 

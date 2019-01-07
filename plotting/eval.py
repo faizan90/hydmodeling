@@ -411,19 +411,22 @@ class PlotCatQSims:
                     acc_flags_ser, 'clrs'].nsmallest(n_hi_vals).index) +
 
                 list(self.sim_perfs_df.loc[
-                    acc_flags_ser, 'clrs'].nlargest(n_lo_vals).index))
+                    acc_flags_ser, 'clrs'].nlargest(n_lo_vals).index)[::-1])
 
             self.lc_clrs = [
                 'blue', 'green', 'purple', 'orange', 'cyan', 'pink'][:n_vals]
 
             self.lc_labs = (
                 [f'Hi. Long ({i})' for i in range(n_hi_vals)] +
-                [f'Lo. Long ({i})' for i in range(n_lo_vals)])
+                [f'Lo. Long ({i})' for i in range(n_lo_vals)][::-1])
 
             self.kf_corr_args_dict[kf] = (
                 self.lc_idxs, self.lc_clrs, self.lc_labs)
 
         else:
+
+            assert self.kf_corr_args_dict, 'Run calibration evaluation first!'
+
             (self.lc_idxs,
              self.lc_clrs,
              self.lc_labs) = self.kf_corr_args_dict[kf]
@@ -519,6 +522,7 @@ class PlotCatQSims:
                 f'Long-short dividing freq.: {self.long_short_break_freq}')
 
             obj_vals_sort_idxs = np.argsort(obj_vals)
+
             ax1.plot(
                 obj_vals[obj_vals_sort_idxs],
                 probs,
@@ -533,6 +537,7 @@ class PlotCatQSims:
                 alpha=0.2)
 
             ax1.set_ylabel('Non-exceedence Probability (-)')
+
             ax1.grid()
 
             cb = plt.colorbar(
@@ -546,6 +551,7 @@ class PlotCatQSims:
             cb.set_ticklabels(['Hi. long', 'Lo. Long'])
 
             ax2.hist(obj_vals, bins=20)
+
             ax2.set_xlabel(f'{obj_ftns_dict[obj_key][1]} (-)')
             ax2.set_ylabel('Frequency (-)')
 
