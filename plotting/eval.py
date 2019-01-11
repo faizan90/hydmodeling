@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 
-from .perfs import get_fdc
+from .misc import get_fdc, LC_CLRS
 from ..models import (
     hbv_loop_py,
     get_ns_cy,
@@ -413,8 +413,7 @@ class PlotCatQSims:
                 list(self.sim_perfs_df.loc[
                     acc_flags_ser, 'clrs'].nlargest(n_lo_vals).index)[::-1])
 
-            self.lc_clrs = [
-                'blue', 'green', 'purple', 'orange', 'cyan', 'pink'][:n_vals]
+            self.lc_clrs = LC_CLRS[:n_vals]
 
             self.lc_labs = (
                 [f'Hi. Long ({i})' for i in range(n_hi_vals)] +

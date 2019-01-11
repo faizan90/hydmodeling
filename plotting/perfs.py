@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessPool
 
+from .misc import get_fdc, LC_CLRS
 from ..models import (
     hbv_loop_py,
     tfm_opt_to_hbv_prms_py,
@@ -101,7 +102,7 @@ def plot_cat_discharge_errors(plot_args):
         best_prm_idxs_df = pd.read_csv(
             os.path.join(qsims_dir, best_prm_file_name), sep=';', index_col=0)
 
-        lc_labs = best_prm_idxs_df.columns
+        lc_labs = best_prm_idxs_df.columns.tolist()
 
         eff_ftns_dict = {
             'ns': get_ns_cy,
@@ -113,20 +114,25 @@ def plot_cat_discharge_errors(plot_args):
         for kf in range(1, kfolds + 1):
             best_prms_lab = f'kf_{kf:02d}_idxs'
 
-            lc_idxs = list(map(int, best_prm_idxs_df.loc[best_prms_lab, :].values))
+            lc_idxs = list(map(
+                int, best_prm_idxs_df.loc[best_prms_lab, :].values))
 
             q_quant_effs_dicts = []
+            q_quant_indic_effs_dicts = []
             lorenz_y_vals_list = []
             peak_effs = []
+            qsim_arrs = []
 
             for lc_idx in lc_idxs:
                 qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
                 qsim_arr = qsims_df.loc[:, qsim_lab].values
 
-                q_quant_effs_dict = get_q_quant_effs_dict(
+                (q_quant_effs_dict,
+                 q_quant_indic_effs_dict) = get_q_quant_effs_dict(
                     qobs_arr, qsim_arr, qobs_quants_masks_dict, eff_ftns_dict)
 
                 q_quant_effs_dicts.append(q_quant_effs_dict)
+                q_quant_indic_effs_dicts.append(q_quant_indic_effs_dict)
 
                 lorenz_y_vals = get_lorenz_arr(qobs_arr, qsim_arr)
                 lorenz_y_vals_list.append(lorenz_y_vals)
@@ -135,6 +141,8 @@ def plot_cat_discharge_errors(plot_args):
                     qobs_arr, qsim_arr, peaks_mask, eff_ftns_dict)
 
                 peak_effs.append(peak_effs_dict)
+
+                qsim_arrs.append(qsim_arr)
 
             for eff_ftn_lab in eff_ftns_dict:
                 out_quants_fig_name = (
@@ -152,6 +160,22 @@ def plot_cat_discharge_errors(plot_args):
                     lc_labs,
                     cat,
                     out_quants_fig_path)
+
+#             out_quants_indic_fig_name = (
+#                 f'quant_indic_effs_cat_{cat}_{calib_valid_lab}_'
+#                 f'{opt_iter}_kf_{kf}_pcorr.png')
+#
+#             out_quants_indic_fig_path = os.path.join(
+#                 errors_dir, out_quants_indic_fig_name)
+#
+#             plot_quant_indic_effs(
+#                 q_quant_indic_effs_dicts,
+#                 qobs_quants_masks_dict,
+#                 'pcorr',
+#                 lc_idxs,
+#                 lc_labs,
+#                 cat,
+#                 out_quants_indic_fig_path)
 
             out_lorenz_name = (
                 f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
@@ -175,6 +199,114 @@ def plot_cat_discharge_errors(plot_args):
 
             plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_peaks_path)
 
+            out_mean_peaks_name = (
+                f'mean_peaks_comp_cat_{cat}_{calib_valid_lab}_'
+                f'{opt_iter}_kf_{kf}.png')
+
+            out_mean_peaks_path = os.path.join(errors_dir, out_mean_peaks_name)
+
+            plot_mean_peaks_and_sq_err(
+                peaks_mask,
+                qobs_arr,
+                qsim_arrs,
+                lc_idxs,
+                lc_labs,
+                cat,
+                out_mean_peaks_path)
+
+            out_peaks_sq_diff_name = (
+                f'peaks_sq_diff_comp_cat_{cat}_{calib_valid_lab}_'
+                f'{opt_iter}_kf_{kf}.png')
+
+            out_peaks_sq_diff_path = os.path.join(
+                errors_dir, out_peaks_sq_diff_name)
+
+            plot_peaks_sq_err(
+                peaks_mask,
+                qobs_arr,
+                qsim_arrs,
+                lc_idxs,
+                lc_labs,
+                cat,
+                out_peaks_sq_diff_path)
+    return
+
+
+def plot_peaks_sq_err(
+        peaks_mask, qobs_arr, qsim_arrs, lc_idxs, lc_labs, cat, out_path):
+
+    plt.figure(figsize=(15, 10))
+
+    x_labs = lc_labs
+    x_crds = list(range(len(x_labs)))
+
+    for i in range(len(lc_idxs)):
+        sq_diff = (qsim_arrs[i][peaks_mask] - qobs_arr[peaks_mask]) ** 2
+        plt.scatter(
+            i,
+            sq_diff.sum(),
+            color=LC_CLRS[i],
+            marker='o',
+            alpha=0.8)
+
+    plt.ylabel('Sq. diff. sum')
+
+    x_crds_labs = [f'{x_labs[i]}' for i in range(len(x_crds))]
+
+    plt.xticks(x_crds, x_crds_labs, rotation=90)
+
+    plt.title(
+        f'Squared difference sum comparison for catchment: {cat} '
+        f'using various parameter vector(s)\n'
+        f'(N={peaks_mask.shape[0]}, N_peaks={peaks_mask.sum()})')
+
+    plt.grid()
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
+    return
+
+
+def plot_mean_peaks_and_sq_err(
+        peaks_mask, qobs_arr, qsim_arrs, lc_idxs, lc_labs, cat, out_path):
+
+    plt.figure(figsize=(15, 10))
+
+    x_labs = ['Obs.'] + lc_labs
+    x_crds = list(range(len(x_labs)))
+
+    mean_obs_peak = qobs_arr[peaks_mask].mean()
+    plt.scatter(
+        0,
+        mean_obs_peak,
+        color='red',
+        alpha=0.8,
+        marker='o')
+
+    for i in range(len(lc_idxs)):
+        mean_sim_peak = qsim_arrs[i][peaks_mask].mean()
+        plt.scatter(
+            i + 1,
+            mean_sim_peak,
+            color=LC_CLRS[i],
+            marker='o',
+            alpha=0.8)
+
+    plt.ylabel('Discharge ($m^3/s^1$)')
+
+    x_crds_labs = [f'{x_labs[i]}' for i in range(len(x_crds))]
+
+    plt.xticks(x_crds, x_crds_labs, rotation=90)
+
+    plt.title(
+        f'Mean peak value comparison for catchment: {cat} using various '
+        f'parameter vector(s)\n'
+        f'(N={peaks_mask.shape[0]}, N_peaks={peaks_mask.sum()})')
+
+    plt.grid()
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
     return
 
 
@@ -227,6 +359,7 @@ def plot_lorenz_arr(
     plt.plot(
         lorenz_x_vals,
         lorenz_x_vals,
+        color='red',
         label=f'equal_contrib',
         alpha=0.5)
 
@@ -234,6 +367,7 @@ def plot_lorenz_arr(
         plt.plot(
             lorenz_x_vals,
             lorenz_y_vals_list[i],
+            color=LC_CLRS[i],
             label=f'{sim_labs[i]} ({sim_idxs[i]})',
             alpha=0.5)
 
@@ -271,6 +405,7 @@ def plot_quant_effs(
         plt.plot(
             bar_x_crds,
             quant_effs_dict[i][eff_ftn_lab],
+            color=LC_CLRS[i],
             label=f'{sim_labs[i]} ({sim_idxs[i]})',
             marker='o',
             alpha=0.5)
@@ -278,6 +413,51 @@ def plot_quant_effs(
     plt.title(
         eff_ftn_lab.upper() +
         f' efficiency for {n_quants} quantiles for cat: {cat}')
+
+    bar_x_crds_labs = [
+        f'{bar_x_crds[i]:0.3f} - ({int(quants_masks_dict[i].sum())})'
+        for i in range(n_quants)]
+
+    plt.xticks(bar_x_crds, bar_x_crds_labs, rotation=90)
+
+    plt.xlabel('Mean interval prob. - (N)')
+    plt.ylabel(eff_ftn_lab.upper())
+
+    plt.grid()
+    plt.legend(loc=0, framealpha=0.7)
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
+    return
+
+
+def plot_quant_indic_effs(
+        quant_indic_effs_dict,
+        quants_masks_dict,
+        eff_ftn_lab,
+        sim_idxs,
+        sim_labs,
+        cat,
+        out_path):
+
+    plt.figure(figsize=(15, 7))
+
+    n_quants = len(quant_indic_effs_dict[0][eff_ftn_lab])
+
+    bar_x_crds = (np.arange(1., n_quants + 1) / n_quants) - (0.5 / n_quants)
+
+    for i in range(len(sim_idxs)):
+        plt.plot(
+            bar_x_crds,
+            quant_indic_effs_dict[i][eff_ftn_lab],
+            color=LC_CLRS[i],
+            label=f'{sim_labs[i]} ({sim_idxs[i]})',
+            marker='o',
+            alpha=0.5)
+
+    plt.title(
+        eff_ftn_lab.upper() +
+        f' indicator efficiency for {n_quants} quantiles for cat: {cat}')
 
     bar_x_crds_labs = [
         f'{bar_x_crds[i]:0.3f} - ({int(quants_masks_dict[i].sum())})'
@@ -309,11 +489,12 @@ def get_q_quant_effs_dict(
     n_q_quants = len(qobs_quants_masks_dict)
 
     quant_effs_dict = {}
+    quant_indic_effs_dict = {}
     for eff_ftn_key in eff_ftns_dict:
         eff_ftn = eff_ftns_dict[eff_ftn_key]
 
         quant_effs = []
-
+#         quant_indic_effs = []
         for i in range(n_q_quants):
             mask = qobs_quants_masks_dict[i]
 
@@ -321,8 +502,24 @@ def get_q_quant_effs_dict(
 
             quant_effs.append(eff_ftn(qobs_arr[mask], qsim_arr[mask], 0))
 
+#             if eff_ftn_key != 'pcorr':
+#                 continue
+#
+#             qobs_indic_arr = np.full_like(qobs_arr[mask], 0.5)
+#             qsim_indic_arr = np.full_like(qsim_arr[mask], 0.5)
+#
+#             qsim_indic_arr[qsim_arr[mask] > qobs_arr[mask]] = 1
+#             qsim_indic_arr[qsim_arr[mask] < qobs_arr[mask]] = 0
+#
+#             quant_indic_effs.append(
+#                 eff_ftn(qobs_indic_arr, qsim_indic_arr, 0))
+
         quant_effs_dict[eff_ftn_key] = quant_effs
-    return quant_effs_dict
+
+#         if eff_ftn_key == 'pcorr':
+#             quant_indic_effs_dict[eff_ftn_key] = quant_indic_effs
+
+    return quant_effs_dict, quant_indic_effs_dict
 
 
 def get_quant_masks_dict(in_ser, n_quants):
@@ -354,13 +551,58 @@ def get_quant_masks_dict(in_ser, n_quants):
     return masks_dict
 
 
-def get_peaks_mask(qobs_arr):
+def get_peaks_mask(in_arr):
 
-    rising = qobs_arr[1:] - qobs_arr[:-1] > 0
-    recing = qobs_arr[1:-1] - qobs_arr[2:] > 0
+    rising = in_arr[1:] - in_arr[:-1] > 0
+    recing = in_arr[1:-1] - in_arr[2:] > 0
 
-    mask = np.concatenate(([False], rising[:-1] & recing, [False]))
-    return mask
+    peaks_mask = np.concatenate(([False], rising[:-1] & recing, [False]))
+
+    ws = 30
+    steps_per_cycle = 365  # should be enough to have peaks_per_cycle peaks
+    peaks_per_cycle = 5
+    n_steps = in_arr.shape[0]
+
+    assert steps_per_cycle > peaks_per_cycle
+    assert steps_per_cycle > ws
+    assert steps_per_cycle < n_steps
+
+    window_sums = np.full(steps_per_cycle, np.inf)
+    for i in range(ws, steps_per_cycle + ws - 1):
+        window_sums[i - ws] = in_arr[i - ws:i].sum()
+
+    assert np.all(window_sums > 0)
+
+    min_idx = int(0.5 * ws) + np.argmin(window_sums)
+
+    if min_idx > (0.5 * steps_per_cycle):
+        beg_idx = 0
+        end_idx = min_idx
+
+    else:
+        beg_idx = min_idx
+        end_idx = min_idx + steps_per_cycle
+
+    assert n_steps >= end_idx - beg_idx, 'Too few steps!'
+
+    out_mask = np.zeros(n_steps, dtype=bool)
+
+    while (beg_idx < n_steps):
+        loop_mask = np.zeros(n_steps, dtype=bool)
+        loop_mask[beg_idx:end_idx] = True
+        loop_mask &= peaks_mask
+
+        assert loop_mask.sum() > peaks_per_cycle, (beg_idx, end_idx)
+
+        highest_idxs = np.argsort(in_arr[loop_mask])[-peaks_per_cycle:]
+
+        out_mask[np.where(loop_mask)[0][highest_idxs]] = True
+
+        beg_idx = end_idx
+        end_idx += steps_per_cycle
+
+    assert out_mask.sum(), 'No peaks selected!'
+    return out_mask
 
 
 def get_peaks_effs_dict(qobs_arr, qsim_arr, mask, eff_ftns_dict):
@@ -1128,23 +1370,6 @@ def get_daily_annual_cycle(col_ser):
             curr_day_avg_val = curr_day_vals.mean()
             col_ser.loc[idxs_intersect] = curr_day_avg_val
     return col_ser
-
-
-def get_fdc(in_ser):
-
-    '''Get flow duration curve
-    '''
-
-    assert isinstance(in_ser, pd.Series), 'Expected a pd.Series object!'
-
-    probs = (in_ser.rank(ascending=False) / (in_ser.shape[0] + 1)).values
-    vals = in_ser.values.copy()
-
-    sort_idxs = np.argsort(probs)
-
-    probs = probs[sort_idxs]
-    vals = vals[sort_idxs]
-    return probs, vals
 
 
 def plot_cats_ann_cycs_fdcs_comp_kf(
