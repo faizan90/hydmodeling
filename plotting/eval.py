@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 
-from ..misc import get_fdc, LC_CLRS, mkdir_hm
+from ..misc import get_fdc, LC_CLRS, mkdir_hm, traceback_wrapper
 from ..models import (
     hbv_loop_py,
     get_ns_cy,
@@ -27,6 +27,7 @@ from ..models import (
 plt.ioff()
 
 
+@traceback_wrapper
 def plot_cat_qsims(cat_db):
 
     try:

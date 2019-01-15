@@ -39,15 +39,12 @@ def plot_cats_discharge_errors(dbs_dir, n_cpus):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(
-                mp_pool.uimap(plot_cat_discharge_errors, cats_paths_gen)))
-            mp_pool.clear()
+        print(list(
+            mp_pool.uimap(plot_cat_discharge_errors, cats_paths_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_cat_discharge_errors:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for cat_paths in cats_paths_gen:
@@ -73,14 +70,11 @@ def plot_cats_vars_errors(dbs_dir, err_var_labs, n_cpus):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_vars_errors, cats_paths_gen)))
-            mp_pool.clear()
+        print(list(mp_pool.uimap(plot_cat_vars_errors, cats_paths_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_cat_vars_errors:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for cat_paths in cats_paths_gen:
@@ -109,14 +103,11 @@ def plot_cats_kfold_effs(dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_kfold_effs, cats_paths_gen)))
-            mp_pool.clear()
+        print(list(mp_pool.uimap(plot_cat_kfold_effs, cats_paths_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_k_fold_effs:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for cat_paths in cats_paths_gen:
@@ -141,14 +132,11 @@ def plot_cats_best_prms_1d(dbs_dir, n_cpus):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_best_prms_1d, cats_paths_gen)))
-            mp_pool.clear()
+        print(list(mp_pool.uimap(plot_cat_best_prms_1d, cats_paths_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_kfolds_best_prms:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for cat_paths in cats_paths_gen:
@@ -178,14 +166,11 @@ def plot_cats_prm_vecs(dbs_dir, n_cpus):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_prm_vecs, opt_res_gen)))
-            mp_pool.clear()
+        print(list(mp_pool.uimap(plot_cat_prm_vecs, opt_res_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_cat_prm_vecs:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for opt_res in opt_res_gen:
@@ -223,14 +208,10 @@ def plot_cats_prm_vecs_evo(
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_prm_vecs_evo, opt_res_gen)))
-            mp_pool.clear()
-
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_cat_prm_vecs_evo:', msg)
+        print(list(mp_pool.uimap(plot_cat_prm_vecs_evo, opt_res_gen)))
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for opt_res in opt_res_gen:
@@ -263,14 +244,11 @@ def plot_cats_hbv_sim(
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_hbv_sim, plot_gen)))
-            mp_pool.clear()
+        print(list(mp_pool.uimap(plot_cat_hbv_sim, plot_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_cat_hbv_sim:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for plot_args in plot_gen:
@@ -297,14 +275,11 @@ def plot_cats_qsims(dbs_dir, n_cpus=1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_qsims, plot_gen)))
-            mp_pool.clear()
+        print(list(mp_pool.uimap(plot_cat_qsims, plot_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_cat_rope_q_sims:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for plot_args in plot_gen:
@@ -374,14 +349,11 @@ def plot_cats_prms_transfer_perfs(dbs_dir, n_cpus=1):
         mp_pool = ProcessPool(n_cpus)
         mp_pool.restart(True)
 
-        try:
-            print(list(mp_pool.uimap(plot_cat_prms_transfer_perfs, plot_gen)))
-            mp_pool.clear()
+        print(list(mp_pool.uimap(plot_cat_prms_transfer_perfs, plot_gen)))
 
-        except Exception as msg:
-            mp_pool.close()
-            mp_pool.join()
-            print('Error in plot_cat_prms_transfer_perfs:', msg)
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
 
     else:
         for plot_args in plot_gen:

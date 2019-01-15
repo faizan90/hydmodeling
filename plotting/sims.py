@@ -21,11 +21,12 @@ from ..models import (
     get_kge_cy,
     lin_regsn_cy)
 
-from ..misc import mkdir_hm
+from ..misc import mkdir_hm, traceback_wrapper
 
 plt.ioff()
 
 
+@traceback_wrapper
 def plot_cat_hbv_sim(plot_args):
 
     '''Plot all HBV variables along with some model information for all

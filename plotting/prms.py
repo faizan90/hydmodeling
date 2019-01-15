@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from adjustText import adjust_text
 from matplotlib.gridspec import GridSpec
 
-from ..misc import mkdir_hm
+from ..misc import mkdir_hm, traceback_wrapper
 
 plt.ioff()
 
@@ -363,6 +363,7 @@ def plot_cats_best_prms_2d_kf(
     return
 
 
+@traceback_wrapper
 def plot_cat_best_prms_1d(cat_db):
 
     '''Plot calibrated parameters for all kfolds.'''
@@ -524,6 +525,7 @@ def plot_cat_best_prms_1d(cat_db):
     return
 
 
+@traceback_wrapper
 def plot_cat_prm_vecs(cat_db):
 
     '''Plot all kfold best parameter vectors for a given catchment hdf5 file.
@@ -758,6 +760,7 @@ def plot_cat_prm_vecs_kf(
     return
 
 
+@traceback_wrapper
 def plot_cat_prm_vecs_evo(plot_args):
 
     (cat_db,

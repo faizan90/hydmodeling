@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessPool
 
-from ..misc import get_fdc, LC_CLRS, mkdir_hm
+from ..misc import get_fdc, LC_CLRS, mkdir_hm, traceback_wrapper
 from ..models import (
     hbv_loop_py,
     tfm_opt_to_hbv_prms_py,
@@ -36,6 +36,7 @@ from ..models import (
 plt.ioff()
 
 
+@traceback_wrapper
 def plot_cat_discharge_errors(plot_args):
 
     (cat_db,) = plot_args
@@ -730,6 +731,7 @@ def get_peaks_effs_dict(qobs_arr, qsim_arr, mask, eff_ftns_dict):
     return peak_effs_dict
 
 
+@traceback_wrapper
 def plot_cat_vars_errors(plot_args):
 
     (cat_db, err_var_labs) = plot_args
@@ -860,6 +862,7 @@ def plot_cat_vars_errors_kf(
     return
 
 
+@traceback_wrapper
 def plot_cat_prms_transfer_perfs(plot_args):
 
     '''Plot performances for a given using parameter vectors from other
@@ -1078,6 +1081,7 @@ def get_perfs(kf_dict, area_arr, conv_ratio, off_idx):
     return (ns, ln_ns)
 
 
+@traceback_wrapper
 def plot_cat_kfold_effs(args):
 
     '''Plot catchment performances using parameters from every kfold
