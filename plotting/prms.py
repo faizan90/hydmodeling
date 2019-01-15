@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 from adjustText import adjust_text
 from matplotlib.gridspec import GridSpec
 
+from ..misc import mkdir_hm
+
 plt.ioff()
 
 
@@ -41,12 +43,8 @@ def plot_cats_best_prms_2d(dbs_dir):
 
         out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'07_2d_kfold_prms')
-        if not os.path.exists(out_dir):
-            try:
-                os.mkdir(out_dir)
 
-            except FileExistsError:
-                pass
+        mkdir_hm(out_dir)
 
     min_row = +np.inf
     max_row = -np.inf
@@ -382,12 +380,8 @@ def plot_cat_best_prms_1d(cat_db):
         out_dir = db['data'].attrs['main']
 
         out_dir = os.path.join(out_dir, r'05_kfolds_perf')
-        if not os.path.exists(out_dir):
-            try:
-                os.mkdir(out_dir)
 
-            except FileExistsError:
-                pass
+        mkdir_hm(out_dir)
 
         best_prms_list = []
         for i in range(1, kfolds + 1):
@@ -541,12 +535,7 @@ def plot_cat_prm_vecs(cat_db):
         out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'06_prm_vecs')
 
-        if not os.path.exists(out_dir):
-            try:
-                os.mkdir(out_dir)
-
-            except FileExistsError:
-                pass
+        mkdir_hm(out_dir)
 
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
@@ -785,12 +774,7 @@ def plot_cat_prm_vecs_evo(plot_args):
         out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'10_prm_vecs_evo')
 
-        if not os.path.exists(out_dir):
-            try:
-                os.mkdir(out_dir)
-
-            except FileExistsError:
-                pass
+        mkdir_hm(out_dir)
 
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']

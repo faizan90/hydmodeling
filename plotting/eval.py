@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 
-from .misc import get_fdc, LC_CLRS
+from ..misc import get_fdc, LC_CLRS, mkdir_hm
 from ..models import (
     hbv_loop_py,
     get_ns_cy,
@@ -103,12 +103,7 @@ class PlotCatQSims:
 
         qsims_dir = os.path.join(out_dir, '12_discharge_sims')
 
-        if not os.path.exists(qsims_dir):
-            try:
-                os.mkdir(qsims_dir)
-
-            except FileExistsError:
-                pass
+        mkdir_hm(qsims_dir)
 
         self.qsims_dir = qsims_dir
 
@@ -133,8 +128,8 @@ class PlotCatQSims:
 
         for out_dir in out_dirs:
             out_dir_path = os.path.join(self.qsims_dir, out_dir)
-            if not os.path.exists(out_dir_path):
-                os.mkdir(out_dir_path)
+
+            mkdir_hm(out_dir_path)
 
             setattr(self, out_dir + '_dir', out_dir_path)
         return
@@ -702,7 +697,7 @@ class PlotCatQSims:
 
             hdl.write(corr_tit_str)
 
-        while lst_idx < self.n_steps:
+        while True:
             x_arr = np.arange(pre_idx, lst_idx)
 
             plt.figure(figsize=(20, 7))
@@ -748,7 +743,11 @@ class PlotCatQSims:
             plt.close()
 
             pre_idx = lst_idx
-            lst_idx += steps_per_plot
+            lst_idx = min(self.n_steps, lst_idx + steps_per_plot)
+
+            if lst_idx == pre_idx:
+                break
+
         return
 
     def _plot_fdc(self, out_df, kf):

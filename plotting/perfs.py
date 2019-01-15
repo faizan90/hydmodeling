@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessPool
 
-from .misc import get_fdc, LC_CLRS
+from ..misc import get_fdc, LC_CLRS, mkdir_hm
 from ..models import (
     hbv_loop_py,
     tfm_opt_to_hbv_prms_py,
@@ -48,12 +48,7 @@ def plot_cat_discharge_errors(plot_args):
     qsims_dir = os.path.join(main_out_dir, '12_discharge_sims')
     errors_dir = os.path.join(qsims_dir , 'errors')
 
-    if not os.path.exists(qsims_dir):
-        try:
-            os.mkdir(qsims_dir)
-
-        except FileExistsError:
-            pass
+    mkdir_hm(qsims_dir)
 
     qsim_files_patt = 'cat_[0-9]*_*_[0-9]*_freq_*_opt_qsims.csv'
     qsim_files = glob(os.path.join(qsims_dir, qsim_files_patt))
@@ -69,12 +64,7 @@ def plot_cat_discharge_errors(plot_args):
 
     assert qsim_files
 
-    if not os.path.exists(errors_dir):
-        try:
-            os.mkdir(errors_dir)
-
-        except FileExistsError:
-            pass
+    mkdir_hm(errors_dir)
 
     parse_patt = 'cat_{:d}_{}_{:d}_freq_{}_opt_qsims.csv'
 
@@ -111,6 +101,9 @@ def plot_cat_discharge_errors(plot_args):
             'pcorr': get_pcorr_cy,
             }
 
+        qobs_driest = get_driest_period(qobs_arr)
+        qobs_dry_mask = get_driest_mask(qobs_arr)
+
         for kf in range(1, kfolds + 1):
             best_prms_lab = f'kf_{kf:02d}_idxs'
 
@@ -118,21 +111,27 @@ def plot_cat_discharge_errors(plot_args):
                 int, best_prm_idxs_df.loc[best_prms_lab, :].values))
 
             q_quant_effs_dicts = []
-            q_quant_indic_effs_dicts = []
+            dry_timing_effs_dicts = []
             lorenz_y_vals_list = []
             peak_effs = []
             qsim_arrs = []
+            driest_periods = []
 
             for lc_idx in lc_idxs:
                 qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
                 qsim_arr = qsims_df.loc[:, qsim_lab].values
 
-                (q_quant_effs_dict,
-                 q_quant_indic_effs_dict) = get_q_quant_effs_dict(
+                q_quant_effs_dict = get_q_quant_effs_dict(
                     qobs_arr, qsim_arr, qobs_quants_masks_dict, eff_ftns_dict)
 
                 q_quant_effs_dicts.append(q_quant_effs_dict)
-                q_quant_indic_effs_dicts.append(q_quant_indic_effs_dict)
+
+                qsim_dry_mask = get_driest_mask(qsim_arr)
+
+                dry_timing_dict = get_timing_effs_dict(
+                    qobs_dry_mask, qsim_dry_mask, eff_ftns_dict)
+
+                dry_timing_effs_dicts.append(dry_timing_dict)
 
                 lorenz_y_vals = get_lorenz_arr(qobs_arr, qsim_arr)
                 lorenz_y_vals_list.append(lorenz_y_vals)
@@ -143,6 +142,8 @@ def plot_cat_discharge_errors(plot_args):
                 peak_effs.append(peak_effs_dict)
 
                 qsim_arrs.append(qsim_arr)
+
+                driest_periods.append(get_driest_period(qsim_arr))
 
             for eff_ftn_lab in eff_ftns_dict:
                 out_quants_fig_name = (
@@ -161,21 +162,19 @@ def plot_cat_discharge_errors(plot_args):
                     cat,
                     out_quants_fig_path)
 
-#             out_quants_indic_fig_name = (
-#                 f'quant_indic_effs_cat_{cat}_{calib_valid_lab}_'
-#                 f'{opt_iter}_kf_{kf}_pcorr.png')
-#
-#             out_quants_indic_fig_path = os.path.join(
-#                 errors_dir, out_quants_indic_fig_name)
-#
-#             plot_quant_indic_effs(
-#                 q_quant_indic_effs_dicts,
-#                 qobs_quants_masks_dict,
-#                 'pcorr',
-#                 lc_idxs,
-#                 lc_labs,
-#                 cat,
-#                 out_quants_indic_fig_path)
+            out_driest_fig_name = (
+                f'driest_timing_effs_cat_{cat}_{calib_valid_lab}_'
+                f'{opt_iter}_kf_{kf}.png')
+
+            out_driest_fig_path = os.path.join(
+                errors_dir, out_driest_fig_name)
+
+            plot_driest_effs(
+                dry_timing_effs_dicts,
+                lc_idxs,
+                lc_labs,
+                cat,
+                out_driest_fig_path)
 
             out_lorenz_name = (
                 f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
@@ -205,7 +204,7 @@ def plot_cat_discharge_errors(plot_args):
 
             out_mean_peaks_path = os.path.join(errors_dir, out_mean_peaks_name)
 
-            plot_mean_peaks_and_sq_err(
+            plot_mean_peaks(
                 peaks_mask,
                 qobs_arr,
                 qsim_arrs,
@@ -229,6 +228,64 @@ def plot_cat_discharge_errors(plot_args):
                 lc_labs,
                 cat,
                 out_peaks_sq_diff_path)
+
+            out_driest_name = (
+                f'driest_month_comp_cat_{cat}_{calib_valid_lab}_'
+                f'{opt_iter}_kf_{kf}.png')
+
+            out_driest_path = os.path.join(errors_dir, out_driest_name)
+
+            plot_driest_periods(
+                qobs_driest,
+                driest_periods,
+                lc_labs,
+                lc_idxs,
+                cat,
+                off_idx,
+                out_driest_path)
+
+    return
+
+
+def plot_driest_periods(
+        qobs_driest, driest_periods, lc_labs, lc_idxs, cat, off_idx, out_path):
+
+    plt.figure(figsize=(15, 10))
+
+    x_labs = [f'Obs. ({qobs_driest[1] + off_idx})'] + [
+        f'{lc_labs[i]} ({driest_periods[i][1] + off_idx})'
+        for i in range(len(lc_labs))]
+
+    x_crds = np.arange(len(x_labs))
+
+    plt.scatter(
+        0,
+        qobs_driest[0],
+        color='red',
+        alpha=0.8,
+        marker='o')
+
+    for i in range(len(lc_idxs)):
+        plt.scatter(
+            i + 1,
+            driest_periods[i][0],
+            color=LC_CLRS[i],
+            marker='o',
+            alpha=0.8)
+
+    plt.xlabel('Parameter (month step index)')
+    plt.ylabel('Discharge ($m^3/s$)')
+
+    plt.xticks(x_crds, x_labs, rotation=90)
+
+    plt.title(
+        f'Mean driest month comparison for catchment: {cat} using various '
+        f'parameter vector(s)')
+
+    plt.grid()
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
     return
 
 
@@ -238,7 +295,7 @@ def plot_peaks_sq_err(
     plt.figure(figsize=(15, 10))
 
     x_labs = lc_labs
-    x_crds = list(range(len(x_labs)))
+    x_crds = np.arange(len(x_labs))
 
     for i in range(len(lc_idxs)):
         sq_diff = (qsim_arrs[i][peaks_mask] - qobs_arr[peaks_mask]) ** 2
@@ -267,15 +324,16 @@ def plot_peaks_sq_err(
     return
 
 
-def plot_mean_peaks_and_sq_err(
+def plot_mean_peaks(
         peaks_mask, qobs_arr, qsim_arrs, lc_idxs, lc_labs, cat, out_path):
 
     plt.figure(figsize=(15, 10))
 
     x_labs = ['Obs.'] + lc_labs
-    x_crds = list(range(len(x_labs)))
+    x_crds = np.arange(len(x_labs))
 
     mean_obs_peak = qobs_arr[peaks_mask].mean()
+
     plt.scatter(
         0,
         mean_obs_peak,
@@ -285,6 +343,7 @@ def plot_mean_peaks_and_sq_err(
 
     for i in range(len(lc_idxs)):
         mean_sim_peak = qsim_arrs[i][peaks_mask].mean()
+
         plt.scatter(
             i + 1,
             mean_sim_peak,
@@ -292,7 +351,7 @@ def plot_mean_peaks_and_sq_err(
             marker='o',
             alpha=0.8)
 
-    plt.ylabel('Discharge ($m^3/s^1$)')
+    plt.ylabel('Discharge ($m^3/s$)')
 
     x_crds_labs = [f'{x_labs[i]}' for i in range(len(x_crds))]
 
@@ -329,7 +388,7 @@ def plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_path):
             marker='o',
             alpha=0.5)
 
-    plt.xlabel('Simulation')
+    plt.xlabel('Simulation - (prm. vec. idx.)')
     plt.ylabel('Efficiency')
 
     x_crds_labs = [
@@ -338,7 +397,7 @@ def plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_path):
     plt.xticks(x_crds, x_crds_labs, rotation=90)
 
     plt.title(
-        f'Model efficiency for catchment: {cat} using various '
+        f'Model peaks efficiency for catchment: {cat} using various '
         f'parameter vector(s)')
 
     plt.grid()
@@ -431,42 +490,36 @@ def plot_quant_effs(
     return
 
 
-def plot_quant_indic_effs(
-        quant_indic_effs_dict,
-        quants_masks_dict,
-        eff_ftn_lab,
-        sim_idxs,
-        sim_labs,
-        cat,
-        out_path):
+def plot_driest_effs(dry_timing_dict, lc_idxs, lc_labs, cat, out_path):
 
-    plt.figure(figsize=(15, 7))
+    plt.figure(figsize=(15, 10))
 
-    n_quants = len(quant_indic_effs_dict[0][eff_ftn_lab])
+    eff_ftn_labs = list(dry_timing_dict[0].keys())
 
-    bar_x_crds = (np.arange(1., n_quants + 1) / n_quants) - (0.5 / n_quants)
+    x_crds = np.arange(len(dry_timing_dict))
 
-    for i in range(len(sim_idxs)):
+    for eff_ftn_lab in eff_ftn_labs:
+        eff_vals = [
+            dry_timing_dict[i][eff_ftn_lab] for i in range(len(lc_idxs))]
+
         plt.plot(
-            bar_x_crds,
-            quant_indic_effs_dict[i][eff_ftn_lab],
-            color=LC_CLRS[i],
-            label=f'{sim_labs[i]} ({sim_idxs[i]})',
+            x_crds,
+            eff_vals,
+            label=f'{eff_ftn_lab}',
             marker='o',
             alpha=0.5)
 
+    plt.xlabel('Simulation - (prm. vec. idx.)')
+    plt.ylabel('Efficiency')
+
+    x_crds_labs = [
+        f'{lc_labs[i]} - ({lc_idxs[i]})' for i in range(x_crds.shape[0])]
+
+    plt.xticks(x_crds, x_crds_labs, rotation=90)
+
     plt.title(
-        eff_ftn_lab.upper() +
-        f' indicator efficiency for {n_quants} quantiles for cat: {cat}')
-
-    bar_x_crds_labs = [
-        f'{bar_x_crds[i]:0.3f} - ({int(quants_masks_dict[i].sum())})'
-        for i in range(n_quants)]
-
-    plt.xticks(bar_x_crds, bar_x_crds_labs, rotation=90)
-
-    plt.xlabel('Mean interval prob. - (N)')
-    plt.ylabel(eff_ftn_lab.upper())
+        f'driest month indicator efficiency for catchment: {cat} '
+        f'using various parameter vector(s)')
 
     plt.grid()
     plt.legend(loc=0, framealpha=0.7)
@@ -483,18 +536,28 @@ def get_lorenz_arr(ref_arr, sim_arr):
     return sorted_abs_diffs
 
 
+def get_timing_effs_dict(qobs_flags_arr, qsim_flags_arr, eff_ftns_dict):
+
+    timing_effs_dict = {}
+    for eff_ftn_key in eff_ftns_dict:
+        eff_ftn = eff_ftns_dict[eff_ftn_key]
+
+        timing_effs_dict[eff_ftn_key] = eff_ftn(
+            qobs_flags_arr.astype(float), qsim_flags_arr.astype(float), 0)
+
+    return timing_effs_dict
+
+
 def get_q_quant_effs_dict(
         qobs_arr, qsim_arr, qobs_quants_masks_dict, eff_ftns_dict):
 
     n_q_quants = len(qobs_quants_masks_dict)
 
     quant_effs_dict = {}
-    quant_indic_effs_dict = {}
     for eff_ftn_key in eff_ftns_dict:
         eff_ftn = eff_ftns_dict[eff_ftn_key]
 
         quant_effs = []
-#         quant_indic_effs = []
         for i in range(n_q_quants):
             mask = qobs_quants_masks_dict[i]
 
@@ -502,24 +565,9 @@ def get_q_quant_effs_dict(
 
             quant_effs.append(eff_ftn(qobs_arr[mask], qsim_arr[mask], 0))
 
-#             if eff_ftn_key != 'pcorr':
-#                 continue
-#
-#             qobs_indic_arr = np.full_like(qobs_arr[mask], 0.5)
-#             qsim_indic_arr = np.full_like(qsim_arr[mask], 0.5)
-#
-#             qsim_indic_arr[qsim_arr[mask] > qobs_arr[mask]] = 1
-#             qsim_indic_arr[qsim_arr[mask] < qobs_arr[mask]] = 0
-#
-#             quant_indic_effs.append(
-#                 eff_ftn(qobs_indic_arr, qsim_indic_arr, 0))
-
         quant_effs_dict[eff_ftn_key] = quant_effs
 
-#         if eff_ftn_key == 'pcorr':
-#             quant_indic_effs_dict[eff_ftn_key] = quant_indic_effs
-
-    return quant_effs_dict, quant_indic_effs_dict
+    return quant_effs_dict
 
 
 def get_quant_masks_dict(in_ser, n_quants):
@@ -549,6 +597,22 @@ def get_quant_masks_dict(in_ser, n_quants):
         masks_dict[i] = (vals >= quants[i]) & (vals < quants[i + 1])
 
     return masks_dict
+
+
+def get_driest_period(in_arr):
+
+    ws = 30
+    n_steps = in_arr.shape[0]
+
+    assert n_steps >= ws
+
+    runn_mean_arr = np.full(n_steps - ws, np.nan)
+
+    for i in range(n_steps - ws):
+        runn_mean_arr[i] = in_arr[i:i + ws].mean()
+
+    min_mean_idx = np.argmin(runn_mean_arr)
+    return (runn_mean_arr[min_mean_idx], min_mean_idx + int(0.5 * ws))
 
 
 def get_peaks_mask(in_arr):
@@ -605,6 +669,55 @@ def get_peaks_mask(in_arr):
     return out_mask
 
 
+def get_driest_mask(in_arr):
+
+    ws = 30
+    steps_per_cycle = 365  # should be enough to have peaks_per_cycle peaks
+    n_steps = in_arr.shape[0]
+
+    assert steps_per_cycle > ws
+    assert steps_per_cycle < n_steps
+
+    runn_mean_arr = np.full(n_steps - ws, np.nan)
+
+    for i in range(n_steps - ws):
+        runn_mean_arr[i] = in_arr[i:i + ws].mean()
+
+    window_sums = np.full(steps_per_cycle, np.inf)
+    for i in range(ws, steps_per_cycle + ws - 1):
+        window_sums[i - ws] = in_arr[i - ws:i].sum()
+
+    assert np.all(window_sums > 0)
+
+    min_idx = int(0.5 * ws) + np.argmin(window_sums)
+
+    if min_idx > ws:
+        beg_idx = 0
+        end_idx = min_idx
+
+    else:
+        beg_idx = min_idx
+        end_idx = min_idx + steps_per_cycle
+
+    assert n_steps >= end_idx - beg_idx, 'Too few steps!'
+
+    out_mask = np.zeros(n_steps, dtype=bool)
+
+    while (beg_idx < n_steps):
+        loop_mask = np.zeros(n_steps, dtype=bool)
+        loop_mask[beg_idx:end_idx] = True
+
+        driest_idx = np.argmin(runn_mean_arr[beg_idx:end_idx])
+
+        out_mask[np.where(loop_mask)[0][driest_idx:driest_idx + ws]] = True
+
+        beg_idx = end_idx
+        end_idx += steps_per_cycle
+
+    assert out_mask.sum(), 'No driest selected!'
+    return out_mask
+
+
 def get_peaks_effs_dict(qobs_arr, qsim_arr, mask, eff_ftns_dict):
 
     peak_effs_dict = {}
@@ -627,12 +740,7 @@ def plot_cat_vars_errors(plot_args):
         out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'11_errors')
 
-        if not os.path.exists(out_dir):
-            try:
-                os.mkdir(out_dir)
-
-            except FileExistsError:
-                pass
+        mkdir_hm(out_dir)
 
         kfolds = db['data'].attrs['kfolds']
 
@@ -764,11 +872,7 @@ def plot_cat_prms_transfer_perfs(plot_args):
 
         trans_out_dir = os.path.join(main_out_dir, '09_prm_trans_compare')
 
-        try:
-            os.mkdir(trans_out_dir)
-
-        except FileExistsError:
-            pass
+        mkdir_hm(trans_out_dir)
 
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
@@ -986,12 +1090,7 @@ def plot_cat_kfold_effs(args):
         out_dir = db['data'].attrs['main']
         out_dir = os.path.join(out_dir, r'05_kfolds_perf')
 
-        if not os.path.exists(out_dir):
-            try:
-                os.mkdir(out_dir)
-
-            except FileExistsError:
-                pass
+        mkdir_hm(out_dir)
 
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
@@ -1483,8 +1582,7 @@ def plot_cats_ann_cycs_fdcs_comp(hgs_db_path, off_idx, out_dir):
     for all catchments.
     '''
 
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+    mkdir_hm(out_dir)
 
     title_lab_list = ['Validation', 'Calibration']
     db_lab_list = ['valid', 'calib']

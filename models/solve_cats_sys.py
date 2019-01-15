@@ -24,6 +24,8 @@ from .miscs.misc_ftns import (
     get_slope_scale_arr_cy,
     get_aspect_and_slope_scale_arr_cy)
 
+from ..misc import mkdir_hm
+
 plt.ioff()
 
 fc_i, pwp_i = get_fc_pwp_is()
@@ -210,8 +212,7 @@ def solve_cats_sys(
 
     print('Optimizing...')
 
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+    mkdir_hm(out_dir)
 
     n_steps = date_range.shape[0]
 
@@ -336,13 +337,13 @@ def solve_cats_sys(
     if os.path.exists(out_db_dir):
         shutil.rmtree(out_db_dir)
 
-    os.mkdir(out_db_dir)
+    mkdir_hm(out_db_dir)
 
     out_hgs_dir = os.path.join(out_dir, '02_hydrographs')
     if os.path.exists(out_hgs_dir):
         shutil.rmtree(out_hgs_dir)
 
-    os.mkdir(out_hgs_dir)
+    mkdir_hm(out_hgs_dir)
 
     dirs_dict = {}
     dirs_dict['main'] = out_dir

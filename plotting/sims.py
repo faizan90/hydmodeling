@@ -21,6 +21,8 @@ from ..models import (
     get_kge_cy,
     lin_regsn_cy)
 
+from ..misc import mkdir_hm
+
 plt.ioff()
 
 
@@ -283,12 +285,8 @@ class PlotCatHBVSimKf:
         self.bal_idxs.extend(list(range(off_idx, self.n_recs, wat_bal_stps)))
 
         self.full_sims_dir = os.path.join(self.out_dir, '03_hbv_figs')
-        if not os.path.exists(self.full_sims_dir):
-            try:
-                os.mkdir(self.full_sims_dir)
 
-            except FileExistsError:
-                pass
+        mkdir_hm(self.full_sims_dir)
 
         sim_dict = {
             'temp': self.temp_arr,
@@ -343,12 +341,7 @@ class PlotCatHBVSimKf:
 
         wat_bals_dir = os.path.join(self.out_dir, '04_wat_bal_figs')
 
-        if not os.path.exists(wat_bals_dir):
-            try:
-                os.mkdir(wat_bals_dir)
-
-            except FileExistsError:
-                pass
+        mkdir_hm(wat_bals_dir)
 
         out_fig_loc = os.path.join(
             wat_bals_dir, f'kf_{self.kf_str}_HBV_water_bal_{self.cat}.png')

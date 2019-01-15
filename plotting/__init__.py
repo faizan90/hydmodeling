@@ -19,6 +19,8 @@ from .perfs import (
     plot_cat_vars_errors,
     plot_cat_discharge_errors)
 
+from ..misc import traceback_wrapper
+
 
 def plot_cats_discharge_errors(dbs_dir, n_cpus):
 
