@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessPool
 
-from ..misc import get_fdc, LC_CLRS, mkdir_hm, traceback_wrapper
+from ..misc import get_fdc, LC_CLRS, mkdir_hm, traceback_wrapper, text_sep
 from ..models import (
     hbv_loop_py,
     tfm_opt_to_hbv_prms_py,
@@ -36,10 +36,24 @@ from ..models import (
 plt.ioff()
 
 
+def cnvt_fig_path_to_csv_path(fig_path):
+
+    bas_name = os.path.basename(fig_path).rsplit('.', 1)[0]
+    dir_name = os.path.dirname(fig_path)
+
+    assert bool(bas_name) & bool(dir_name)
+
+    csv_name = f'text_{bas_name}.csv'
+    csv_path = os.path.join(dir_name, csv_name)
+    return csv_path
+
+
 @traceback_wrapper
 def plot_cat_discharge_errors(plot_args):
 
     (cat_db,) = plot_args
+
+    save_text_flag = True
 
     with h5py.File(cat_db, 'r') as db:
         main_out_dir = db['data'].attrs['main']
@@ -105,6 +119,19 @@ def plot_cat_discharge_errors(plot_args):
         qobs_driest = get_driest_period(qobs_arr)
         qobs_dry_mask = get_driest_mask(qobs_arr)
 
+        out_dirs_dict = {
+            'dm': os.path.join(errors_dir, 'driest_month'),
+            'dt': os.path.join(errors_dir, 'driest_timing'),
+            'lc': os.path.join(errors_dir, 'lorenz_curves'),
+            'mp': os.path.join(errors_dir, 'mean_peaks'),
+            'pe': os.path.join(errors_dir, 'peaks_eff'),
+            'ps': os.path.join(errors_dir, 'peaks_sq_diff'),
+            'qe': os.path.join(errors_dir, 'quant_effs'),
+            }
+
+        for dir_key in out_dirs_dict:
+            mkdir_hm(out_dirs_dict[dir_key])
+
         for kf in range(1, kfolds + 1):
             best_prms_lab = f'kf_{kf:02d}_idxs'
 
@@ -152,7 +179,7 @@ def plot_cat_discharge_errors(plot_args):
                     f'{opt_iter}_kf_{kf}_{eff_ftn_lab}.png')
 
                 out_quants_fig_path = os.path.join(
-                    errors_dir, out_quants_fig_name)
+                    out_dirs_dict['qe'], out_quants_fig_name)
 
                 plot_quant_effs(
                     q_quant_effs_dicts,
@@ -161,27 +188,30 @@ def plot_cat_discharge_errors(plot_args):
                     lc_idxs,
                     lc_labs,
                     cat,
-                    out_quants_fig_path)
+                    out_quants_fig_path,
+                    save_text_flag)
 
             out_driest_fig_name = (
                 f'driest_timing_effs_cat_{cat}_{calib_valid_lab}_'
                 f'{opt_iter}_kf_{kf}.png')
 
             out_driest_fig_path = os.path.join(
-                errors_dir, out_driest_fig_name)
+                out_dirs_dict['dt'], out_driest_fig_name)
 
-            plot_driest_effs(
+            plot_driest_timing_effs(
                 dry_timing_effs_dicts,
                 lc_idxs,
                 lc_labs,
                 cat,
-                out_driest_fig_path)
+                out_driest_fig_path,
+                save_text_flag)
 
             out_lorenz_name = (
                 f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
                 f'{opt_iter}_kf_{kf}.png')
 
-            out_lorenz_path = os.path.join(errors_dir, out_lorenz_name)
+            out_lorenz_path = os.path.join(
+                out_dirs_dict['lc'], out_lorenz_name)
 
             plot_lorenz_arr(
                 lorenz_x_vals,
@@ -195,15 +225,23 @@ def plot_cat_discharge_errors(plot_args):
                 f'peak_effs_cat_{cat}_{calib_valid_lab}_'
                 f'{opt_iter}_kf_{kf}.png')
 
-            out_peaks_path = os.path.join(errors_dir, out_peak_effs_name)
+            out_peaks_path = os.path.join(
+                out_dirs_dict['pe'], out_peak_effs_name)
 
-            plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_peaks_path)
+            plot_peak_effs(
+                peak_effs,
+                lc_idxs,
+                lc_labs,
+                cat,
+                out_peaks_path,
+                save_text_flag)
 
             out_mean_peaks_name = (
                 f'mean_peaks_comp_cat_{cat}_{calib_valid_lab}_'
                 f'{opt_iter}_kf_{kf}.png')
 
-            out_mean_peaks_path = os.path.join(errors_dir, out_mean_peaks_name)
+            out_mean_peaks_path = os.path.join(
+                out_dirs_dict['mp'], out_mean_peaks_name)
 
             plot_mean_peaks(
                 peaks_mask,
@@ -212,14 +250,15 @@ def plot_cat_discharge_errors(plot_args):
                 lc_idxs,
                 lc_labs,
                 cat,
-                out_mean_peaks_path)
+                out_mean_peaks_path,
+                save_text_flag)
 
             out_peaks_sq_diff_name = (
                 f'peaks_sq_diff_comp_cat_{cat}_{calib_valid_lab}_'
                 f'{opt_iter}_kf_{kf}.png')
 
             out_peaks_sq_diff_path = os.path.join(
-                errors_dir, out_peaks_sq_diff_name)
+                out_dirs_dict['ps'], out_peaks_sq_diff_name)
 
             plot_peaks_sq_err(
                 peaks_mask,
@@ -228,13 +267,15 @@ def plot_cat_discharge_errors(plot_args):
                 lc_idxs,
                 lc_labs,
                 cat,
-                out_peaks_sq_diff_path)
+                out_peaks_sq_diff_path,
+                save_text_flag)
 
             out_driest_name = (
                 f'driest_month_comp_cat_{cat}_{calib_valid_lab}_'
                 f'{opt_iter}_kf_{kf}.png')
 
-            out_driest_path = os.path.join(errors_dir, out_driest_name)
+            out_driest_path = os.path.join(
+                out_dirs_dict['dm'], out_driest_name)
 
             plot_driest_periods(
                 qobs_driest,
@@ -243,13 +284,21 @@ def plot_cat_discharge_errors(plot_args):
                 lc_idxs,
                 cat,
                 off_idx,
-                out_driest_path)
+                out_driest_path,
+                save_text_flag)
 
     return
 
 
 def plot_driest_periods(
-        qobs_driest, driest_periods, lc_labs, lc_idxs, cat, off_idx, out_path):
+        qobs_driest,
+        driest_periods,
+        lc_labs,
+        lc_idxs,
+        cat,
+        off_idx,
+        out_path,
+        save_text_flag=False):
 
     plt.figure(figsize=(15, 10))
 
@@ -266,6 +315,7 @@ def plot_driest_periods(
         alpha=0.8,
         marker='o')
 
+    driest_vals = [qobs_driest[0]]
     for i in range(len(lc_idxs)):
         plt.scatter(
             i + 1,
@@ -273,6 +323,8 @@ def plot_driest_periods(
             color=LC_CLRS[i],
             marker='o',
             alpha=0.8)
+
+        driest_vals.append(driest_periods[i][0])
 
     plt.xlabel('Parameter (month step index)')
     plt.ylabel('Discharge ($m^3/s$)')
@@ -287,25 +339,42 @@ def plot_driest_periods(
 
     plt.savefig(out_path, bbox_inches='tight')
     plt.close()
+
+    if save_text_flag:
+        text_ser = pd.Series(index=x_labs, data=driest_vals, dtype=float)
+        text_path = cnvt_fig_path_to_csv_path(out_path)
+        text_ser.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
 
 
 def plot_peaks_sq_err(
-        peaks_mask, qobs_arr, qsim_arrs, lc_idxs, lc_labs, cat, out_path):
+        peaks_mask,
+        qobs_arr,
+        qsim_arrs,
+        lc_idxs,
+        lc_labs,
+        cat,
+        out_path,
+        save_text_flag=False):
 
     plt.figure(figsize=(15, 10))
 
     x_labs = lc_labs
     x_crds = np.arange(len(x_labs))
 
+    sq_diffs = []
     for i in range(len(lc_idxs)):
-        sq_diff = (qsim_arrs[i][peaks_mask] - qobs_arr[peaks_mask]) ** 2
+        sq_diff = (
+            (qsim_arrs[i][peaks_mask] - qobs_arr[peaks_mask]) ** 2).sum()
+
         plt.scatter(
             i,
-            sq_diff.sum(),
+            sq_diff,
             color=LC_CLRS[i],
             marker='o',
             alpha=0.8)
+
+        sq_diffs.append(sq_diff)
 
     plt.ylabel('Sq. diff. sum')
 
@@ -322,11 +391,23 @@ def plot_peaks_sq_err(
 
     plt.savefig(out_path, bbox_inches='tight')
     plt.close()
+
+    if save_text_flag:
+        text_ser = pd.Series(index=x_labs, data=sq_diffs, dtype=float)
+        text_path = cnvt_fig_path_to_csv_path(out_path)
+        text_ser.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
 
 
 def plot_mean_peaks(
-        peaks_mask, qobs_arr, qsim_arrs, lc_idxs, lc_labs, cat, out_path):
+        peaks_mask,
+        qobs_arr,
+        qsim_arrs,
+        lc_idxs,
+        lc_labs,
+        cat,
+        out_path,
+        save_text_flag=False):
 
     plt.figure(figsize=(15, 10))
 
@@ -342,6 +423,8 @@ def plot_mean_peaks(
         alpha=0.8,
         marker='o')
 
+    mean_peaks = [mean_obs_peak]
+
     for i in range(len(lc_idxs)):
         mean_sim_peak = qsim_arrs[i][peaks_mask].mean()
 
@@ -351,6 +434,8 @@ def plot_mean_peaks(
             color=LC_CLRS[i],
             marker='o',
             alpha=0.8)
+
+        mean_peaks.append(mean_sim_peak)
 
     plt.ylabel('Discharge ($m^3/s$)')
 
@@ -367,10 +452,16 @@ def plot_mean_peaks(
 
     plt.savefig(out_path, bbox_inches='tight')
     plt.close()
+
+    if save_text_flag:
+        text_ser = pd.Series(index=x_labs, data=mean_peaks, dtype=float)
+        text_path = cnvt_fig_path_to_csv_path(out_path)
+        text_ser.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
 
 
-def plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_path):
+def plot_peak_effs(
+        peak_effs, lc_idxs, lc_labs, cat, out_path, save_text_flag=False):
 
     plt.figure(figsize=(15, 10))
 
@@ -378,6 +469,7 @@ def plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_path):
 
     x_crds = np.arange(len(peak_effs))
 
+    all_eff_vals = []
     for eff_ftn_lab in eff_ftn_labs:
         eff_vals = [
             peak_effs[i][eff_ftn_lab] for i in range(len(lc_idxs))]
@@ -388,6 +480,8 @@ def plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_path):
             label=f'{eff_ftn_lab}',
             marker='o',
             alpha=0.5)
+
+        all_eff_vals.append(eff_vals)
 
     plt.xlabel('Simulation - (prm. vec. idx.)')
     plt.ylabel('Efficiency')
@@ -406,11 +500,26 @@ def plot_peak_effs(peak_effs, lc_idxs, lc_labs, cat, out_path):
 
     plt.savefig(out_path, bbox_inches='tight')
     plt.close()
+
+    if save_text_flag:
+        text_df = pd.DataFrame(
+            index=eff_ftn_labs,
+            data=all_eff_vals,
+            columns=lc_labs,
+            dtype=float)
+
+        text_path = cnvt_fig_path_to_csv_path(out_path)
+        text_df.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
 
 
 def plot_lorenz_arr(
-        lorenz_x_vals, lorenz_y_vals_list, sim_idxs, sim_labs, cat, out_path):
+        lorenz_x_vals,
+        lorenz_y_vals_list,
+        sim_idxs,
+        sim_labs,
+        cat,
+        out_path):
 
     plt.figure(figsize=(10, 10))
 
@@ -453,7 +562,8 @@ def plot_quant_effs(
         sim_idxs,
         sim_labs,
         cat,
-        out_path):
+        out_path,
+        save_text_flag=False):
 
     plt.figure(figsize=(15, 7))
 
@@ -461,6 +571,7 @@ def plot_quant_effs(
 
     bar_x_crds = (np.arange(1., n_quants + 1) / n_quants) - (0.5 / n_quants)
 
+    quant_eff_vals = []
     for i in range(len(sim_idxs)):
         plt.plot(
             bar_x_crds,
@@ -469,6 +580,8 @@ def plot_quant_effs(
             label=f'{sim_labs[i]} ({sim_idxs[i]})',
             marker='o',
             alpha=0.5)
+
+        quant_eff_vals.append(quant_effs_dict[i][eff_ftn_lab])
 
     plt.title(
         eff_ftn_lab.upper() +
@@ -488,10 +601,26 @@ def plot_quant_effs(
 
     plt.savefig(out_path, bbox_inches='tight')
     plt.close()
+
+    if save_text_flag:
+        text_df = pd.DataFrame(
+            index=sim_labs,
+            data=quant_eff_vals,
+            columns=bar_x_crds_labs,
+            dtype=float)
+
+        text_path = cnvt_fig_path_to_csv_path(out_path)
+        text_df.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
 
 
-def plot_driest_effs(dry_timing_dict, lc_idxs, lc_labs, cat, out_path):
+def plot_driest_timing_effs(
+    dry_timing_dict,
+    lc_idxs,
+    lc_labs,
+    cat,
+    out_path,
+    save_text_flag=False):
 
     plt.figure(figsize=(15, 10))
 
@@ -499,6 +628,7 @@ def plot_driest_effs(dry_timing_dict, lc_idxs, lc_labs, cat, out_path):
 
     x_crds = np.arange(len(dry_timing_dict))
 
+    all_eff_vals = []
     for eff_ftn_lab in eff_ftn_labs:
         eff_vals = [
             dry_timing_dict[i][eff_ftn_lab] for i in range(len(lc_idxs))]
@@ -509,6 +639,8 @@ def plot_driest_effs(dry_timing_dict, lc_idxs, lc_labs, cat, out_path):
             label=f'{eff_ftn_lab}',
             marker='o',
             alpha=0.5)
+
+        all_eff_vals.append(eff_vals)
 
     plt.xlabel('Simulation - (prm. vec. idx.)')
     plt.ylabel('Efficiency')
@@ -527,6 +659,16 @@ def plot_driest_effs(dry_timing_dict, lc_idxs, lc_labs, cat, out_path):
 
     plt.savefig(out_path, bbox_inches='tight')
     plt.close()
+
+    if save_text_flag:
+        text_df = pd.DataFrame(
+            index=eff_ftn_labs,
+            data=all_eff_vals,
+            columns=lc_labs,
+            dtype=float)
+
+        text_path = cnvt_fig_path_to_csv_path(out_path)
+        text_df.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
 
 

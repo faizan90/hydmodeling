@@ -4,13 +4,15 @@ Created on Jan 15, 2019
 @author: Faizan-Uni
 '''
 import os
+import sys
 from functools import wraps
-from traceback import print_exc
+import traceback as tb
 
 import numpy as np
 import pandas as pd
 
 LC_CLRS = ['blue', 'green', 'purple', 'orange', 'cyan', 'pink']
+text_sep = ';'
 
 
 def traceback_wrapper(func):
@@ -24,7 +26,14 @@ def traceback_wrapper(func):
             func_res = func(*args, **kwargs)
 
         except:
-            print_exc()
+            pre_stack = tb.format_stack()[:-1]
+
+            err_tb = list(tb.TracebackException(*sys.exc_info()).format())
+
+            lines = [err_tb[0]] + pre_stack + err_tb[2:]
+
+            for line in lines:
+                print(line, file=sys.stderr, end='')
 
         return func_res
 
@@ -57,6 +66,18 @@ def get_fdc(in_ser):
     probs = probs[sort_idxs]
     vals = vals[sort_idxs]
     return probs, vals
+
+
+def df_to_tex(in_df, tex_loc):
+
+    '''Need booktabs module to read it in the tex editor'''
+
+    assert os.path.isfile(tex_loc)
+    assert isinstance(in_df, (pd.Series, pd.DataFrame))
+
+    with open(tex_loc, 'w') as hdl:
+        hdl.write(in_df.to_latex())
+    return
 
 
 if __name__ == '__main__':
