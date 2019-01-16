@@ -11,7 +11,7 @@ import traceback as tb
 import numpy as np
 import pandas as pd
 
-LC_CLRS = ['blue', 'green', 'purple', 'orange', 'cyan', 'pink']
+LC_CLRS = ['blue', 'green', 'purple', 'orange', 'cyan', 'black']
 text_sep = ';'
 
 

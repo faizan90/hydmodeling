@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 
-from ..misc import get_fdc, LC_CLRS, mkdir_hm, traceback_wrapper
+from ..misc import get_fdc, LC_CLRS, mkdir_hm, traceback_wrapper, text_sep
 from ..models import (
     hbv_loop_py,
     get_ns_cy,
@@ -32,7 +32,7 @@ def plot_cat_qsims(cat_db):
 
     try:
         with h5py.File(cat_db, 'r') as db:
-            opt_iters = [3, 6]  # , 10, 15, None]
+            opt_iters = [3, 6, 19]  # , 10, 15, None]
             long_short_break_freqs = ['A']
 
             cv_flag = db['data'].attrs['cv_flag']
@@ -114,6 +114,10 @@ class PlotCatQSims:
         self.kf_corr_args_dict = {}
 
         self._mkdirs()
+
+        self.cmap = plt.get_cmap('winter')
+        self.cmap_mappable = plt.cm.ScalarMappable(cmap=self.cmap)
+        self.cmap_mappable.set_array([])
         return
 
     def _mkdirs(self):
@@ -366,39 +370,69 @@ class PlotCatQSims:
         plt.close()
         return
 
-    def _get_lo_hi_corr_idxs(self, kf):
+    def _get_same_eff_idxs(self, n_vals):
 
-        assert not self._set_lo_hi_corr_idxs_flag
+        eff_ftn = 'ns'
+        eff_ftn_val_tol = 0.05
 
-        if self.sim_lab == 'calib':
-            mean_ns = self.sim_perfs_df['ns'].mean()
+        beg_prob = 0.8
+        end_prob = 0.1
+        prob_red_fac = 0.99
 
-            eff_ftn = 'ns'
-            eff_ftn_val_tol = 0.01
+        assert self.sim_perfs_df[eff_ftn].shape[0] >= n_vals
 
-            n_hi_vals = 3
-            n_lo_vals = n_hi_vals
-            n_vals = n_hi_vals + n_lo_vals
+        eff_val_ranks = self.sim_perfs_df[eff_ftn].rank().values
+        n_ranks = eff_val_ranks.shape[0]
 
-            assert self.sim_perfs_df[eff_ftn].shape[0] >= (
-                n_hi_vals + n_lo_vals)
+        curr_prob = beg_prob
+
+        while True:
+            eff_idx = np.where(
+                eff_val_ranks == round(curr_prob * n_ranks))[0][0]
+
+            eff_val = self.sim_perfs_df[eff_ftn].iloc[eff_idx]
 
             acc_flags_1 = (
-                (self.sim_perfs_df[eff_ftn] - mean_ns).abs().rank() <= (
+                (self.sim_perfs_df[eff_ftn] - eff_val).abs().rank() <= (
                     n_vals)).values
 
             acc_flags_2 = (
                 (self.sim_perfs_df[eff_ftn].values >= (
-                    mean_ns - (0.5 * eff_ftn_val_tol))) &
+                    eff_val - (0.5 * eff_ftn_val_tol))) &
 
                 (self.sim_perfs_df[eff_ftn].values <= (
-                    mean_ns + (0.5 * eff_ftn_val_tol))))
+                    eff_val + (0.5 * eff_ftn_val_tol))))
 
             if acc_flags_1.sum() > acc_flags_2.sum():
                 acc_flags_ser = acc_flags_1
 
             else:
                 acc_flags_ser = acc_flags_2
+
+            if acc_flags_ser.sum() > n_vals:
+                break
+
+            if curr_prob < end_prob:
+                raise AssertionError(
+                    'Could not find an interval in which all '
+                    'efficiency values are almost similar!')
+
+                break  # just in case
+
+            curr_prob = prob_red_fac * curr_prob
+
+        return acc_flags_ser
+
+    def _get_lo_hi_corr_idxs(self, kf):
+
+        assert not self._set_lo_hi_corr_idxs_flag
+
+        if self.sim_lab == 'calib':
+            n_hi_vals = 3
+            n_lo_vals = n_hi_vals
+            n_vals = n_hi_vals + n_lo_vals
+
+            acc_flags_ser = self._get_same_eff_idxs(n_vals)
 
             print(f'Selected {int(acc_flags_ser.sum())} parameters!')
 
@@ -894,10 +928,6 @@ class PlotCatQSims:
         out_df = pd.DataFrame(
             data=qact_arr, columns=['obs'], dtype=np.float32)
 
-        self.cmap = plt.get_cmap('winter')
-        self.cmap_mappable = plt.cm.ScalarMappable(cmap=self.cmap)
-        self.cmap_mappable.set_array([])
-
         for k in range(1, self.kfolds + 1):
             kf_str = f'kf_{k:02d}'
 
@@ -1060,7 +1090,7 @@ class PlotCatQSims:
             self.sim_perfs_df.to_csv(
                 os.path.join(self.perf_cdfs_dir, out_perf_df_name),
                 float_format='%0.8f',
-                sep=';')
+                sep=text_sep)
 
             if self.sim_lab == 'calib':
                 clr_vals_list.append(self.clr_vals)
@@ -1084,7 +1114,7 @@ class PlotCatQSims:
                 f'_freq_{self.long_short_break_freq}_opt_qsims.csv'),
             float_format='%0.3f',
             index=False,
-            sep=';')
+            sep=text_sep)
 
         if self.sim_lab == 'calib':
             self._save_best_prm_vecs_data()
