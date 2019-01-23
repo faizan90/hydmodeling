@@ -30,35 +30,28 @@ plt.ioff()
 @traceback_wrapper
 def plot_cat_qsims(cat_db):
 
-    try:
-        with h5py.File(cat_db, 'r') as db:
-            opt_iters = [3, 6, 19]  # , 10, 15, None]
-            long_short_break_freqs = ['A']
+    with h5py.File(cat_db, 'r') as db:
+        opt_iters = [14, 19]  # , 10, 15, None]
+        long_short_break_freqs = ['A']
 
-            cv_flag = db['data'].attrs['cv_flag']
+        cv_flag = db['data'].attrs['cv_flag']
 
-            plot_sims_cls = PlotCatQSims(db)
+        plot_sims_cls = PlotCatQSims(db)
 
-            for long_short_break_freq in long_short_break_freqs:
-                for opt_iter in opt_iters:
-                    plot_sims_cls.set_run_sim_prms(
-                        'calib', opt_iter, long_short_break_freq)
+        for long_short_break_freq in long_short_break_freqs:
+            for opt_iter in opt_iters:
+                plot_sims_cls.set_run_sim_prms(
+                    'calib', opt_iter, long_short_break_freq)
 
-                    cv_args = plot_sims_cls.run_prm_sims()
+                cv_args = plot_sims_cls.run_prm_sims()
 
-                    if (not cv_flag) or (cv_args is None):
-                        continue
+                if (not cv_flag) or (cv_args is None):
+                    continue
 
-                    plot_sims_cls.set_run_sim_prms(
-                        'valid', opt_iter, long_short_break_freq)
+                plot_sims_cls.set_run_sim_prms(
+                    'valid', opt_iter, long_short_break_freq)
 
-                    plot_sims_cls.run_prm_sims(*cv_args)
-
-    except Exception as msg:
-        print('Error in plot_cat_qsims:', msg)
-
-        * _, exc_traceback = sys.exc_info()
-        tb.print_tb(exc_traceback, limit=None, file=sys.stdout)
+                plot_sims_cls.run_prm_sims(*cv_args)
     return
 
 
@@ -373,7 +366,7 @@ class PlotCatQSims:
     def _get_same_eff_idxs(self, n_vals):
 
         eff_ftn = 'ns'
-        eff_ftn_val_tol = 0.05
+        eff_ftn_val_tol = 0.01
 
         beg_prob = 0.8
         end_prob = 0.1
@@ -884,9 +877,10 @@ class PlotCatQSims:
             assert (self.opt_iter >= 0) and isinstance(self.opt_iter, int)
 
             n_max_opt_iters = self.calib_db['kf_01/iter_prm_vecs'].shape[0]
+
             if (n_max_opt_iters - 1) < self.opt_iter:
-                raise ValueError(
-                    f'Only {n_max_opt_iters} iterations available!')
+                print(f'Only {n_max_opt_iters} iterations available!')
+                return
 
             self.opt_iter_lab = f'{self.opt_iter}'
 
@@ -1025,12 +1019,14 @@ class PlotCatQSims:
 
                 sim_ft = np.fft.fft(sim_arr)
 
-                use_sim_phis = np.angle(sim_ft[1: (self.n_steps // 2)])
-
                 use_sim_amps = np.abs(sim_ft[1: (self.n_steps // 2)])
+
+                use_sim_phis = np.angle(sim_ft[1: (self.n_steps // 2)])
 
                 indiv_cov_arr = (self.use_obs_amps * use_sim_amps) * (
                     np.cos(self.use_obs_phis - use_sim_phis))
+
+#                 indiv_cov_arr = (self.use_obs_amps * use_sim_amps)
 
                 tot_cov = indiv_cov_arr.sum()
 
