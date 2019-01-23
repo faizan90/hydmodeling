@@ -60,12 +60,14 @@ def plot_cat_discharge_errors(plot_args):
         off_idx = db['data'].attrs['off_idx']
         kfolds = db['data'].attrs['kfolds']
 
+        cat = db.attrs['cat']
+
     qsims_dir = os.path.join(main_out_dir, '12_discharge_sims')
     errors_dir = os.path.join(qsims_dir , 'errors')
 
     mkdir_hm(qsims_dir)
 
-    qsim_files_patt = 'cat_[0-9]*_*_[0-9]*_freq_*_opt_qsims.csv'
+    qsim_files_patt = f'cat_{cat}_*_[0-9]*_freq_*_opt_qsims.csv'
     qsim_files = glob(os.path.join(qsims_dir, qsim_files_patt))
 
     if not qsim_files:
@@ -81,12 +83,13 @@ def plot_cat_discharge_errors(plot_args):
 
     mkdir_hm(errors_dir)
 
-    parse_patt = 'cat_{:d}_{}_{:d}_freq_{}_opt_qsims.csv'
+    parse_patt = 'cat_%d_{}_{:d}_freq_{}_opt_qsims.csv' % cat
 
     n_q_quants = 10
+    mw_runoff_ws = 60
 
     for qsim_file in qsim_files:
-        cat, calib_valid_lab, opt_iter, freq = search(
+        calib_valid_lab, opt_iter, freq = search(
             parse_patt, os.path.basename(qsim_file))
 
         qsims_df = pd.read_csv(qsim_file, sep=';').iloc[off_idx:, :]
@@ -127,6 +130,7 @@ def plot_cat_discharge_errors(plot_args):
             'pe': os.path.join(errors_dir, 'peaks_eff'),
             'ps': os.path.join(errors_dir, 'peaks_sq_diff'),
             'qe': os.path.join(errors_dir, 'quant_effs'),
+            're': os.path.join(errors_dir, 'rel_mw_runoff_errs'),
             }
 
         for dir_key in out_dirs_dict:
@@ -144,6 +148,7 @@ def plot_cat_discharge_errors(plot_args):
             peak_effs = []
             qsim_arrs = []
             driest_periods = []
+            rel_cumm_errs = []
 
             for lc_idx in lc_idxs:
                 qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
@@ -172,6 +177,9 @@ def plot_cat_discharge_errors(plot_args):
                 qsim_arrs.append(qsim_arr)
 
                 driest_periods.append(get_driest_period(qsim_arr))
+
+                rel_cumm_errs.append(get_mv_mean_runoff_err_arr(
+                    qobs_arr, qsim_arr, mw_runoff_ws))
 
             for eff_ftn_lab in eff_ftns_dict:
                 out_quants_fig_name = (
@@ -287,6 +295,54 @@ def plot_cat_discharge_errors(plot_args):
                 out_driest_path,
                 save_text_flag)
 
+            out_rel_runoff_err_name = (
+                f'rel_mv_err_cat_{cat}_{calib_valid_lab}_'
+                f'{opt_iter}_kf_{kf}.png')
+            out_rel_runoff_err_path = os.path.join(
+                out_dirs_dict['re'], out_rel_runoff_err_name)
+
+            plot_mv_runoff_errs(
+                rel_cumm_errs,
+                lc_labs,
+                cat,
+                mw_runoff_ws,
+                out_rel_runoff_err_path)
+
+    return
+
+
+def plot_mv_runoff_errs(
+        sim_err_arrs,
+        lc_labs,
+        cat,
+        mw_runoff_ws,
+        out_path):
+
+    plt.figure(figsize=(20, 10))
+
+    n_sims = len(lc_labs)
+
+    for i in range(n_sims):
+        plt.plot(
+            sim_err_arrs[i],
+            label=lc_labs[i],
+            color=LC_CLRS[i],
+            alpha=0.4)
+
+    plt.xlabel('Time')
+    plt.ylabel('Rel. mv. runoff err.')
+
+    plt.ylim(0.0, 2.0)
+
+    plt.grid()
+    plt.legend(framealpha=0.7)
+
+    plt.title(
+        f'Relative moving window runoff error of simulations for '
+        f'cat: {cat}, Window size: {mw_runoff_ws}')
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
     return
 
 
@@ -670,6 +726,26 @@ def plot_driest_timing_effs(
         text_path = cnvt_fig_path_to_csv_path(out_path)
         text_df.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
+
+
+def get_mv_mean_runoff_err_arr(ref_arr, sim_arr, ws):
+
+    assert ref_arr.shape[0] == sim_arr.shape[0]
+
+    n_steps = ref_arr.shape[0]
+
+    ref_mv_mean_arr = np.zeros(n_steps - ws)
+    sim_mv_mean_arr = ref_mv_mean_arr.copy()
+
+    for i in range(n_steps - ws):
+        ref_mv_mean_arr[i] = ref_arr[i:i + ws].mean()
+
+    for i in range(n_steps - ws):
+        sim_mv_mean_arr[i] = sim_arr[i:i + ws].mean()
+
+    err_arr = (sim_mv_mean_arr / ref_mv_mean_arr)
+    err_arr[err_arr > 2.00] = 2.00
+    return err_arr
 
 
 def get_lorenz_arr(ref_arr, sim_arr):
