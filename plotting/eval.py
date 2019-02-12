@@ -5,8 +5,6 @@ Created on Jan 2, 2019
 '''
 
 import os
-import sys
-import traceback as tb
 from fnmatch import filter
 
 import h5py
@@ -227,10 +225,7 @@ class PlotCatQSims:
         full_fig = plt.figure(figsize=fig_size)
         part_fig = plt.figure(figsize=fig_size)
 
-        sim_plot_alpha = 0.01  # max(0.01, 5 / (n_sims / 2))
-
-#         corr_diffs = 1 - (
-#             fin_cumm_rho_arrs[:, break_idx] / fin_cumm_rho_arrs[:, -1])
+        sim_plot_alpha = 0.01
 
         corr_diffs = (
             self.fin_cumm_rho_arrs[:, -1] -

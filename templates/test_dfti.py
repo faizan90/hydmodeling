@@ -24,11 +24,11 @@ def main():
     main_dir = Path(os.getcwd())
     os.chdir(main_dir)
 
-    main_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\test_resampled_obj_ftns')
+    main_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\rockenau_six_cats_dist_01_ns\12_discharge_sims')
     os.chdir(main_dir)
 
     in_df = pd.read_csv(
-        r'cat_411_qsims.csv',
+        r'cat_3470_calib_final_opt_qsims.csv',
         sep=';',
         usecols=['obs', 'kf_01_sim_0000'])
 
