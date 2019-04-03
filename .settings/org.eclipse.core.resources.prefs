@@ -1,4 +1,7 @@
 eclipse.preferences.version=1
+encoding//dem_hyd_ansys/cumm_cats.py=utf-8
+encoding//dem_hyd_ansys/extract_stms.py=utf-8
+encoding//dem_hyd_ansys/gdal_polygonize.py=utf-8
 encoding//dem_hyd_ansys/strm_cat_rltns.py=utf-8
 encoding//models/solve_cats_sys.py=utf-8
 encoding//plotting/perfs.py=utf-8

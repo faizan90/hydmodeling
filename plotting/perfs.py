@@ -158,6 +158,9 @@ def plot_cat_discharge_errors(plot_args):
                 out_dirs_dict['en'] = os.path.join(
                     err_dirs_dict[sim_type], 'ensemble_mean_sims')
 
+                out_dirs_dict['sq'] = os.path.join(
+                    err_dirs_dict[sim_type], 'ensemble_mean_sq_diffs_compare')
+
             for dir_key in out_dirs_dict:
                 mkdir_hm(out_dirs_dict[dir_key])
 
@@ -197,6 +200,8 @@ def plot_cat_discharge_errors(plot_args):
                     sims_min_df = ensemble_avg_sims_df.copy()
                     sims_max_df = ensemble_avg_sims_df.copy()
 
+                    sims_mean_sq_diff = ensemble_avg_sims_df.copy()
+
                     for ens_i, ensemble_lc_lab in enumerate(ensemble_lc_labs):
                         ge = (
                             perfs_clrs_df['clrs'] >=
@@ -215,6 +220,12 @@ def plot_cat_discharge_errors(plot_args):
 
                         ens_sims_df = qsims_df_orig[ens_sim_labs]
 
+                        obs_ser = qsims_df_orig['obs'].copy()
+                        obs_ser.name = None
+
+                        ens_sims_sq_diffs_df = (
+                            ens_sims_df.subtract(obs_ser, axis=0)) ** 2
+
                         ens_avg_sim_ser = ens_sims_df.mean(axis=1)
                         ens_min_sim_ser = ens_sims_df.min(axis=1)
                         ens_max_sim_ser = ens_sims_df.max(axis=1)
@@ -228,206 +239,276 @@ def plot_cat_discharge_errors(plot_args):
                         sims_max_df[ensemble_lc_lab][:] = (
                             ens_max_sim_ser.values)
 
+                        sims_mean_sq_diff[ensemble_lc_lab][:] = (
+                            ens_sims_sq_diffs_df.mean(axis=1).values)
+
                     assert not np.isnan(ensemble_avg_sims_df.values).sum()
                     qsims_df = ensemble_avg_sims_df
 
                 else:
                     raise NotImplementedError
 
-                q_quant_effs_dicts = []
-                dry_timing_effs_dicts = []
-                lorenz_y_vals_list = []
-                peak_effs = []
-                qsim_arrs = []
-                driest_periods = []
-                rel_cumm_errs = []
+#                 q_quant_effs_dicts = []
+#                 dry_timing_effs_dicts = []
+#                 lorenz_y_vals_list = []
+#                 peak_effs = []
+#                 qsim_arrs = []
+#                 driest_periods = []
+#                 rel_cumm_errs = []
+#
+#                 for lc_idx in lc_idxs:
+#                     if sim_type == 'lo_hi':
+#                         qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
+#
+#                     elif sim_type == 'ensemble':
+#                         qsim_lab = lc_labs[lc_idx]
+#
+#                     else:
+#                         raise NotImplementedError
+#
+#                     qsim_arr = qsims_df.loc[:, qsim_lab].values
+#
+#                     q_quant_effs_dict = get_q_quant_effs_dict(
+#                         qobs_arr,
+#                         qsim_arr,
+#                         qobs_quants_masks_dict,
+#                         eff_ftns_dict)
+#
+#                     q_quant_effs_dicts.append(q_quant_effs_dict)
+#
+#                     qsim_dry_mask = get_driest_mask(qsim_arr)
+#
+#                     dry_timing_dict = get_timing_effs_dict(
+#                         qobs_dry_mask, qsim_dry_mask, eff_ftns_dict)
+#
+#                     dry_timing_effs_dicts.append(dry_timing_dict)
+#
+#                     lorenz_y_vals = get_lorenz_arr(qobs_arr, qsim_arr)
+#                     lorenz_y_vals_list.append(lorenz_y_vals)
+#
+#                     peak_effs_dict = get_peaks_effs_dict(
+#                         qobs_arr, qsim_arr, peaks_mask, eff_ftns_dict)
+#
+#                     peak_effs.append(peak_effs_dict)
+#
+#                     qsim_arrs.append(qsim_arr)
+#
+#                     driest_periods.append(get_driest_period(qsim_arr))
+#
+#                     rel_cumm_errs.append(get_mv_mean_runoff_err_arr(
+#                         qobs_arr, qsim_arr, mw_runoff_ws))
 
-                for lc_idx in lc_idxs:
-                    if sim_type == 'lo_hi':
-                        qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
-
-                    elif sim_type == 'ensemble':
-                        qsim_lab = lc_labs[lc_idx]
-
-                    else:
-                        raise NotImplementedError
-
-                    qsim_arr = qsims_df.loc[:, qsim_lab].values
-
-                    q_quant_effs_dict = get_q_quant_effs_dict(
-                        qobs_arr,
-                        qsim_arr,
-                        qobs_quants_masks_dict,
-                        eff_ftns_dict)
-
-                    q_quant_effs_dicts.append(q_quant_effs_dict)
-
-                    qsim_dry_mask = get_driest_mask(qsim_arr)
-
-                    dry_timing_dict = get_timing_effs_dict(
-                        qobs_dry_mask, qsim_dry_mask, eff_ftns_dict)
-
-                    dry_timing_effs_dicts.append(dry_timing_dict)
-
-                    lorenz_y_vals = get_lorenz_arr(qobs_arr, qsim_arr)
-                    lorenz_y_vals_list.append(lorenz_y_vals)
-
-                    peak_effs_dict = get_peaks_effs_dict(
-                        qobs_arr, qsim_arr, peaks_mask, eff_ftns_dict)
-
-                    peak_effs.append(peak_effs_dict)
-
-                    qsim_arrs.append(qsim_arr)
-
-                    driest_periods.append(get_driest_period(qsim_arr))
-
-                    rel_cumm_errs.append(get_mv_mean_runoff_err_arr(
-                        qobs_arr, qsim_arr, mw_runoff_ws))
-
-                for eff_ftn_lab in eff_ftns_dict:
-                    out_quants_fig_name = (
-                        f'quant_effs_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}_{eff_ftn_lab}.png')
-
-                    out_quants_fig_path = os.path.join(
-                        out_dirs_dict['qe'], out_quants_fig_name)
-
-                    plot_quant_effs(
-                        q_quant_effs_dicts,
-                        qobs_quants_masks_dict,
-                        eff_ftn_lab,
-                        lc_idxs,
-                        lc_labs,
-                        cat,
-                        out_quants_fig_path,
-                        save_text_flag)
-
-                out_driest_fig_name = (
-                    f'driest_timing_effs_cat_{cat}_{calib_valid_lab}_'
-                    f'{opt_iter}_kf_{kf}.png')
-
-                out_driest_fig_path = os.path.join(
-                    out_dirs_dict['dt'], out_driest_fig_name)
-
-                plot_driest_timing_effs(
-                    dry_timing_effs_dicts,
-                    lc_idxs,
-                    lc_labs,
-                    cat,
-                    out_driest_fig_path,
-                    save_text_flag)
-
-                out_lorenz_name = (
-                    f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
-                    f'{opt_iter}_kf_{kf}.png')
-
-                out_lorenz_path = os.path.join(
-                    out_dirs_dict['lc'], out_lorenz_name)
-
-                plot_lorenz_arr(
-                    lorenz_x_vals,
-                    lorenz_y_vals_list,
-                    lc_idxs,
-                    lc_labs,
-                    cat,
-                    out_lorenz_path)
-
-                out_peak_effs_name = (
-                    f'peak_effs_cat_{cat}_{calib_valid_lab}_'
-                    f'{opt_iter}_kf_{kf}.png')
-
-                out_peaks_path = os.path.join(
-                    out_dirs_dict['pe'], out_peak_effs_name)
-
-                plot_peak_effs(
-                    peak_effs,
-                    lc_idxs,
-                    lc_labs,
-                    cat,
-                    out_peaks_path,
-                    save_text_flag)
-
-                out_mean_peaks_name = (
-                    f'mean_peaks_comp_cat_{cat}_{calib_valid_lab}_'
-                    f'{opt_iter}_kf_{kf}.png')
-
-                out_mean_peaks_path = os.path.join(
-                    out_dirs_dict['mp'], out_mean_peaks_name)
-
-                plot_mean_peaks(
-                    peaks_mask,
-                    qobs_arr,
-                    qsim_arrs,
-                    lc_idxs,
-                    lc_labs,
-                    cat,
-                    out_mean_peaks_path,
-                    save_text_flag)
-
-                out_peaks_sq_diff_name = (
-                    f'peaks_sq_diff_comp_cat_{cat}_{calib_valid_lab}_'
-                    f'{opt_iter}_kf_{kf}.png')
-
-                out_peaks_sq_diff_path = os.path.join(
-                    out_dirs_dict['ps'], out_peaks_sq_diff_name)
-
-                plot_peaks_sq_err(
-                    peaks_mask,
-                    qobs_arr,
-                    qsim_arrs,
-                    lc_idxs,
-                    lc_labs,
-                    cat,
-                    out_peaks_sq_diff_path,
-                    save_text_flag)
-
-                out_driest_name = (
-                    f'driest_month_comp_cat_{cat}_{calib_valid_lab}_'
-                    f'{opt_iter}_kf_{kf}.png')
-
-                out_driest_path = os.path.join(
-                    out_dirs_dict['dm'], out_driest_name)
-
-                plot_driest_periods(
-                    qobs_driest,
-                    driest_periods,
-                    lc_labs,
-                    lc_idxs,
-                    cat,
-                    off_idx,
-                    out_driest_path,
-                    save_text_flag)
-
-                out_rel_runoff_err_name = (
-                    f'rel_mv_err_cat_{cat}_{calib_valid_lab}_'
-                    f'{opt_iter}_kf_{kf}.png')
-                out_rel_runoff_err_path = os.path.join(
-                    out_dirs_dict['re'], out_rel_runoff_err_name)
-
-                plot_mv_runoff_errs(
-                    rel_cumm_errs,
-                    lc_labs,
-                    cat,
-                    mw_runoff_ws,
-                    out_rel_runoff_err_path)
+#                 for eff_ftn_lab in eff_ftns_dict:
+#                     out_quants_fig_name = (
+#                         f'quant_effs_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}_{eff_ftn_lab}.png')
+#
+#                     out_quants_fig_path = os.path.join(
+#                         out_dirs_dict['qe'], out_quants_fig_name)
+#
+#                     plot_quant_effs(
+#                         q_quant_effs_dicts,
+#                         qobs_quants_masks_dict,
+#                         eff_ftn_lab,
+#                         lc_idxs,
+#                         lc_labs,
+#                         cat,
+#                         out_quants_fig_path,
+#                         save_text_flag)
+#
+#                 out_driest_fig_name = (
+#                     f'driest_timing_effs_cat_{cat}_{calib_valid_lab}_'
+#                     f'{opt_iter}_kf_{kf}.png')
+#
+#                 out_driest_fig_path = os.path.join(
+#                     out_dirs_dict['dt'], out_driest_fig_name)
+#
+#                 plot_driest_timing_effs(
+#                     dry_timing_effs_dicts,
+#                     lc_idxs,
+#                     lc_labs,
+#                     cat,
+#                     out_driest_fig_path,
+#                     save_text_flag)
+#
+#                 out_lorenz_name = (
+#                     f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
+#                     f'{opt_iter}_kf_{kf}.png')
+#
+#                 out_lorenz_path = os.path.join(
+#                     out_dirs_dict['lc'], out_lorenz_name)
+#
+#                 plot_lorenz_arr(
+#                     lorenz_x_vals,
+#                     lorenz_y_vals_list,
+#                     lc_idxs,
+#                     lc_labs,
+#                     cat,
+#                     out_lorenz_path)
+#
+#                 out_peak_effs_name = (
+#                     f'peak_effs_cat_{cat}_{calib_valid_lab}_'
+#                     f'{opt_iter}_kf_{kf}.png')
+#
+#                 out_peaks_path = os.path.join(
+#                     out_dirs_dict['pe'], out_peak_effs_name)
+#
+#                 plot_peak_effs(
+#                     peak_effs,
+#                     lc_idxs,
+#                     lc_labs,
+#                     cat,
+#                     out_peaks_path,
+#                     save_text_flag)
+#
+#                 out_mean_peaks_name = (
+#                     f'mean_peaks_comp_cat_{cat}_{calib_valid_lab}_'
+#                     f'{opt_iter}_kf_{kf}.png')
+#
+#                 out_mean_peaks_path = os.path.join(
+#                     out_dirs_dict['mp'], out_mean_peaks_name)
+#
+#                 plot_mean_peaks(
+#                     peaks_mask,
+#                     qobs_arr,
+#                     qsim_arrs,
+#                     lc_idxs,
+#                     lc_labs,
+#                     cat,
+#                     out_mean_peaks_path,
+#                     save_text_flag)
+#
+#                 out_peaks_sq_diff_name = (
+#                     f'peaks_sq_diff_comp_cat_{cat}_{calib_valid_lab}_'
+#                     f'{opt_iter}_kf_{kf}.png')
+#
+#                 out_peaks_sq_diff_path = os.path.join(
+#                     out_dirs_dict['ps'], out_peaks_sq_diff_name)
+#
+#                 plot_peaks_sq_err(
+#                     peaks_mask,
+#                     qobs_arr,
+#                     qsim_arrs,
+#                     lc_idxs,
+#                     lc_labs,
+#                     cat,
+#                     out_peaks_sq_diff_path,
+#                     save_text_flag)
+#
+#                 out_driest_name = (
+#                     f'driest_month_comp_cat_{cat}_{calib_valid_lab}_'
+#                     f'{opt_iter}_kf_{kf}.png')
+#
+#                 out_driest_path = os.path.join(
+#                     out_dirs_dict['dm'], out_driest_name)
+#
+#                 plot_driest_periods(
+#                     qobs_driest,
+#                     driest_periods,
+#                     lc_labs,
+#                     lc_idxs,
+#                     cat,
+#                     off_idx,
+#                     out_driest_path,
+#                     save_text_flag)
+#
+#                 out_rel_runoff_err_name = (
+#                     f'rel_mv_err_cat_{cat}_{calib_valid_lab}_'
+#                     f'{opt_iter}_kf_{kf}.png')
+#                 out_rel_runoff_err_path = os.path.join(
+#                     out_dirs_dict['re'], out_rel_runoff_err_name)
+#
+#                 plot_mv_runoff_errs(
+#                     rel_cumm_errs,
+#                     lc_labs,
+#                     cat,
+#                     mw_runoff_ws,
+#                     out_rel_runoff_err_path)
 
                 if sim_type == 'ensemble':
-                    out_ensemble_cmp_name = (
-                        f'ensemble_means_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}_idxs_%0.6d_%0.6d.png')
+#                     out_ensemble_cmp_name = (
+#                         f'ensemble_means_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}_idxs_%0.6d_%0.6d.png')
+#
+#                     out_ensemble_cmp_path = os.path.join(
+#                         out_dirs_dict['en'], out_ensemble_cmp_name)
+#
+#                     plot_ensemble_sims(
+#                         qobs_arr,
+#                         qsims_df.values,
+#                         sims_min_df.values,
+#                         sims_max_df.values,
+#                         cat,
+#                         lc_labs,
+#                         out_ensemble_cmp_path)
 
-                    out_ensemble_cmp_path = os.path.join(
-                        out_dirs_dict['en'], out_ensemble_cmp_name)
+                    out_ensemble_sq_diffs_cmp_name = (
+                        f'ensemble_mean_sq_diffs_cat_{cat}_{calib_valid_lab}_'
+                        f'{opt_iter}_kf_{kf}.png')
 
-                    plot_ensemble_sims(
-                        qobs_arr,
-                        qsims_df.values,
-                        sims_min_df.values,
-                        sims_max_df.values,
-                        cat,
-                        lc_labs,
-                        out_ensemble_cmp_path)
+                    out_ensemble_sq_diffs_cmp_path = os.path.join(
+                        out_dirs_dict['sq'], out_ensemble_sq_diffs_cmp_name)
 
+                    plot_ensemble_mean_sim_sq_diffs(
+                            qobs_arr,
+                            sims_mean_sq_diff.values,
+                            cat,
+                            lc_labs,
+                            out_ensemble_sq_diffs_cmp_path)
+
+    return
+
+
+def plot_ensemble_mean_sim_sq_diffs(
+        qobs_arr,
+        sims_mean_sq_diff_arr,
+        cat,
+        sim_labs,
+        out_path):
+
+    sort_idxs = np.argsort(qobs_arr)
+    sort_qobs_arr = qobs_arr[sort_idxs]
+    sort_qsim_hi_sq_diff_arr = sims_mean_sq_diff_arr[sort_idxs, 0]
+    sort_qsim_med_sq_diff_arr = sims_mean_sq_diff_arr[sort_idxs, 1]
+    sort_qsim_lo_sq_diff_arr = sims_mean_sq_diff_arr[sort_idxs, 2]
+
+    plt.figure(figsize=(20, 7))
+
+    plt.plot(
+        sort_qobs_arr,
+        sort_qsim_hi_sq_diff_arr,
+        label=f'{sim_labs[0]} mean',
+        color=LC_CLRS[0],
+        alpha=0.8)
+
+    plt.plot(
+        sort_qobs_arr,
+        sort_qsim_med_sq_diff_arr,
+        label=f'{sim_labs[1]} mean',
+        color=LC_CLRS[1],
+        alpha=0.8)
+
+    plt.plot(
+        sort_qobs_arr,
+        sort_qsim_lo_sq_diff_arr,
+        label=f'{sim_labs[2]} mean',
+        color=LC_CLRS[2],
+        alpha=0.8)
+
+    plt.grid()
+    plt.legend()
+
+    plt.xlabel('Discharge ($m^3/s$)')
+    plt.ylabel('Squared difference')
+
+    title_str = (
+        f'Ensembles\' squared difference comparison for catchment: {cat}')
+
+    plt.title(title_str)
+
+    plt.savefig(str(out_path), bbox_inches='tight')
+
+    plt.close()
     return
 
 
