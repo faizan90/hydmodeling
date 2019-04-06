@@ -890,7 +890,7 @@ def solve_cat(
             read_cnst_prms_flag = True
 
             if read_cnst_prms_flag:
-                prms_dir = r'P:\Synchronize\IWS\2015_Water_Balance_Peru\04_hydrological_data_prep\EGU2019_Sims\santa_egu_hyd_mod_01_reference_pisco\03_hbv_figs'
+                prms_dir = r'P:\Synchronize\IWS\2015_Water_Balance_Peru\04_hydrological_data_prep\EGU2019_Sims\santa_egu_hyd_mod__dist_01_reference_pisco\03_hbv_figs'
                 prms_file_loc = os.path.join(prms_dir, f'kf_{kf_i:02d}_calib_HBV_model_params_{cat}.csv')
 
                 print('Reading parameters from:', prms_file_loc)
