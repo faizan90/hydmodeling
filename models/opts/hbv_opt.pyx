@@ -21,7 +21,7 @@ from .hbv_obj_ftn cimport obj_ftn
 from .de_ftns cimport pre_de, post_de
 from .rope_ftns cimport get_new_chull_vecs, pre_rope, post_rope
 from .brute_ftns cimport pre_brute, post_brute
-from ..ft.dfti cimport cmpt_real_fourtrans_1d
+# from ..ft.dfti cimport cmpt_real_fourtrans_1d
 from ..miscs.misc_ftns cimport (
     get_demr, 
     get_ln_demr,
@@ -627,7 +627,7 @@ cpdef dict hbv_opt(args):
         for i in range(n_pts_ft):
             q_ft_tfms[0].orig[i] = qact_arr[i]
 
-        cmpt_real_fourtrans_1d(q_ft_tfms[0])
+#         cmpt_real_fourtrans_1d(q_ft_tfms[0])
 
         obj_longs[ft_maxi_freq_idx_i] = ft_maxi_freq_idx
 

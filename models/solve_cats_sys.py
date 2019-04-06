@@ -56,6 +56,7 @@ def solve_cats_sys(
         in_tem_dfs_dict,
         in_pet_dfs_dict,
         aux_cell_vars_dict,
+        aux_tem_cell_vars_dict,
         in_date_fmt,
         time_freq,
         warm_up_steps,
@@ -105,6 +106,7 @@ def solve_cats_sys(
     _df = None
 
     assert isinstance(aux_cell_vars_dict, dict)
+    assert isinstance(aux_tem_cell_vars_dict, dict)
 
     assert isinstance(in_date_fmt, str)
     assert isinstance(time_freq, str)
@@ -159,6 +161,37 @@ def solve_cats_sys(
 
     in_q_df.columns = pd.to_numeric(in_q_df.columns)
 
+    for key in in_ppt_dfs_dict.keys():
+        in_ppt_dfs_dict[key].index = pd.DatetimeIndex(
+            in_ppt_dfs_dict[key].index.date)
+
+        in_tem_dfs_dict[key].index = pd.DatetimeIndex(
+            in_tem_dfs_dict[key].index.date)
+
+        in_pet_dfs_dict[key].index = pd.DatetimeIndex(
+            in_pet_dfs_dict[key].index.date)
+
+    drop_leap_days_flag = True
+
+    if drop_leap_days_flag:
+        for key in in_ppt_dfs_dict.keys():
+            in_ppt_dfs_dict[key].drop(in_ppt_dfs_dict[key].index[
+                (in_ppt_dfs_dict[key].index.month == 2) &
+                (in_ppt_dfs_dict[key].index.day == 29)], inplace=True)
+
+            in_tem_dfs_dict[key].drop(in_tem_dfs_dict[key].index[(
+                in_tem_dfs_dict[key].index.month == 2) &
+                (in_tem_dfs_dict[key].index.day == 29)], inplace=True)
+
+            in_pet_dfs_dict[key].drop(in_pet_dfs_dict[key].index[
+                (in_pet_dfs_dict[key].index.month == 2) &
+                (in_pet_dfs_dict[key].index.day == 29)], inplace=True)
+
+            in_q_df.drop(in_q_df.index[
+                (in_q_df.index.month == 2) &
+                (in_q_df.index.day == 29)], inplace=True)
+
+#     raise Exception
     assert (
         in_ppt_dfs_dict.keys() ==
         in_tem_dfs_dict.keys() ==
@@ -170,6 +203,12 @@ def solve_cats_sys(
         assert cv_list[0] < cv_list[1]
 
         date_range = pd.date_range(cv_list[0], cv_list[1], freq=time_freq)
+
+        if drop_leap_days_flag:
+            date_range = date_range.drop(
+                date_range[(date_range.month == 2) & (date_range.day == 29)])
+
+            print('########### Dropped leap days! ##############')
 
         sel_idxs_arr = np.linspace(
             0,
@@ -246,6 +285,12 @@ def solve_cats_sys(
         all_prms_flags,
         run_as_lump_flag)
 
+    k_aux_tem_cell_vars_dict = get_k_aux_vars_dict(
+        aux_tem_cell_vars_dict,
+        sel_cats,
+        all_prms_flags,
+        run_as_lump_flag)
+
     if not in_stms_prcssed_df.shape[0]:
         print('\n')
         print('INFO: A dummy stream (9999) inserted in in_stms_prcssed_df!')
@@ -269,6 +314,7 @@ def solve_cats_sys(
         in_tem_dfs_dict,
         in_pet_dfs_dict,
         aux_cell_vars_dict['area_ratios'],
+        aux_tem_cell_vars_dict['area_ratios'],
         sel_cats,
         date_range,
         run_as_lump_flag)
@@ -841,6 +887,16 @@ def solve_cat(
             # optimized parameter vectors (they are one dimensional). This is
             # important is more than one variable is used to compute a given
             # hbv parameter.
+            read_cnst_prms_flag = True
+
+            if read_cnst_prms_flag:
+                prms_dir = r'P:\Synchronize\IWS\2015_Water_Balance_Peru\04_hydrological_data_prep\EGU2019_Sims\santa_egu_hyd_mod_01_reference_pisco\03_hbv_figs'
+                prms_file_loc = os.path.join(prms_dir, f'kf_{kf_i:02d}_calib_HBV_model_params_{cat}.csv')
+
+                print('Reading parameters from:', prms_file_loc)
+
+                prms_df = pd.read_csv(prms_file_loc, sep=';', index_col=0)
+
             bounds_list = []
             prms_span_idxs = []
             for i in range(all_prms_flags.shape[0]):
@@ -851,9 +907,17 @@ def solve_cat(
                     _bef_len = len(use_prms_labs)
                     use_prms_labs.append(all_prms_labs[i])
                     use_prms_idxs[i, 0, :] = _bef_len, _bef_len
-                    bounds_list.append(bounds_dict[all_prms_labs[i] + '_bds'])
+
+                    if read_cnst_prms_flag:
+                        bounds_list.append((
+                            float(prms_df.loc[all_prms_labs[i]].value),
+                            float(prms_df.loc[all_prms_labs[i]])))
+
+                    else:
+                        bounds_list.append(bounds_dict[all_prms_labs[i] + '_bds'])
 
                 if all_prms_flags[i, 1]:
+                    raise Exception
                     _bef_len = len(use_prms_labs)
                     use_prms_labs.extend(
                         [f'{all_prms_labs[i]}_lc_{j:02d}'
@@ -865,6 +929,7 @@ def solve_cat(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_lulc)
 
                 if all_prms_flags[i, 2]:
+                    raise Exception
                     _bef_len = len(use_prms_labs)
                     use_prms_labs.extend(
                         [f'{all_prms_labs[i]}_sl_{j:02d}' for j in range(n_soil)])
@@ -875,6 +940,7 @@ def solve_cat(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_soil)
 
                 if all_prms_flags[i, 3]:
+                    raise Exception
                     _bef_len = len(use_prms_labs)
 
                     use_prms_labs.extend(
@@ -889,6 +955,7 @@ def solve_cat(
                     bounds_list.append(bounds_dict['exp_bds'])
 
                 if all_prms_flags[i, 4]:
+                    raise Exception
                     _bef_len = len(use_prms_labs)
 
                     use_prms_labs.extend(
@@ -903,6 +970,7 @@ def solve_cat(
                     bounds_list.append(bounds_dict['exp_bds'])
 
                 if all_prms_flags[i, 5]:
+                    raise Exception
                     _bef_len = len(use_prms_labs)
 
                     use_prms_labs.extend(
@@ -1511,6 +1579,7 @@ def get_var_dicts(
         in_tems,
         in_pets,
         area_dict,
+        tem_area_dict,
         cats,
         date_range,
         lf):
@@ -1522,9 +1591,16 @@ def get_var_dicts(
         date_range=date_range,
         lf=lf)
 
+    get_tem_var_dict_p = partial(
+        get_var_dict,
+        cats=cats,
+        area_dict=tem_area_dict,
+        date_range=date_range,
+        lf=lf)
+
     out_ppts = get_var_dict_p(in_ppts)
-    out_tems = get_var_dict_p(in_tems)
-    out_pets = get_var_dict_p(in_pets)
+    out_tems = get_tem_var_dict_p(in_tems)
+    out_pets = get_tem_var_dict_p(in_pets)
 
     return (out_ppts, out_tems, out_pets)
 
