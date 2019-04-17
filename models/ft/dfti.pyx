@@ -10,12 +10,12 @@
 from libc.math cimport cos, atan2
 
 
-cdef extern from "intel_dfti.h" nogil:
-    cdef:
-        void mkl_real_dft(
-                double *in_reals_arr,
-                DT_DC *out_comps_arr,
-                long n_pts)
+# cdef extern from "intel_dfti.h" nogil:
+#     cdef:
+#         void mkl_real_dft(
+#                 double *in_reals_arr,
+#                 DT_DC *out_comps_arr,
+#                 long n_pts)
 
 
 cdef extern from "complex.h" nogil:
@@ -41,7 +41,7 @@ cdef void cmpt_real_fourtrans_1d(
     amps = for_four_trans_struct.amps
     angs = for_four_trans_struct.angs
 
-    mkl_real_dft(for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
+    #mkl_real_dft(for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
 
     for i in range((n_pts // 2) - 1):
         ft = for_four_trans_struct.ft[i + 1]
