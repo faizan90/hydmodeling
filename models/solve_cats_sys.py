@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on %(date)s
 
@@ -272,6 +271,28 @@ def solve_cats_sys(
         sel_cats,
         date_range,
         run_as_lump_flag)
+
+#     from pathlib import Path
+#     _outdir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\hydmod\input_hyd_data')
+#
+#     _ppt_df = fin_ppt_dfs_dict[sel_cats[0]]
+#     _tem_df = fin_tem_dfs_dict[sel_cats[0]]
+#     _pet_df = fin_pet_dfs_dict[sel_cats[0]]
+#
+#     _ppt_df.columns = [sel_cats[0]]
+#     _tem_df.columns = [sel_cats[0]]
+#     _pet_df.columns = [sel_cats[0]]
+#
+#     for cat in sel_cats[1:]:
+#         _ppt_df[cat] = fin_ppt_dfs_dict[cat].values
+#         _tem_df[cat] = fin_tem_dfs_dict[cat].values
+#         _pet_df[cat] = fin_pet_dfs_dict[cat].values
+#
+#     _ppt_df.to_csv(_outdir / 'rockenau_ppt_1961_2015_lumped.csv', float_format='%0.3f', sep=';')
+#     _tem_df.to_csv(_outdir / 'rockenau_tem_1961_2015_lumped.csv', float_format='%0.3f', sep=';')
+#     _pet_df.to_csv(_outdir / 'rockenau_pet_1961_2015_lumped.csv', float_format='%0.3f', sep=';')
+#
+#     raise Exception
 
     del in_ppt_dfs_dict, in_tem_dfs_dict, in_pet_dfs_dict
 
