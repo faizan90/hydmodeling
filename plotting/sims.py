@@ -108,7 +108,7 @@ def plot_cat_hbv_sim(plot_args):
         if full_sim_flag:
             sim.full_sim()
 
-        if (kfolds == 1) and (not cv_flag):
+        if ((kfolds == 1) and (not cv_flag)) or ('valid' not in db):
             continue
 
         kf_i = f'{i:02d}_valid'

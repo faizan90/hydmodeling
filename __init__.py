@@ -61,3 +61,5 @@ from .plotting import (
     plot_cats_prm_vecs_evo,
     plot_cats_best_prms_1d,
     plot_cats_best_prms_2d)
+
+from .forcings import solve_cats_sys_forcings

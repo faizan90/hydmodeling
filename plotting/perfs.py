@@ -1686,7 +1686,7 @@ def plot_cat_kfold_effs(args):
             return
 
         else:
-            use_step_flag = db['valid/kf_01/use_step_flag'][()]
+            use_step_flag = db['calib/kf_01/use_step_flag'][()]
             if use_step_flag:
                 use_step_arr = db['valid/kf_01/use_step_arr'][...]
 
