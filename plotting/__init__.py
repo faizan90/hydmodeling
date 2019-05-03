@@ -225,6 +225,7 @@ def plot_cats_hbv_sim(
         water_bal_step_size,
         full_flag=False,
         wat_bal_flag=False,
+        show_warm_up_steps_flag=False,
         n_cpus=1):
 
     '''Plot hbv simulations for every catchment for every kfold.'''
@@ -236,7 +237,8 @@ def plot_cats_hbv_sim(
     n_cats = len(cats_dbs)
     n_cpus = min(n_cats, n_cpus)
 
-    const_args = (water_bal_step_size, full_flag, wat_bal_flag)
+    const_args = (
+        water_bal_step_size, full_flag, wat_bal_flag, show_warm_up_steps_flag)
 
     plot_gen = ((cat_db, const_args) for cat_db in cats_dbs)
 

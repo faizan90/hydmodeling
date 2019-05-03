@@ -18,8 +18,7 @@ from psutil import cpu_count
 
 from hydmodeling import (
     solve_cats_sys_forcings,
-    plot_cats_hbv_sim,
-    plot_cats_kfold_effs)
+    plot_cats_hbv_sim,)
 
 
 def load_pickle(in_file, mode='rb'):
@@ -76,12 +75,10 @@ def main():
     old_chdir = os.getcwd()
 
     run_sim_flag = False
-    plot_kfold_perfs_flag = False
     plot_hbv_vars_flag = False
 
 #     run_sim_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_hbv_vars_flag = True
+    plot_hbv_vars_flag = True
 
     ref_sim_dir = os.path.abspath(ref_cfp['CREATE_STM_RELS']['hyd_mod_dir'])
     dst_sim_dir = os.path.abspath(dst_cfp['DST_SIM']['dst_sim_dir'])
@@ -89,8 +86,13 @@ def main():
     if not os.path.exists(dst_sim_dir):
         os.mkdir(dst_sim_dir)
 
-    copy2(ref_ini_abs_path, os.path.join(dst_sim_dir, os.path.basename(ref_ini_abs_path)))
-    copy2(dst_ini_abs_path, os.path.join(dst_sim_dir, os.path.basename(dst_ini_abs_path)))
+    copy2(
+        ref_ini_abs_path,
+        os.path.join(dst_sim_dir, os.path.basename(ref_ini_abs_path)))
+
+    copy2(
+        dst_ini_abs_path,
+        os.path.join(dst_sim_dir, os.path.basename(dst_ini_abs_path)))
 
     in_dem_net_file = ref_cfp['GET_STMS']['dem_net_file']
     in_cats_prcssed_file = ref_cfp['CREATE_STM_RELS']['cats_prcssed_file']
@@ -129,8 +131,6 @@ def main():
     route_type = ref_cfp['OPT_HYD_MODEL'].getint('route_type')
     kfolds = ref_cfp['OPT_HYD_MODEL'].getint('kfolds')
 
-    compare_ann_cyc_flag = ref_cfp['OPT_HYD_MODEL'].getboolean(
-        'compare_ann_cyc_flag')
     use_obs_flow_flag = dst_cfp['MISC_PRMS'].getboolean('use_obs_flow_flag')
 
     min_q_thresh = ref_cfp['OPT_HYD_MODEL'].getfloat('min_q_thresh')
@@ -248,27 +248,6 @@ def main():
         del in_pet_dfs_dict
 
     dbs_dir = os.path.join(dst_sim_dir, r'01_database')
-    hgs_db_path = os.path.join(dst_sim_dir, r'02_hydrographs/hgs_dfs')
-
-    #=========================================================================
-    # Plot the k-fold results
-    #=========================================================================
-
-    if plot_kfold_perfs_flag:
-        _beg_t = timeit.default_timer()
-
-        print('\n\n')
-        print('#' * 10)
-        print('Plotting kfold results...')
-
-        plot_cats_kfold_effs(
-            dbs_dir, hgs_db_path, compare_ann_cyc_flag, n_cpus)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-
-        print(f'Took {_tot_t:0.4f} seconds!')
-        print('#' * 10)
 
     if plot_hbv_vars_flag:
         print('\n\n')
@@ -283,8 +262,12 @@ def main():
         plot_wat_bal_flag = dst_cfp['MISC_PRMS'].getboolean(
             'plot_wat_bal_flag')
 
+        show_warm_up_steps_flag = dst_cfp['MISC_PRMS'].getboolean(
+            'show_warm_up_steps_flag')
+
         print(f'plot_full_sim_flag: {plot_full_sim_flag}')
         print(f'plot_wat_bal_flag: {plot_wat_bal_flag}')
+        print(f'show_warm_up_steps_flag: {show_warm_up_steps_flag}')
 
         if plot_full_sim_flag or plot_wat_bal_flag:
             plot_cats_hbv_sim(
@@ -292,6 +275,7 @@ def main():
                 water_bal_step_size,
                 plot_full_sim_flag,
                 plot_wat_bal_flag,
+                show_warm_up_steps_flag,
                 n_cpus)
 
         else:

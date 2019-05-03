@@ -743,8 +743,12 @@ def main():
         plot_wat_bal_flag = cfp['PLOT_OPT_RES'].getboolean(
             'plot_wat_bal_flag')
 
+        show_warm_up_steps_flag = cfp['PLOT_OPT_RES'].getboolean(
+            'show_warm_up_steps_flag')
+
         print(f'plot_full_sim_flag: {plot_full_sim_flag}')
         print(f'plot_wat_bal_flag: {plot_wat_bal_flag}')
+        print(f'show_warm_up_steps_flag: {show_warm_up_steps_flag}')
 
         if plot_full_sim_flag or plot_wat_bal_flag:
             plot_cats_hbv_sim(
@@ -752,6 +756,7 @@ def main():
                 water_bal_step_size,
                 plot_full_sim_flag,
                 plot_wat_bal_flag,
+                show_warm_up_steps_flag,
                 n_cpus)
 
         else:

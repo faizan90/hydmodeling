@@ -35,7 +35,8 @@ def plot_cat_hbv_sim(plot_args):
 
     cat_db, (wat_bal_stps,
              full_sim_flag,
-             wat_bal_flag) = plot_args
+             wat_bal_flag,
+             show_warm_up_steps_flag) = plot_args
 
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
@@ -100,7 +101,8 @@ def plot_cat_hbv_sim(plot_args):
             prm_syms,
             off_idx,
             out_dir,
-            wat_bal_stps)
+            wat_bal_stps,
+            show_warm_up_steps_flag)
 
         if wat_bal_flag:
             sim.wat_bal_sim()
@@ -165,7 +167,8 @@ class PlotCatHBVSimKf:
             prm_syms,
             off_idx,
             out_dir,
-            wat_bal_stps):
+            wat_bal_stps,
+            show_warm_up_steps_flag):
 
         self.kf_str = kf_str
         self.cat = cat
@@ -175,6 +178,13 @@ class PlotCatHBVSimKf:
         self.off_idx = off_idx
         self.out_dir = out_dir
         self.wat_bal_stps = wat_bal_stps
+        self.show_warm_up_steps_flag = show_warm_up_steps_flag
+
+        if self.show_warm_up_steps_flag:
+            self.plt_strt_idx = 0
+
+        else:
+            self.plt_strt_idx = self.off_idx
 
         if 'use_obs_flow_flag' in self.kf_dict:
             self.use_obs_flow_flag = bool(self.kf_dict['use_obs_flow_flag'])
@@ -474,7 +484,7 @@ class PlotCatHBVSimKf:
         t_rows = 8
         t_cols = 1
 
-        plt.figure(figsize=(11, 6), dpi=150)
+        fig = plt.figure(figsize=(11, 6), dpi=150)
 
         plt.suptitle('HBV Simulation - Water Balance')
 
@@ -497,7 +507,6 @@ class PlotCatHBVSimKf:
 
         balance_sum_ax = plt.subplot2grid(
             (t_rows, t_cols), (i, 0), rowspan=2, colspan=t_cols)
-        # i += 2
 
         vol_err_ax.axhline(1, color='k', lw=1)
         vol_err_ax.plot(
@@ -507,16 +516,19 @@ class PlotCatHBVSimKf:
             alpha=0.95)
 
         vol_err_ax.set_ylim(self.min_vol_diff_err, self.max_vol_diff_err)
-        vol_err_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
+        vol_err_ax.set_xlim(self.plt_strt_idx, vol_err_ax.get_xlim()[1])
+
+        vol_txt_x_crd = self.plt_strt_idx + (
+            (self.vol_diff_arr.shape[0] - self.plt_strt_idx) * 0.5)
 
         vol_err_ax.text(
-            self.vol_diff_arr.shape[0] * 0.5,
+            vol_txt_x_crd,
             1.25,
             'runoff over-estimation',
             fontsize=font_size * 0.9)
 
         vol_err_ax.text(
-            self.vol_diff_arr.shape[0] * 0.5,
+            vol_txt_x_crd,
             0.75,
             'runoff under-estimation',
             fontsize=font_size * 0.9)
@@ -537,7 +549,7 @@ class PlotCatHBVSimKf:
             lw=0.5,
             alpha=0.5)
 
-        discharge_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
+        discharge_ax.set_xlim(self.plt_strt_idx, vol_err_ax.get_xlim()[1])
         discharge_ax.set_xticklabels([])
 
         scatt_size = 5
@@ -575,7 +587,7 @@ class PlotCatHBVSimKf:
             alpha=0.6,
             s=scatt_size)
 
-        balance_ratio_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
+        balance_ratio_ax.set_xlim(self.plt_strt_idx, vol_err_ax.get_xlim()[1])
         balance_ratio_ax.set_ylim(min_vol_ratio_err, max_vol_ratio_err)
         balance_ratio_ax.set_xticklabels([])
 
@@ -611,7 +623,7 @@ class PlotCatHBVSimKf:
             label='Simulated Runoff Sum',
             s=scatt_size)
 
-        balance_sum_ax.set_xlim(0, vol_err_ax.get_xlim()[1])
+        balance_sum_ax.set_xlim(self.plt_strt_idx, vol_err_ax.get_xlim()[1])
         balance_sum_ax.set_ylim(0, balance_sum_ax.get_ylim()[1])
 
         wat_bal_text = wat_bal_text.reshape(3, 9)
@@ -649,8 +661,8 @@ class PlotCatHBVSimKf:
         for tlab in balance_sum_ax.get_xticklabels():
             tlab.set_fontsize(font_size)
 
-        plt.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
-        plt.savefig(out_fig_loc, bbox_inches='tight')
+#         plt.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
+        fig.savefig(out_fig_loc, bbox_inches='tight')
         plt.close('all')
         return
 
@@ -783,7 +795,7 @@ class PlotCatHBVSimKf:
         pet_stats_str += f'ET correlation: {et_corr:0.5f}, '
         pet_stats_str += f'ET slope: {et_slope:0.5f}'
 
-        plt.figure(figsize=(11, 25), dpi=250)
+        fig = plt.figure(figsize=(11, 25), dpi=250)
 
         t_rows = 16
         t_cols = 1
@@ -870,14 +882,18 @@ class PlotCatHBVSimKf:
             alpha=0.95)
 
         vol_err_ax.set_ylim(self.min_vol_diff_err, self.max_vol_diff_err)
+
+        vol_txt_x_crd = self.plt_strt_idx + (
+            (self.vol_diff_arr.shape[0] - self.plt_strt_idx) * 0.5)
+
         vol_err_ax.text(
-            self.vol_diff_arr.shape[0] * 0.5,
+            vol_txt_x_crd,
             1.25,
             'runoff over-estimation',
             fontsize=font_size * 0.9)
 
         vol_err_ax.text(
-            self.vol_diff_arr.shape[0] * 0.5,
+            vol_txt_x_crd,
             0.75,
             'runoff under-estimation',
             fontsize=font_size * 0.9)
@@ -920,11 +936,15 @@ class PlotCatHBVSimKf:
 
         temp_ax.plot(self.temp_arr, 'b-', lw=0.5, label='Temperature')
         temp_ax.plot(temp_trend, 'b-.', lw=0.9, label='Temperature Trend')
+
+        temp_pet_x_crd = self.plt_strt_idx + (
+            (temp_ax.get_xlim()[1] - self.plt_strt_idx) * 0.02)
+
         temp_ax.text(
-            temp_ax.get_xlim()[1] * 0.02,
+            temp_pet_x_crd,
             (temp_ax.get_ylim()[0] +
              (temp_ax.get_ylim()[1] - temp_ax.get_ylim()[0]) * 0.1),
-            temp_stats_str,
+            str(temp_stats_str),
             fontsize=font_size,
             bbox={'facecolor': 'white', 'alpha': 0.5, 'pad': 2})
 
@@ -939,11 +959,12 @@ class PlotCatHBVSimKf:
             alpha=0.5)
         pet_ax.plot(pet_trend, 'r-.', lw=0.9, label='PET Trend')
         pet_ax.plot(et_trend, 'b-.', lw=0.9, label='ET Trend')
+
         pet_ax.text(
-            pet_ax.get_xlim()[1] * 0.02,
+            temp_pet_x_crd,
             (pet_ax.get_ylim()[1] -
              (pet_ax.get_ylim()[1] - pet_ax.get_ylim()[0]) * 0.1),
-            pet_stats_str,
+            str(pet_stats_str),
             fontsize=font_size,
             bbox={'facecolor': 'white', 'alpha': 0.5, 'pad': 2})
 
@@ -1044,7 +1065,7 @@ class PlotCatHBVSimKf:
 
             leg = ax.legend(framealpha=0.7, prop=leg_font, ncol=4, loc=1)
             leg.get_frame().set_edgecolor('black')
-            ax.set_xlim(0, discharge_ax.get_xlim()[1])
+            ax.set_xlim(self.plt_strt_idx, discharge_ax.get_xlim()[1])
 
         for ax in [prec_sums_ax]:
             for tlab in ax.get_yticklabels():
@@ -1056,10 +1077,10 @@ class PlotCatHBVSimKf:
             leg = ax.legend(framealpha=0.7, prop=leg_font, ncol=4, loc=2)
             leg.get_frame().set_edgecolor('black')
 
-            ax.set_xlim(0, discharge_ax.get_xlim()[1])
+            ax.set_xlim(self.plt_strt_idx, discharge_ax.get_xlim()[1])
 
-        plt.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
-        plt.savefig(out_fig_loc, bbox='tight_layout')
+        fig.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
+        plt.savefig(out_fig_loc, bbox_inches='tight')
         plt.close('all')
         return
 
