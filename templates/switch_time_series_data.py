@@ -44,7 +44,7 @@ def main():
 
     plot_flag = True
 
-    # shoudl accomodate for event lengths as well
+    # should accomodate for event lengths as well
     warm_up_steps = 365
     warm_up_offset = pd.offsets.Day(warm_up_steps)
     lag_offset = pd.offsets.Day(10)
@@ -97,16 +97,10 @@ def main():
 
         assert ref_beg_time <= ref_peak_time <= ref_end_time
 
-        if swtch_flag:
-            dst_lab = 'dst'
+        dst_beg_time = swth_specs_df.loc[evt_idx, 'dst_beg_time']
+        dst_end_time = swth_specs_df.loc[evt_idx, 'dst_end_time']
 
-        else:
-            dst_lab = 'ref'
-
-        dst_beg_time = swth_specs_df.loc[evt_idx, f'{dst_lab}_beg_time']
-        dst_end_time = swth_specs_df.loc[evt_idx, f'{dst_lab}_end_time']
-
-        dst_peak_time = swth_specs_df.loc[evt_idx, f'{dst_lab}_peak_time']
+        dst_peak_time = swth_specs_df.loc[evt_idx, 'dst_peak_time']
 
         print('Dst: ', dst_beg_time, dst_peak_time, dst_end_time)
 
@@ -168,7 +162,8 @@ def main():
                 ref_fin_peak_time_idx - bef_steps_idx:
                 ref_fin_peak_time_idx + aft_steps_idx + 1]
 
-            ref_data_df.update(dst_data_df)
+            if swtch_flag:
+                ref_data_df.update(dst_data_df)
 
             out_dfs_dict[cat] = ref_data_df
 
