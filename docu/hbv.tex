@@ -1,0 +1,107 @@
+\section{HBV}
+\label{sec_hbv}
+
+The HBV \citep{berg_1992} is a well known conceptual rainfall-runoff model. Based on its history e.g. \citep{das_bar_2008, got_bar_2007, hun_bar_2004} in this study area and simplicity, the authors have chosen to use a slightly modified version that conserves mass. To start with, it needs a precipitation, a temperature, and a potential evapotranspiration (PET) time series. It can be run in a spatially lumped or a distributed configuration. A schematic diagram and the equations of a lumped configuration are given here. In order to obtain sets of equally good model parameters, the Robust Paramter Estimation (ROPE) procedure \cite{Barsingh2008} was used.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.65\textwidth, height=0.65\textheight, keepaspectratio]{"figures/hbv_schematic"}
+\caption{The HBV model}
+\label{fig_hbv}
+\end{figure}
+
+\begin{fleqn}
+\bigskip
+\textbf{Snow melt and accumulation}
+
+\begin{equation}
+ME_i = max(0.0, (CM_{TE} + (CM_{PR} \cdot PR_i)) \cdot (TE_i - TT)) \\
+\end{equation}
+
+\begin{equation}
+SN_{i} = 
+\begin{cases}
+SN_{i-1} + PR_i & \text{if } TE_i <= TT, \\
+SN_{i-1} - ME_i & \text{else}. \\
+\end{cases}
+\end{equation}
+
+\begin{equation}
+LP_i = 
+\begin{cases}
+0.0 & \text{if } TE_i <= TT, \\
+PR_i + min(SN_{i-1}, ME_i) & \text{else}.
+\end{cases}
+\end{equation}
+
+where the subscript $i$ is the index of a given day, $CM_{TE}$ is the snow melt due to increase in temperature in $mm/^\circ C\cdot day$, $PR_i$ is the precipitation in $mm/day$, $CM_{PR}$ is the snow melt due to falling liquid precipitation in $mm/^\circ C\cdot day\cdot mm\ of\ PR_i$, $TE_i$ is the temperature in $^\circ C$, $TT$ is the threshold temperature below which the precipitation falls as snow, $ME_i$ is the possible snow melt in $mm$, $SN_i$ is the total accumulated snow in $mm$, $LP_i$ is the liquid precipitation in $mm$ that might come from snow melt or precipitation or both.
+
+\bigskip
+\textbf{Evapotranspiration and soil moisture}
+
+\begin{equation}
+AM_i = SM_{i-1} + (LP_i \cdot (1 - (SM_{i-1} / FC)^{\beta}))
+\end{equation}
+
+\begin{equation}
+ET_i =
+\begin{cases}
+min(AM_i, PE_i) & \text{if } SM_{i-1} > PWP, \\
+min(AM_i, (SM_{i-1} / FC) \cdot PE_i) & \text{else}.
+\end{cases}
+\end{equation}
+
+\begin{equation}
+SM_i = max(0.0, AM_i - ET_i)
+\end{equation}
+
+where $SM_i$ is the soil moisture in $mm$, $FC$ is the field capacity in $mm$, $PWP$ is the permanent wilting point in $mm$, $\beta$ is a unitless constant related to the soil's ability to retain moisture, $AM_i$ is the available soil moisture in $mm$, $PE_i$ is the potential evapotranspiration in $mm/day$, $ET_i$ is the actual evapotranspiration in $mm/day$.
+
+\bigskip
+\textbf{Upper reservoir runoff routing}
+
+\begin{equation}
+RN_i = LP_i \cdot (SM_{i-1} / FC)^{\beta}
+\end{equation}
+
+\begin{equation}
+UR\_UO_i = max(0.0, (UR\_ST_{i-1} - UT) \cdot K_{uu})
+\end{equation}
+
+\begin{equation}
+UR\_LO_i = max(0.0, (UR\_ST_{i-1} - UR\_UO_i) \cdot K_{ul})
+\end{equation}
+
+\begin{equation}
+UR\_LR_i = max(0.0, (UR\_ST_{i-1} - UR\_UO_i - UR\_LO_i) \cdot K_d)
+\end{equation}
+
+\begin{equation}
+UR\_ST_i = max(0.0, (UR\_ST_{i-1} - UR\_UO_i - UR\_LO_i - UR\_LR_i + RN_i))
+\end{equation}
+
+where $RN_i$ is the runoff in $mm/day$ i.e. the amount of water that is not retained by the soil and is available for routing through the model's reservoirs, $UR\_ST_i$ is the upper reservoir storage in $mm$, $UT$ is the storage threshold in $mm$ above which quick runoff from the upper outlet of the reservoir should take place. $K_{uu}$ is the upper reservoir upper outlet's runoff coefficient in $day^{-1}$, $UR\_UO_i$ is the runoff in $mm/day$ from the upper reservoir upper outlet, $K_{ul}$ is the upper reservoir lower outlet's runoff coefficient in  $day^{-1}$, $K_d$ is the coefficient of runoff transfer from the upper to lower reservoirs in $day^{-1}$, $UR\_LO_i$ is the runoff from the upper reservoir's lower outlet in $mm/day$.
+
+\bigskip
+\textbf{Lower reservoir runoff routing}
+
+\begin{equation}
+LR\_O_i = LR\_ST_{i-1} \cdot K_{ll}
+\end{equation}
+
+\begin{equation}
+LR\_ST_i = LR\_ST_{i-1}  + UR\_LR_i - LR\_O_i
+\end{equation}
+
+where $LR\_ST_i$ is the lower reservoir storage in $mm$, $K_{ll}$ is the lower reservoir runoff coefficient in $day^{-1}$, $LR\_O_i$ is the runoff from the lower reservoir in $mm/day$.
+
+\bigskip
+\textbf{Simulated discharge}
+
+\begin{equation}
+QS_i = (UR\_UO_i + UR\_LO_i + LR\_O_i) \cdot CC
+\end{equation}
+
+where $CC$ is a conversion constant that converts $mm/day$ to $m^3/sec$ in our case, $QS_i$ is the simulated discharge in $m^3/sec$.
+
+\end{fleqn}
