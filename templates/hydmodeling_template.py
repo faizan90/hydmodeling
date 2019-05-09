@@ -9,6 +9,7 @@ import time
 import timeit
 import pickle
 from shutil import copy2
+from datetime import datetime
 import configparser as cfpm
 from collections import OrderedDict
 
@@ -82,22 +83,22 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-#     create_stms_rels_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-#     plot_hbv_vars_flag = True
+    create_stms_rels_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_var_errors_flag = True
+    plot_hbv_vars_flag = True
 #     plot_qsims_flag = True
-    plot_cats_discharge_errs_flag = True
+#     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-    use_cv_time_flag = True
+#     use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing
@@ -170,7 +171,12 @@ def main():
     if not os.path.exists(hyd_mod_dir):
         os.mkdir(hyd_mod_dir)
 
-    copy2(in_ini_abs_path, os.path.join(hyd_mod_dir, in_ini_file))
+    in_ini_name, in_ini_ext = os.path.basename(in_ini_file).rsplit('.', 1)
+
+    crnt_time = datetime.now().strftime('%Y%m%d%H%M%S')
+
+    copy2(in_ini_abs_path, os.path.join(
+        hyd_mod_dir, f'{in_ini_name}_{crnt_time}.{in_ini_ext}'))
 
     if create_stms_rels_flag:
         crt_strms_rltn_tree(
@@ -777,7 +783,6 @@ def main():
 if __name__ == '__main__':
     _save_log_ = False
     if _save_log_:
-        from datetime import datetime
         from std_logger import StdFileLoggerCtrl
 
         # save all console activity to out_log_file

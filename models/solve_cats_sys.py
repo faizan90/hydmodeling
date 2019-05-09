@@ -130,6 +130,8 @@ def solve_cats_sys(
     assert obj_ftn_wts.ndim == 1
     assert np.issubdtype(obj_ftn_wts.dtype, np.float64)
 
+    assert not obj_ftn_wts[3], 'Not functional anymore!'
+
     assert isinstance(min_q_thresh, (float, int))
     assert min_q_thresh >= 0
 
@@ -983,6 +985,8 @@ def solve_cat(
             assert prms_span_idxs.ndim == 2
 
             curr_cat_params.append(bounds_arr)
+
+            assert not obj_ftn_wts[3], 'Not functional anymore!'
 
             curr_cat_params.append(obj_ftn_wts)
 
