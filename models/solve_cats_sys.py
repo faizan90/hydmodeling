@@ -183,6 +183,9 @@ def solve_cats_sys(
 
         uni_sel_idxs_arr = np.unique(sel_idxs_arr)
 
+        assert np.all(np.ediff1d(sel_idxs_arr) > warm_up_steps), (
+            'Too many k_folds!')
+
         assert n_sel_idxs >= 2, 'kfolds too high or data points too low!'
         assert sel_idxs_arr.shape[0] == uni_sel_idxs_arr.shape[0], (
             'kfolds too high or data points too low!')
@@ -205,6 +208,12 @@ def solve_cats_sys(
         n_sel_idxs = uni_sel_idxs_arr.shape[0]
 
         cv_flag = True
+
+        assert cdate_range.shape[0] > warm_up_steps, (
+            'Calibration steps too few!')
+
+        assert vdate_range.shape[0] > warm_up_steps, (
+            'Validation steps too few!')
 
     else:
         raise ValueError(f'cv_list has incorrect number of values!')
