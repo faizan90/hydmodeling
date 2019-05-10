@@ -64,7 +64,7 @@ def plot_cat_discharge_errors(plot_args):
 
     qsims_dir = os.path.join(main_out_dir, '12_discharge_sims')
 
-    sim_types = ['ensemble', 'lo_hi', ]  #
+    sim_types = ['ensemble', 'lo_hi', ]
 
     err_dirs_dict = {}
 
@@ -221,17 +221,17 @@ def plot_cat_discharge_errors(plot_args):
                     lc_idxs = ensemble_lc_idxs
                     lc_labs = ensemble_lc_labs
 
-                    perf_clr_df_name = (
-                        f'perfs_clrs_cat_{cat}_{calib_valid_lab}_kf_'
+                    perf_wvcb_df_name = (
+                        f'perfs_wvcbs_cat_{cat}_{calib_valid_lab}_kf_'
                         f'{kf:02d}_{opt_iter}.csv')
 
-                    perf_clr_df_path = os.path.join(
+                    perf_wvcb_df_path = os.path.join(
                         qsims_dir,
                         'perf_cdfs',
-                        perf_clr_df_name)
+                        perf_wvcb_df_name)
 
-                    perfs_clrs_df = pd.read_csv(
-                        perf_clr_df_path,
+                    perfs_wvcbs_df = pd.read_csv(
+                        perf_wvcb_df_path,
                         sep=text_sep,
                         index_col=0)
 
@@ -253,19 +253,19 @@ def plot_cat_discharge_errors(plot_args):
 
                     for ens_i, ensemble_lc_lab in enumerate(ensemble_lc_labs):
                         ge = (
-                            perfs_clrs_df['clrs'] >=
+                            perfs_wvcbs_df['wvcb'] >=
                             ensemble_div_vals[ens_i])
 
                         lt = (
-                            perfs_clrs_df['clrs'] <
+                            perfs_wvcbs_df['wvcb'] <
                             ensemble_div_vals[ens_i + 1])
 
-                        ens_clrs_idxs = perfs_clrs_df['clrs'].loc[
+                        ens_wvcbs_idxs = perfs_wvcbs_df['wvcb'].loc[
                             (ge & lt)].index
 
                         ens_sim_labs = [
                             f'kf_{kf:02d}_sim_{sim_idx:04d}'
-                            for sim_idx in ens_clrs_idxs]
+                            for sim_idx in ens_wvcbs_idxs]
 
                         ens_sims_df = qsims_df_orig[ens_sim_labs]
 
@@ -779,14 +779,16 @@ def plot_ensemble_peak_events_seperately(
                 maxs_arr[bef_idx:aft_idx, i],
                 mins_arr[bef_idx:aft_idx, i],
                 label=f'{sim_labs[i]} bounds',
-                color=LC_CLRS[i],
-                alpha=0.25)
+                edgecolor=LC_CLRS[i],
+                facecolor='None',
+                alpha=0.8,
+                linestyle='-.')
 
         for i, sim_lab in enumerate(sim_labs):
             plt.plot(
                 x_arr,
                 qsims_arr[bef_idx:aft_idx, i],
-                alpha=0.5,
+                alpha=0.8,
                 color=LC_CLRS[i],
                 label=f'{sim_lab} mean')
 
@@ -795,7 +797,7 @@ def plot_ensemble_peak_events_seperately(
             qobs_arr[bef_idx:aft_idx],
             label='Obs.',
             color='red',
-            alpha=0.8)
+            alpha=0.9)
 
         title_str = (
             f'Observed vs. Ensemble comparison for catchment: {cat}\n'
@@ -1102,8 +1104,10 @@ def plot_ensemble_sims(
                 qsim_max_arrs[pre_idx:lst_idx, i],
                 qsim_min_arrs[pre_idx:lst_idx, i],
                 label=f'{sim_labs[i]} bounds',
-                color=LC_CLRS[i],
-                alpha=0.25)
+                edgecolor=LC_CLRS[i],
+                facecolor='None',
+                alpha=0.8,
+                linestyle='-.')
 
         for i in range(n_sims):
             plt.plot(

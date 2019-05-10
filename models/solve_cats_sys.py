@@ -1235,6 +1235,8 @@ def solve_cat(
                 data_sb.attrs['route_type'] = route_type
                 data_sb.attrs['cv_flag'] = cv_flag
 
+                data_sb['obj_ftn_wts'] = obj_ftn_wts
+
                 dt = h5py.special_dtype(vlen=str)
                 _prms_ds = data_sb.create_dataset(
                     'all_prms_labs', (len(all_prms_labs),), dtype=dt)
