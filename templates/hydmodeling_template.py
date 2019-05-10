@@ -98,7 +98,7 @@ def main():
 #     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-#     use_cv_time_flag = True
+    use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing

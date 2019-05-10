@@ -171,7 +171,7 @@ cdef DT_D get_kge(
     correl = _get_pcorr(act_std_dev, &sim_std_dev, &covar)
 
     b = sim_mean / act_mean[0]
-    g = (sim_std_dev / sim_mean) / (act_std_dev[0] / act_mean[0])
+    g = sim_std_dev / act_std_dev[0]
 
     kge = 1.0 - (((correl - 1)**2) + ((b - 1)**2) + ((g - 1)**2))**0.5
     return kge
