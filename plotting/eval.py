@@ -368,9 +368,9 @@ class PlotCatQSims:
 
         _tr = 1
 
-        cmb_perf_ser = (
-            self.sim_perfs_df[self.obj_ftn_labs].multiply(self.obj_ftn_wts)).sum(
-                axis=1)
+        cmb_perf_ser = (self.sim_perfs_df[
+            self.obj_ftn_labs].multiply(self.obj_ftn_wts)).sum(
+                axis=1) / self.obj_ftn_wts.sum()
 
         eff_ftn_val_tol = 0.01
 

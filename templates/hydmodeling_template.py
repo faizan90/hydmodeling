@@ -781,7 +781,7 @@ def main():
 
 
 if __name__ == '__main__':
-    _save_log_ = False
+    _save_log_ = True
     if _save_log_:
         from std_logger import StdFileLoggerCtrl
 
