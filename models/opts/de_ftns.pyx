@@ -27,29 +27,29 @@ warm_up()
 
 
 cdef void pre_de(
-    const DT_UL[::1] idx_rng,
-          DT_UL[::1] r_r,
+        const DT_UL[::1] idx_rng,
+              DT_UL[::1] r_r,
 
-    const DT_UL[:, ::1] prms_flags,
-    const DT_UL[:, ::1] prms_span_idxs,
-          DT_UL[:, ::1] del_idx_rng,
-          DT_UL[:, ::1] choice_arr,
+        const DT_UL[:, ::1] prms_flags,
+        const DT_UL[:, ::1] prms_span_idxs,
+              DT_UL[:, ::1] del_idx_rng,
+              DT_UL[:, ::1] choice_arr,
 
-    const DT_UL[:, :, ::1] prms_idxs,
+        const DT_UL[:, :, ::1] prms_idxs,
 
-          DT_ULL[::1] seeds_arr, # a warmed up one
+              DT_ULL[::1] seeds_arr, # a warmed up one
 
-    const DT_D[::1] mu_sc_fac_bds,
-    const DT_D[::1] cr_cnst_bds,
+        const DT_D[::1] mu_sc_fac_bds,
+        const DT_D[::1] cr_cnst_bds,
 
-          DT_D[:, ::1] prm_vecs,
-          DT_D[:, ::1] v_j_g,
-          DT_D[:, ::1] u_j_gs,
+              DT_D[:, ::1] prm_vecs,
+              DT_D[:, ::1] v_j_g,
+              DT_D[:, ::1] u_j_gs,
 
-    const DT_UL n_hbv_prms,
-    const DT_UL n_cpus,
-          DT_UL *cont_iter,
-    ) nogil except +:
+        const DT_UL n_hbv_prms,
+        const DT_UL n_cpus,
+              DT_UL *cont_iter,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t tid, i, k, m, ch_r_i, ch_r_j, ch_r_l
@@ -66,10 +66,11 @@ cdef void pre_de(
 
     # randomize the mutation and recombination factors for every
     # generation
-    mu_sc_fac = (mu_sc_fac_bds[0] +
-                 ((mu_sc_fac_bds[1] - mu_sc_fac_bds[0]) * rand_c()))
-    cr_cnst = (cr_cnst_bds[0] +
-               ((cr_cnst_bds[1] - cr_cnst_bds[0]) * rand_c()))
+    mu_sc_fac = (
+        mu_sc_fac_bds[0] + ((mu_sc_fac_bds[1] - mu_sc_fac_bds[0]) * rand_c()))
+
+    cr_cnst = (
+        cr_cnst_bds[0] + ((cr_cnst_bds[1] - cr_cnst_bds[0]) * rand_c()))
 
     for t_i in prange(
         n_prm_vecs, 
@@ -86,15 +87,19 @@ cdef void pre_de(
         ch_r_l = 1
         while ch_r_l:
             ch_r_l = 0
+
             for ch_r_i in range(n_mu_samps):
                 k = <Py_ssize_t> (rand_c_mp(&seeds_arr[tid]) * n_prm_vecs_ol)
+
                 choice_arr[tid, ch_r_i] = del_idx_rng[tid, k]
 
             for ch_r_i in range(n_mu_samps):
                 for ch_r_j in range(ch_r_i + 1, n_mu_samps):
-                    if (choice_arr[tid, ch_r_i] ==
-                        choice_arr[tid, ch_r_j]):
-                        ch_r_l = 1
+                    if (choice_arr[tid, ch_r_i] != choice_arr[tid, ch_r_j]):
+                        continue
+
+                    ch_r_l = 1
+                    break
 
         r0 = choice_arr[tid, 0]
         r1 = choice_arr[tid, 1]
@@ -108,6 +113,7 @@ cdef void pre_de(
         # keep parameters in bounds
         for k in range(n_prms):
             if ((v_j_g[tid, k] < 0) or (v_j_g[tid, k] > 1)):
+
                 v_j_g[tid, k] = rand_c_mp(&seeds_arr[tid])
 
         # get an index randomly to have atleast one parameter from
@@ -115,9 +121,7 @@ cdef void pre_de(
         r_r[tid] = <DT_UL> (rand_c_mp(&seeds_arr[tid]) * n_prms)
 
         for k in range(n_prms):
-            if ((rand_c_mp(&seeds_arr[tid]) <= cr_cnst) or
-                (k == r_r[tid])):
-
+            if ((rand_c_mp(&seeds_arr[tid]) <= cr_cnst) or (k == r_r[tid])):
                 u_j_gs[t_i, k] = v_j_g[tid, k]
 
             else:
@@ -126,10 +130,10 @@ cdef void pre_de(
             u_j_gs[t_i, k] = u_j_gs[t_i, k]
 
         # check if pwp is ge than fc and adjust
-        for i in range(prms_span_idxs[fc_i, 1] - 
-                       prms_span_idxs[fc_i, 0]):
+        for i in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
             if (u_j_gs[t_i, prms_span_idxs[pwp_i, 0] + i] <
                 u_j_gs[t_i, prms_span_idxs[fc_i, 0] + i]):
+
                 continue
 
             u_j_gs[t_i, prms_span_idxs[pwp_i, 0] + i] = (
@@ -156,31 +160,31 @@ cdef void pre_de(
 
 
 cdef void post_de(
-          DT_UL[::1] prm_opt_stop_arr,
+              DT_UL[::1] prm_opt_stop_arr,
 
-    const DT_D[::1] curr_obj_vals,
-          DT_D[::1] pre_obj_vals,
-          DT_D[::1] best_prm_vec,
-          DT_D[::1] iobj_vals,
+        const DT_D[::1] curr_obj_vals,
+              DT_D[::1] pre_obj_vals,
+              DT_D[::1] best_prm_vec,
+              DT_D[::1] iobj_vals,
 
-    const DT_D[:, ::1] u_j_gs,
-          DT_D[:, ::1] prm_vecs,
-          DT_D[:, ::1] prms_mean_thrs_arr,
+        const DT_D[:, ::1] u_j_gs,
+              DT_D[:, ::1] prm_vecs,
+              DT_D[:, ::1] prms_mean_thrs_arr,
 
-    const DT_UL max_iters,
-    const DT_UL max_cont_iters,
-          DT_UL *iter_curr,
-          DT_UL *last_succ_i,
-          DT_UL *n_succ,
-          DT_UL *cont_iter,
-          DT_UL *cont_opt_flag,
+        const DT_UL max_iters,
+        const DT_UL max_cont_iters,
+              DT_UL *iter_curr,
+              DT_UL *last_succ_i,
+              DT_UL *n_succ,
+              DT_UL *cont_iter,
+              DT_UL *cont_opt_flag,
 
-    const DT_D obj_ftn_tol,
-          DT_D *tol_curr,
-          DT_D *tol_pre,
-          DT_D *fval_pre_global,
-          DT_D *prm_pcnt_tol,
-    ) nogil except +:
+        const DT_D obj_ftn_tol,
+              DT_D *tol_curr,
+              DT_D *tol_pre,
+              DT_D *fval_pre_global,
+              DT_D *prm_pcnt_tol,
+        ) nogil except +:
 
     cdef:
         Py_ssize_t j, k
@@ -226,6 +230,7 @@ cdef void post_de(
 
     if (iter_curr[0] >= 300) & ((iter_curr[0] % 20) == 0):
         ddmv = 0.0
+
         for k in range(n_prms):
             if prm_opt_stop_arr[k]:
                 continue
@@ -257,8 +262,9 @@ cdef void post_de(
             ddmv = 1.0
 
             with gil:
-                print('Parameter no. %d optimized at iteration: %d!' %
-                      (k, iter_curr[0]))
+                print(
+                    'Parameter no. %d optimized at iteration: %d!' %
+                    (k, iter_curr[0]))
         if ddmv:
             ddmv = 0.0
             for k in range(n_prms):
@@ -276,13 +282,17 @@ cdef void post_de(
 
     if cont_opt_flag[0] and (iter_curr[0] >= max_iters):
         with gil: print('***Max iterations reached!***')
+
         cont_opt_flag[0] = 0
 
     if cont_opt_flag[0] and ((0.5 * (tol_pre[0] + tol_curr[0])) < obj_ftn_tol):
         with gil: print('***Objective tolerance reached!***')
+
         cont_opt_flag[0] = 0
 
     if cont_opt_flag[0] and (cont_iter[0] > max_cont_iters):
         with gil: print('***max_cont_iters reached!***')
+
         cont_opt_flag[0] = 0
+
     return

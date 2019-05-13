@@ -9,7 +9,7 @@
 import numpy as np
 cimport numpy as np
 
-from ..miscs.dtypes cimport fc_i, pwp_i
+from ..miscs.dtypes cimport fc_i, pwp_i, max_bds_adj_atpts
 from .data_depths cimport depth_ftn, pre_depth, post_depth
 
 
@@ -126,65 +126,14 @@ cdef void get_new_chull_vecs(
         for j in range(n_prms):
             acc_vecs[prm_vec_rank, j] = prm_vecs[i, j]
 
-#    Not checking depths anymore. Just taking all the points
-#     for j in range(n_cpus):
-#         for i in range(mins.shape[1]):
-#             temp_mins[j, i] = n_prm_vecs
-#             mins[j, i] = n_prm_vecs
-# 
-#     if use_c:
-#         depth_ftn_c(
-#             &acc_vecs[0, 0],
-#             &acc_vecs[0, 0],
-#             &uvecs[0, 0],
-#             &dot_ref[0, 0],
-#             &dot_test[0, 0],
-#             &dot_test_sort[0, 0],
-#             &temp_mins[0, 0],
-#             &mins[0, 0],
-#             &depths_arr[0],
-#             n_acc_vecs,
-#             n_acc_vecs,
-#             n_uvecs,
-#             n_prms,
-#             n_cpus)
-# 
-#     else:
-#         depth_ftn(
-#             acc_vecs,
-#             acc_vecs,
-#             uvecs,
-#             dot_ref,
-#             dot_test,
-#             dot_test_sort,
-#             temp_mins,
-#             mins,
-#             depths_arr,
-#             n_acc_vecs,
-#             n_acc_vecs,
-#             n_cpus)
-
     ctr = 0
     for i in range(n_acc_vecs):
-#         with gil: print(f'd[{i}]: {depths_arr[i]}')
-
-#         with gil: assert depths_arr[i] > 0, (
-#             f'Impossible depth of zero or less ({depths_arr[i]})!')
-
-        # by not checking for boundary point, take all the points.
-#         if depths_arr[i] != 1:
-#             continue
-
         for j in range(n_prms):
             chull_vecs[ctr, j] = acc_vecs[i, j]
 
         ctr += 1
 
     chull_vecs_ctr[0] = ctr
-
-#    Took all the points, so no need to show this.
-#     with gil: print(
-#         f'{chull_vecs_ctr[0]} out of {n_acc_vecs} points on the new chull.')
 
     # just to be sure
     for i in range(chull_vecs_ctr[0], n_acc_vecs):
@@ -301,6 +250,7 @@ cdef void gen_vecs_in_chull(
         DT_UL n_uvecs = uvecs.shape[0]
         DT_UL temp_rope_prms_strt_idx = chull_vecs_ctr
         DT_D sq_diff
+        DT_UL bds_adj_atpts
 
     if depth_ftn_type == 2:
         if use_c:
@@ -339,13 +289,21 @@ cdef void gen_vecs_in_chull(
                 cfc_i = prms_span_idxs[fc_i, 0] + j
                 cpwp_i = prms_span_idxs[pwp_i, 0] + j
 
-                # break is guaranteed by adjust_rope_bds
-                while (temp_rope_prm_vecs[i, cpwp_i] >
-                       temp_rope_prm_vecs[i, cfc_i]):
+                bds_adj_atpts = 0
+                while ((temp_rope_prm_vecs[i, cpwp_i] >
+                        temp_rope_prm_vecs[i, cfc_i])
+                       and (bds_adj_atpts < max_bds_adj_atpts)):
 
                     temp_rope_prm_vecs[i, cpwp_i] = (
                         rope_bds_dfs[cpwp_i, 0] + (
                         rand_c() * rope_bds_dfs[cpwp_i, 1]))
+
+                    bds_adj_atpts += 1
+
+                if bds_adj_atpts == max_bds_adj_atpts:
+                    with gil: print(
+                        ('Maximum attempts to adjust bounds for paramter '
+                         'at index (PWP): %d reached!') % cpwp_i)
 
             for j in range(n_hbv_prms):
                 for m in range(3, 6):
@@ -354,13 +312,20 @@ cdef void gen_vecs_in_chull(
 
                     k = prms_idxs[j, m, 0]
 
-                    # break is guaranteed by adjust_rope_bds
-                    while (
-                        temp_rope_prm_vecs[i, k + 1] <
-                        temp_rope_prm_vecs[i, k]):
+                    bds_adj_atpts = 0
+                    while ((temp_rope_prm_vecs[i, k + 1] >
+                            temp_rope_prm_vecs[i, k])
+                           and (bds_adj_atpts < max_bds_adj_atpts)):
 
                         temp_rope_prm_vecs[i, k] = rope_bds_dfs[k, 0] + (
                             rand_c() * rope_bds_dfs[k, 1])
+
+                        bds_adj_atpts += 1
+
+                    if bds_adj_atpts == max_bds_adj_atpts:
+                        with gil: print(
+                            ('Maximum attempts to adjust bounds for paramter '
+                             'at index: %d reached!') % (k + 1))
 
         for j in range(n_cpus):
             for i in range(n_temp_rope_prm_vecs):
@@ -432,8 +397,6 @@ cdef void gen_vecs_in_chull(
 
         if temp_rope_prms_strt_idx:
             for i in range(chull_vecs_ctr):
-#                 with gil: assert depths_arr[i] > 0, (
-#                     ('Point previously on the chull has a depth of zero!'))
                 if depths_arr[i] > 0:
                     continue
 
@@ -444,13 +407,10 @@ cdef void gen_vecs_in_chull(
 
                     sq_diff = 0
                     for j in range(n_prms):
-                        sq_diff += (temp_rope_prm_vecs[i, j] - chull_vecs[i, j])**2
-#                         print('%0.6f, %0.6f - ' % (
-#                             temp_rope_prm_vecs[i, j], chull_vecs[i, j]),
-#                             end='')
-                    print('Squared difference sum: %5.16E' % sq_diff)
+                        sq_diff += (
+                            temp_rope_prm_vecs[i, j] - chull_vecs[i, j])**2
 
-#                     print('')
+                    print('Squared difference sum: %5.16E' % sq_diff)
 
         for i in range(n_temp_rope_prm_vecs):
             if ctr >= n_prm_vecs:
@@ -464,8 +424,7 @@ cdef void gen_vecs_in_chull(
 
             ctr += 1
 
-        if ((ctr < n_prm_vecs) and 
-            ((ctr - pre_ctr) < min_pts_in_chull)):
+        if ((ctr < n_prm_vecs) and ((ctr - pre_ctr) < min_pts_in_chull)):
 
             tries_ctr += 1
 

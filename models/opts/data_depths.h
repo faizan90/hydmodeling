@@ -367,7 +367,6 @@ void pre_depth_c(
 
 			offset = (long) (j * n_dims);
 
-
 			for (k = 0; k < n_dims; ++k) {
 				sdot_ref_sort[j] = (
 						sdot_ref_sort[j] + (uvec[k] * ref[offset + k]));

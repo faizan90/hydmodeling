@@ -29,7 +29,7 @@ plt.ioff()
 def plot_cat_qsims(cat_db):
 
     with h5py.File(cat_db, 'r') as db:
-        opt_iters = [0, 1, 2]  # , 10, 15, None]
+        opt_iters = list(range(db['calib/kf_01/iter_prm_vecs'].shape[0]))
         long_short_break_freqs = ['A']
 
         cv_flag = db['data'].attrs['cv_flag']
@@ -1003,6 +1003,8 @@ class PlotCatQSims:
                 assert outputs_dict['loop_ret'] == 0.0
 
                 qsim_arr = outputs_dict['qsim_arr']
+
+                outputs_dict = None
 
                 if self.extra_flow_flag:
                     qsim_arr = qsim_arr + us_inflow_arr

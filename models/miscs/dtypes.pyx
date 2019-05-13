@@ -26,6 +26,8 @@ cdef DT_UL obj_longs_ct = 15, obj_doubles_ct = 7
 
 cdef DT_D err_val = 1e9
 
+cdef DT_UL max_bds_adj_atpts = 1000
+
 
 def get_fc_pwp_is():
     return (<long> fc_i, <long> pwp_i)

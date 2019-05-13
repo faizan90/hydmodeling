@@ -30,3 +30,5 @@ cdef Py_ssize_t err_val_i, min_q_thresh_i
 
 cdef DT_UL n_hbv_cols, n_hbv_prms, obj_longs_ct, obj_doubles_ct
 cdef DT_D err_val
+
+cdef DT_UL max_bds_adj_atpts
