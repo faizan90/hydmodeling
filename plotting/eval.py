@@ -885,6 +885,9 @@ class PlotCatQSims:
 
             if (n_max_opt_iters - 1) < self.opt_iter:
                 print(f'Only {n_max_opt_iters} iterations available!')
+
+                self._set_run_prms_flag = False
+                self._set_lo_hi_corr_idxs_flag = False
                 return
 
             self.opt_iter_lab = f'{self.opt_iter}'

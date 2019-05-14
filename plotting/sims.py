@@ -51,6 +51,8 @@ def plot_cat_hbv_sim(plot_args):
 
         cv_flag = db['data'].attrs['cv_flag']
 
+        valid_not_in_db_flag = 'valid' not in db
+
         if cv_flag:
             cv_kf_dict = {}
             for i in range(1, kfolds + 1):
@@ -110,7 +112,7 @@ def plot_cat_hbv_sim(plot_args):
         if full_sim_flag:
             sim.full_sim()
 
-        if ((kfolds == 1) and (not cv_flag)) or ('valid' not in db):
+        if ((kfolds == 1) and (not cv_flag)) or valid_not_in_db_flag:
             continue
 
         kf_i = f'{i:02d}_valid'
@@ -145,13 +147,15 @@ def plot_cat_hbv_sim(plot_args):
             prm_syms,
             off_idx,
             out_dir,
-            wat_bal_stps)
+            wat_bal_stps,
+            show_warm_up_steps_flag)
 
         if wat_bal_flag:
             sim.wat_bal_sim()
 
         if full_sim_flag:
             sim.full_sim()
+
     return
 
 

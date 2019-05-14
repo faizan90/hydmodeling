@@ -707,7 +707,16 @@ def plot_obs_probs_in_ensemble_hist(
 
         bins = np.concatenate(([0.0], bins, [1.0]))
 
-        rel_hist = np.histogram(qobs_probs[i], bins=bins)[0] / float(n_vals)
+        try:
+            rel_hist = np.histogram(
+                qobs_probs[i], bins=bins)[0] / float(n_vals)
+
+        except Exception as msg:
+            print(f'Error while computing histogram: {msg}')
+            print(f'bins: {bins}')
+
+            continue
+
         rel_hist_sum = rel_hist.sum()
 
         assert np.isclose(rel_hist_sum, 1.0), (
@@ -1804,6 +1813,9 @@ def get_driest_mask(in_arr):
     out_mask = np.zeros(n_steps, dtype=bool)
 
     while (beg_idx < n_steps):
+        if (end_idx - beg_idx) < 2:
+            break
+
         loop_mask = np.zeros(n_steps, dtype=bool)
         loop_mask[beg_idx:end_idx] = True
 
