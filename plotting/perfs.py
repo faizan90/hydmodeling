@@ -708,6 +708,10 @@ def plot_obs_probs_in_ensemble_hist(
         bins = np.concatenate(([0.0], bins, [1.0]))
 
         try:
+            # for ens_prob_ftn_cts[i] less than
+            # n_bins - 2 this raises an error
+            # for now I let it go
+
             rel_hist = np.histogram(
                 qobs_probs[i], bins=bins)[0] / float(n_vals)
 
@@ -1813,7 +1817,7 @@ def get_driest_mask(in_arr):
     out_mask = np.zeros(n_steps, dtype=bool)
 
     while (beg_idx < n_steps):
-        if (end_idx - beg_idx) < 2:
+        if runn_mean_arr[beg_idx:end_idx].shape[0] < 2:
             break
 
         loop_mask = np.zeros(n_steps, dtype=bool)

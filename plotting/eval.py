@@ -391,9 +391,8 @@ class PlotCatQSims:
 
             eff_val = cmb_perf_ser.iloc[eff_idx]
 
-            acc_flags_1 = (
-                (cmb_perf_ser - eff_val).abs().rank() <= (
-                    n_vals)).values
+#             acc_flags_1 = (
+#                 (cmb_perf_ser - eff_val).abs().rank() <= n_vals).values
 
             acc_flags_2 = (
                 (cmb_perf_ser.values >= (
@@ -402,11 +401,11 @@ class PlotCatQSims:
                 (cmb_perf_ser.values <= (
                     eff_val + (0.5 * eff_ftn_val_tol))))
 
-            if acc_flags_1.sum() > acc_flags_2.sum():
-                acc_flags_ser = acc_flags_1
+#             if acc_flags_1.sum() > acc_flags_2.sum():
+#                 acc_flags_ser = acc_flags_1
 
-            else:
-                acc_flags_ser = acc_flags_2
+#             else:
+            acc_flags_ser = acc_flags_2
 
             if acc_flags_ser.sum() > n_vals:
                 break
