@@ -29,7 +29,8 @@ plt.ioff()
 def plot_cat_qsims(cat_db):
 
     with h5py.File(cat_db, 'r') as db:
-        opt_iters = list(range(db['calib/kf_01/iter_prm_vecs'].shape[0]))
+        # opt_iters = list(range(db['calib/kf_01/iter_prm_vecs'].shape[0]))
+        opt_iters = [4]
         long_short_break_freqs = ['A']
 
         cv_flag = db['data'].attrs['cv_flag']
@@ -72,6 +73,14 @@ class PlotCatQSims:
         self.calib_db = db['calib']
 
         self.opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
+
+        if self.opt_schm != 'ROPE':
+            raise NotImplementedError(
+                f'Only configured for ROPE, got {self.opt_schm} instead!')
+
+        self.acc_rate = 0.4  # db['cdata/opt_schm_vars_dict'].attrs['acc_rate']
+
+        print(f'acc_rate: {self.acc_rate}')
 
         self.off_idx = db['data'].attrs['off_idx']
 
@@ -124,6 +133,7 @@ class PlotCatQSims:
             'ln_ns_vs_wvcb',
             'kge_vs_wvcb',
             'pcorr_vs_wvcb',
+            'obj_vs_wvcb',
             'ann_sims',
             'fdcs',
             'prms']
@@ -366,11 +376,9 @@ class PlotCatQSims:
 
     def _get_same_eff_idxs(self, n_vals):
 
-        _tr = 1
+        cmb_perf_ser = self.sim_perfs_df['obj'].copy()
 
-        cmb_perf_ser = (self.sim_perfs_df[
-            self.obj_ftn_labs].multiply(self.obj_ftn_wts)).sum(
-                axis=1) / self.obj_ftn_wts.sum()
+        cmb_perf_ser = cmb_perf_ser[cmb_perf_ser > self.min_obj_val]
 
         eff_ftn_val_tol = 0.01
 
@@ -405,9 +413,9 @@ class PlotCatQSims:
 #                 acc_flags_ser = acc_flags_1
 
 #             else:
-            acc_flags_ser = acc_flags_2
+            acc_flags_ser = cmb_perf_ser.loc[acc_flags_2]
 
-            if acc_flags_ser.sum() > n_vals:
+            if acc_flags_ser.shape[0] > n_vals:
                 break
 
             if curr_prob < end_prob:
@@ -415,11 +423,9 @@ class PlotCatQSims:
                     'Could not find an interval in which all '
                     'efficiency values are almost similar!')
 
-                break  # just in case
-
             curr_prob = prob_red_fac * curr_prob
 
-        return acc_flags_ser
+        return acc_flags_ser.index
 
     def _get_lo_hi_corr_idxs(self, kf):
 
@@ -430,39 +436,38 @@ class PlotCatQSims:
             n_lo_vals = n_hi_vals
             n_vals = n_hi_vals + n_lo_vals
 
-            acc_flags_ser = self._get_same_eff_idxs(n_vals)
+            acc_flags_idxs = self._get_same_eff_idxs(n_vals)
 
-            print(f'Selected {int(acc_flags_ser.sum())} parameters!')
+            print(f'Selected {int(acc_flags_idxs.shape[0])} parameters!')
 
             self.lc_idxs = (
                 list(self.sim_perfs_df.loc[
-                    acc_flags_ser, 'wvcb'].nsmallest(n_hi_vals).index) +
+                     acc_flags_idxs, 'wvcb'].nsmallest(n_hi_vals).index) +
 
                 list(self.sim_perfs_df.loc[
-                    acc_flags_ser, 'wvcb'].nlargest(n_lo_vals).index)[::-1])
+                     acc_flags_idxs, 'wvcb'].nlargest(n_lo_vals).index)[::-1])
 
-            self.lc_wvcbs = LC_CLRS[:n_vals]
+            self.lc_clrs = LC_CLRS[:n_vals]
 
             self.lc_labs = (
                 [f'Hi. Long ({i})' for i in range(n_hi_vals)] +
                 [f'Lo. Long ({i})' for i in range(n_lo_vals)][::-1])
 
             self.kf_corr_args_dict[kf] = (
-                self.lc_idxs, self.lc_wvcbs, self.lc_labs)
+                self.lc_idxs, self.lc_clrs, self.lc_labs)
 
         else:
-
             assert self.kf_corr_args_dict, 'Run calibration evaluation first!'
 
             (self.lc_idxs,
-             self.lc_wvcbs,
+             self.lc_clrs,
              self.lc_labs) = self.kf_corr_args_dict[kf]
 
         self.n_lcs = len(self.lc_idxs)
 
         assert self.n_lcs > 0
 
-        assert self.n_lcs == len(self.lc_wvcbs) == len(self.lc_labs)
+        assert self.n_lcs == len(self.lc_clrs) == len(self.lc_labs)
 
         self._set_lo_hi_corr_idxs_flag = True
         return
@@ -487,7 +492,7 @@ class PlotCatQSims:
             plt.plot(
                 plot_range,
                 norm_hbv_prms,
-                color=self.lc_wvcbs[i],
+                color=self.lc_clrs[i],
                 label=self.lc_labs[i],
                 alpha=0.5)
 
@@ -499,7 +504,7 @@ class PlotCatQSims:
                     plot_range[j],
                     norm_hbv_prms_list[i][j],
                     f'{hbv_prms[j]:0.4f}'.rstrip('0'),
-                    color=self.lc_wvcbs[i])
+                    color=self.lc_clrs[i])
 
                 ptexts.append(ptext)
 
@@ -535,6 +540,11 @@ class PlotCatQSims:
         # obj_vals
         probs = (np.arange(1.0, self.n_prm_vecs + 1) / (self.n_prm_vecs + 1))
 
+        obj_ftns_dict = {
+            **obj_ftns_dict,
+            **{'obj': [None, 'Obj. val.', self.sim_perfs_df['obj'].values]},
+            **{'wvcb': [None, 'wvcb', self.sim_perfs_df['wvcb'].values]}}
+
         wvcb_vals_arr = np.array(self.wvcb_vals)
         for obj_key in obj_ftns_dict:
             obj_vals = np.array(obj_ftns_dict[obj_key][2])
@@ -544,8 +554,8 @@ class PlotCatQSims:
 
             ax1.set_title(
                 f'{obj_ftns_dict[obj_key][1]} distribution\n'
-                f'Min. obj.: {obj_vals.min():0.4f}, '
-                f'Max. obj.: {obj_vals.max():0.4f}\n'
+                f'Min.: {obj_vals.min():0.4f}, '
+                f'Max.: {obj_vals.max():0.4f}\n'
                 f'Long-short dividing freq.: {self.long_short_break_freq}')
 
             obj_vals_sort_idxs = np.argsort(obj_vals)
@@ -606,19 +616,51 @@ class PlotCatQSims:
             c=self.sim_perfs_df['wvcb'].values,
             alpha=0.05)
 
+        acc_obj_idxs = self.sim_perfs_df['obj'].values > self.min_obj_val
+
+        best_obj_idx = np.argmax(self.sim_perfs_df['obj'].values)
+
+        best_wvcb = self.sim_perfs_df.loc[best_obj_idx, 'wvcb']
+
+        sorted_wvcb_vals = np.sort(
+            self.sim_perfs_df.loc[acc_obj_idxs, 'wvcb'].values)
+
+        wvcb_lo_val = sorted_wvcb_vals[
+            int(sorted_wvcb_vals.shape[0] * (1.0 / 3.0))]
+
+        wvcb_hi_val = sorted_wvcb_vals[
+            int(sorted_wvcb_vals.shape[0] * (2.0 / 3.0))]
+
+        plt.axhline(wvcb_lo_val, color='red', label='lo_up_bd', alpha=0.9)
+        plt.axhline(wvcb_hi_val, color='green', label='hi_lo_bd', alpha=0.9)
+
+        plt.axhline(
+            best_wvcb, color='orange', label='best_obj_wvcb', alpha=0.9)
+
+        plt.axvline(
+            self.min_obj_val, color='blue', label='min_acc_obj', alpha=0.9)
+
         plt.scatter(
             self.sim_perfs_df[col_1].values.mean(),
             self.sim_perfs_df[col_2].values.mean(),
             c='k',
             alpha=0.5,
             marker='X',
-            label='Mean')
+            label='Mean (full)')
+
+        plt.scatter(
+            self.sim_perfs_df.loc[acc_obj_idxs, col_1].values.mean(),
+            self.sim_perfs_df.loc[acc_obj_idxs, col_2].values.mean(),
+            c='k',
+            alpha=0.5,
+            marker='+',
+            label='Mean (acc)')
 
         for i in range(self.n_lcs):
             plt.scatter(
                 self.sim_perfs_df.loc[self.lc_idxs[i], col_1],
                 self.sim_perfs_df.loc[self.lc_idxs[i], col_2],
-                c=self.lc_wvcbs[i],
+                c=self.lc_clrs[i],
                 alpha=0.5,
                 label=self.lc_labs[i])
 
@@ -746,7 +788,7 @@ class PlotCatQSims:
                     x_arr,
                     corr_sims[i][pre_idx:lst_idx],
                     label=self.lc_labs[i],
-                    color=self.lc_wvcbs[i],
+                    color=self.lc_clrs[i],
                     alpha=0.5)
 
             plt.grid()
@@ -816,7 +858,7 @@ class PlotCatQSims:
                 qsim_vals,
                 qsim_probs,
                 alpha=0.5,
-                color=self.lc_wvcbs[i],
+                color=self.lc_clrs[i],
                 label=self.lc_labs[i])
 
         plt.grid()
@@ -967,7 +1009,7 @@ class PlotCatQSims:
 
             self.sim_perfs_df = pd.DataFrame(
                 index=np.arange(self.n_prm_vecs),
-                columns=list(obj_ftns_dict.keys()) + ['wvcb'],
+                columns=list(obj_ftns_dict.keys()) + ['wvcb', 'obj'],
                 dtype=np.float64)
 
             if self.sim_lab == 'calib':
@@ -1023,6 +1065,15 @@ class PlotCatQSims:
                     obj_ftns_dict[obj_key][2].append(obj_val)
 
                     self.sim_perfs_df.loc[i, obj_key] = obj_val
+
+                self.sim_perfs_df['obj'] = (
+                    self.sim_perfs_df[self.obj_ftn_labs].multiply(
+                        self.obj_ftn_wts)).sum(axis=1) / self.obj_ftn_wts.sum()
+
+                _sorted_obj_vals = np.sort(self.sim_perfs_df['obj'].values)
+
+                self.min_obj_val = _sorted_obj_vals[
+                    int((1 - self.acc_rate) * _sorted_obj_vals.shape[0])]
 
                 sim_arr = qsim_arr
 
@@ -1106,25 +1157,36 @@ class PlotCatQSims:
                 'NS.',
                 'Rel. cumm. wave contrib.',
                 'ns',
-                'wvcb', self.ns_vs_wvcb_dir)
+                'wvcb',
+                self.ns_vs_wvcb_dir)
 
             self._plot_effs(
                 'Ln NS.',
                 'Rel. cumm. wave contrib.',
                 'ln_ns',
-                'wvcb', self.ln_ns_vs_wvcb_dir)
+                'wvcb',
+                self.ln_ns_vs_wvcb_dir)
 
             self._plot_effs(
                 'KG.',
                 'Rel. cumm. wave contrib.',
                 'kge',
-                'wvcb', self.kge_vs_wvcb_dir)
+                'wvcb',
+                self.kge_vs_wvcb_dir)
 
             self._plot_effs(
                 'PCorr.',
                 'Rel. cumm. wave contrib.',
                 'pcorr',
-                'wvcb', self.pcorr_vs_wvcb_dir)
+                'wvcb',
+                self.pcorr_vs_wvcb_dir)
+
+            self._plot_effs(
+                'Obj. val.',
+                'Rel. cumm. wave contrib.',
+                'obj',
+                'wvcb',
+                self.obj_vs_wvcb_dir)
 
             self._plot_best_hi_lo_freq_sims(out_df, k)
 

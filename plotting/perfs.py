@@ -62,6 +62,16 @@ def plot_cat_discharge_errors(plot_args):
 
         cat = db.attrs['cat']
 
+        opt_schm = db['cdata/opt_schm_vars_dict'].attrs['opt_schm']
+
+        if opt_schm != 'ROPE':
+            raise NotImplementedError(
+                f'Only configured for ROPE, got {opt_schm} instead!')
+
+        acc_rate = 0.4  # db['cdata/opt_schm_vars_dict'].attrs['acc_rate']
+
+        print(f'acc_rate: {acc_rate}')
+
     qsims_dir = os.path.join(main_out_dir, '12_discharge_sims')
 
     sim_types = ['ensemble', 'lo_hi', ]
@@ -126,21 +136,590 @@ def plot_cat_discharge_errors(plot_args):
 
     assert len(ensemble_lc_labs) == n_ensembles
 
+    plot_calib_valid_wvcb(
+        qsim_files,
+        parse_patt,
+        cat,
+        qsims_dir,
+        kfolds)
+
+#     for qsim_file in qsim_files:
+#         calib_valid_lab, opt_iter, freq = search(
+#             parse_patt, os.path.basename(qsim_file))
+#
+#         qsims_df_orig = pd.read_csv(qsim_file, sep=';').iloc[off_idx:, :]
+#
+#         qobs_quants_masks_dict = get_quant_masks_dict(
+#             qsims_df_orig.iloc[:, 0], n_q_quants)
+#
+#         qobs_arr = qsims_df_orig.iloc[:, 0].values
+#
+#         peaks_mask = get_peaks_mask(qobs_arr)
+#
+#         n_vals = qobs_arr.shape[0]
+#         lorenz_x_vals = np.linspace(1., n_vals + 1., n_vals) / (n_vals + 1.)
+#
+#         best_prm_file_name = (
+#             f'best_prms_idxs_cat_{cat}_{opt_iter}_freq_{freq}.csv')
+#
+#         best_prm_idxs_df = pd.read_csv(
+#             os.path.join(qsims_dir, best_prm_file_name), sep=';', index_col=0)
+#
+#         lo_hi_lc_labs = best_prm_idxs_df.columns.tolist()
+#
+#         eff_ftns_dict = {
+#             'ns': get_ns_cy,
+#             'ln_ns': get_ln_ns_cy,
+#             'kge': get_kge_cy,
+#             'pcorr': get_pcorr_cy,
+#             }
+#
+#         qobs_driest = get_driest_period(qobs_arr)
+#         qobs_dry_mask = get_driest_mask(qobs_arr)
+#
+#         for sim_type in sim_types:
+#             out_dirs_dict = {
+#                 'dm': os.path.join(err_dirs_dict[sim_type], 'driest_month'),
+#                 'dt': os.path.join(err_dirs_dict[sim_type], 'driest_timing'),
+#                 'lc': os.path.join(err_dirs_dict[sim_type], 'lorenz_curves'),
+#                 'mp': os.path.join(err_dirs_dict[sim_type], 'mean_peaks'),
+#                 'pe': os.path.join(err_dirs_dict[sim_type], 'peaks_eff'),
+#                 'ps': os.path.join(err_dirs_dict[sim_type], 'peaks_sq_diff'),
+#                 'qe': os.path.join(err_dirs_dict[sim_type], 'quant_effs'),
+#                 're': os.path.join(
+#                     err_dirs_dict[sim_type], 'rel_mw_runoff_errs'),
+#                 'pk': os.path.join(err_dirs_dict[sim_type], 'peak_events'),
+#                 }
+#
+#             if sim_type == 'ensemble':
+#                 out_dirs_dict['en'] = os.path.join(
+#                     err_dirs_dict[sim_type], 'mean_sims')
+#
+#                 out_dirs_dict['sq'] = os.path.join(
+#                     err_dirs_dict[sim_type], 'sq_diffs_cmp')
+#
+#                 out_dirs_dict['pc'] = os.path.join(
+#                     err_dirs_dict[sim_type], 'peak_cntmnt')
+#
+#                 out_dirs_dict['vc'] = os.path.join(
+#                     err_dirs_dict[sim_type], 'value_cntmnt')
+#
+#                 out_dirs_dict['ed'] = os.path.join(
+#                     err_dirs_dict[sim_type], 'events_prob_dist')
+#
+#                 out_dirs_dict['vd'] = os.path.join(
+#                     err_dirs_dict[sim_type], 'values_prob_dist')
+#
+#             do_not_cmpt = True
+#             for dir_key in out_dirs_dict:
+#                 if dir_key not in plot_types:
+#                     continue
+#
+#                 mkdir_hm(out_dirs_dict[dir_key])
+#
+#                 do_not_cmpt = False
+#
+#             if do_not_cmpt:
+# #                 print('Nothing to compute!')
+#                 continue
+#
+#             for kf in range(1, kfolds + 1):
+#
+#                 if sim_type == 'lo_hi':
+#                     lc_idxs = list(map(
+#                         int,
+#                         best_prm_idxs_df.loc[f'kf_{kf:02d}_idxs', :].values))
+#
+#                     lc_labs = lo_hi_lc_labs
+#
+#                     qsims_df = qsims_df_orig
+#
+#                 elif sim_type == 'ensemble':
+#                     lc_idxs = ensemble_lc_idxs
+#                     lc_labs = ensemble_lc_labs
+#
+#                     perf_wvcb_df_name = (
+#                         f'perfs_wvcbs_cat_{cat}_{calib_valid_lab}_kf_'
+#                         f'{kf:02d}_{opt_iter}.csv')
+#
+#                     perf_wvcb_df_path = os.path.join(
+#                         qsims_dir,
+#                         'perf_cdfs',
+#                         perf_wvcb_df_name)
+#
+#                     perfs_wvcbs_df = pd.read_csv(
+#                         perf_wvcb_df_path,
+#                         sep=text_sep,
+#                         index_col=0)
+#
+#                     ensemble_avg_sims_df = pd.DataFrame(
+#                         index=np.arange(0, qsims_df_orig.shape[0]),
+#                         columns=ensemble_lc_labs,
+#                         dtype=float)
+#
+#                     sims_min_df = ensemble_avg_sims_df.copy()
+#                     sims_max_df = ensemble_avg_sims_df.copy()
+#
+#                     sims_mean_sq_diff = ensemble_avg_sims_df.copy()
+#
+#                     if 'ed' in plot_types:
+#                         ensemble_peak_evts = {}
+#
+#                     if 'vd' in plot_types:
+#                         ensemble_values = {}
+#
+#                     sorted_obj_vals = np.sort(perfs_wvcbs_df['obj'].values)
+#
+#                     min_obj_val = sorted_obj_vals[
+#                         int((1 - acc_rate) * sorted_obj_vals.shape[0])]
+#
+#                     acc_prms_idxs = perfs_wvcbs_df['obj'].values > min_obj_val
+#
+#                     sorted_wvcb_vals = np.sort(
+#                         perfs_wvcbs_df.loc[acc_prms_idxs, 'wvcb'].values)
+#
+#                     n_prm_vecs = sorted_wvcb_vals.shape[0] - 1
+#
+#                     for ens_i, ensemble_lc_lab in enumerate(ensemble_lc_labs):
+#
+#                         ge_bd = sorted_wvcb_vals[
+#                             int(ensemble_div_vals[ens_i] * n_prm_vecs)]
+#
+#                         le_bd = sorted_wvcb_vals[
+#                             int(ensemble_div_vals[ens_i + 1] * n_prm_vecs)]
+#
+#                         ge = perfs_wvcbs_df['wvcb'] >= ge_bd
+#
+#                         lt = perfs_wvcbs_df['wvcb'] < le_bd
+#
+#                         ens_wvcbs_idxs = perfs_wvcbs_df['wvcb'].loc[
+#                             (ge & lt & acc_prms_idxs)].index
+#
+#                         assert ens_wvcbs_idxs.shape[0]
+#
+#                         ens_sim_labs = [
+#                             f'kf_{kf:02d}_sim_{sim_idx:04d}'
+#                             for sim_idx in ens_wvcbs_idxs]
+#
+#                         ens_sims_df = qsims_df_orig[ens_sim_labs]
+#
+#                         if 'ed' in plot_types:
+#                             ensemble_peak_evts[ensemble_lc_lab] = (
+#                                 ens_sims_df.values[peaks_mask, :].copy(
+#                                     order='c'))
+#
+#                         if 'vd' in plot_types:
+#                             ensemble_values[ensemble_lc_lab] = (
+#                                 ens_sims_df.values)
+#
+#                         obs_ser = qsims_df_orig['obs'].copy()
+#                         obs_ser.name = None
+#
+#                         ens_sims_sq_diffs_df = (
+#                             ens_sims_df.subtract(obs_ser, axis=0)) ** 2
+#
+#                         ens_avg_sim_ser = ens_sims_df.mean(axis=1)
+#                         ens_min_sim_ser = ens_sims_df.min(axis=1)
+#                         ens_max_sim_ser = ens_sims_df.max(axis=1)
+#
+#                         ensemble_avg_sims_df[ensemble_lc_lab][:] = (
+#                             ens_avg_sim_ser.values)
+#
+#                         sims_min_df[ensemble_lc_lab][:] = (
+#                             ens_min_sim_ser.values)
+#
+#                         sims_max_df[ensemble_lc_lab][:] = (
+#                             ens_max_sim_ser.values)
+#
+#                         sims_mean_sq_diff[ensemble_lc_lab][:] = (
+#                             ens_sims_sq_diffs_df.mean(axis=1).values)
+#
+#                     assert not np.isnan(ensemble_avg_sims_df.values).sum()
+#                     qsims_df = ensemble_avg_sims_df
+#
+#                 else:
+#                     raise NotImplementedError
+#
+#                 q_quant_effs_dicts = []
+#                 dry_timing_effs_dicts = []
+#                 lorenz_y_vals_list = []
+#                 peak_effs = []
+#                 qsim_arrs = []
+#                 driest_periods = []
+#                 rel_cumm_errs = []
+#
+#                 if sim_type == 'ensemble':
+#                     peak_cntmnt_cts = []
+#                     event_probs = []
+#                     value_cntmnt_cts = []
+#                     value_probs = []
+#
+#                 for lc_idx in lc_idxs:
+#                     if sim_type == 'lo_hi':
+#                         qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
+#
+#                     elif sim_type == 'ensemble':
+#                         qsim_lab = lc_labs[lc_idx]
+#
+#                     else:
+#                         raise NotImplementedError
+#
+#                     qsim_arr = qsims_df.loc[:, qsim_lab].values
+#
+#                     q_quant_effs_dict = get_q_quant_effs_dict(
+#                         qobs_arr,
+#                         qsim_arr,
+#                         qobs_quants_masks_dict,
+#                         eff_ftns_dict)
+#
+#                     q_quant_effs_dicts.append(q_quant_effs_dict)
+#
+#                     qsim_dry_mask = get_driest_mask(qsim_arr)
+#
+#                     dry_timing_dict = get_timing_effs_dict(
+#                         qobs_dry_mask, qsim_dry_mask, eff_ftns_dict)
+#
+#                     dry_timing_effs_dicts.append(dry_timing_dict)
+#
+#                     lorenz_y_vals = get_lorenz_arr(qobs_arr, qsim_arr)
+#                     lorenz_y_vals_list.append(lorenz_y_vals)
+#
+#                     peak_effs_dict = get_peaks_effs_dict(
+#                         qobs_arr, qsim_arr, peaks_mask, eff_ftns_dict)
+#
+#                     peak_effs.append(peak_effs_dict)
+#
+#                     qsim_arrs.append(qsim_arr)
+#
+#                     driest_periods.append(get_driest_period(qsim_arr))
+#
+#                     rel_cumm_errs.append(get_mv_mean_runoff_err_arr(
+#                         qobs_arr, qsim_arr, mw_runoff_ws))
+#
+#                     if sim_type == 'ensemble':
+#                         peak_cntmnt_cts.append(
+#                             get_peak_cntmnt_cts(
+#                                 qobs_arr,
+#                                 sims_min_df[qsim_lab].values,
+#                                 sims_max_df[qsim_lab].values,
+#                                 peaks_mask))
+#
+#                         value_cntmnt_cts.append(
+#                             get_peak_cntmnt_cts(
+#                                 qobs_arr,
+#                                 sims_min_df[qsim_lab].values,
+#                                 sims_max_df[qsim_lab].values,
+#                                 np.ones_like(peaks_mask)))
+#
+#                     if (sim_type == 'ensemble') and ('ed' in plot_types):
+#                         event_probs.append(get_obs_probs_in_ensemble(
+#                             qobs_arr[peaks_mask],
+#                             ensemble_peak_evts[ensemble_lc_labs[lc_idx]]))
+#
+#                     if (sim_type == 'ensemble') and ('vd' in plot_types):
+#                         value_probs.append(get_obs_probs_in_ensemble(
+#                             qobs_arr,
+#                             ensemble_values[ensemble_lc_labs[lc_idx]]))
+#
+#                 if 'qe' in plot_types:
+#                     for eff_ftn_lab in eff_ftns_dict:
+#                         out_quants_fig_name = (
+#                             f'quant_effs_cat_{cat}_{calib_valid_lab}_'
+#                             f'{opt_iter}_kf_{kf}_{eff_ftn_lab}.png')
+#
+#                         out_quants_fig_path = os.path.join(
+#                             out_dirs_dict['qe'], out_quants_fig_name)
+#
+#                         plot_quant_effs(
+#                             q_quant_effs_dicts,
+#                             qobs_quants_masks_dict,
+#                             eff_ftn_lab,
+#                             lc_idxs,
+#                             lc_labs,
+#                             cat,
+#                             out_quants_fig_path,
+#                             save_text_flag)
+#
+#                 if 'dt' in plot_types:
+#                     out_driest_fig_name = (
+#                         f'driest_timing_effs_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_driest_fig_path = os.path.join(
+#                         out_dirs_dict['dt'], out_driest_fig_name)
+#
+#                     plot_driest_timing_effs(
+#                         dry_timing_effs_dicts,
+#                         lc_idxs,
+#                         lc_labs,
+#                         cat,
+#                         out_driest_fig_path,
+#                         save_text_flag)
+#
+#                 if 'lc' in plot_types:
+#                     out_lorenz_name = (
+#                         f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_lorenz_path = os.path.join(
+#                         out_dirs_dict['lc'], out_lorenz_name)
+#
+#                     plot_lorenz_arr(
+#                         lorenz_x_vals,
+#                         lorenz_y_vals_list,
+#                         lc_idxs,
+#                         lc_labs,
+#                         cat,
+#                         out_lorenz_path)
+#
+#                 if 'pe' in plot_types:
+#                     out_peak_effs_name = (
+#                         f'peak_effs_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_peaks_path = os.path.join(
+#                         out_dirs_dict['pe'], out_peak_effs_name)
+#
+#                     plot_peak_effs(
+#                         peak_effs,
+#                         lc_idxs,
+#                         lc_labs,
+#                         cat,
+#                         out_peaks_path,
+#                         save_text_flag)
+#
+#                 if 'mp' in plot_types:
+#                     out_mean_peaks_name = (
+#                         f'mean_peaks_comp_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_mean_peaks_path = os.path.join(
+#                         out_dirs_dict['mp'], out_mean_peaks_name)
+#
+#                     plot_mean_peaks(
+#                         peaks_mask,
+#                         qobs_arr,
+#                         qsim_arrs,
+#                         lc_idxs,
+#                         lc_labs,
+#                         cat,
+#                         out_mean_peaks_path,
+#                         save_text_flag)
+#
+#                 if 'ps' in plot_types:
+#                     out_peaks_sq_diff_name = (
+#                         f'peaks_sq_diff_comp_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_peaks_sq_diff_path = os.path.join(
+#                         out_dirs_dict['ps'], out_peaks_sq_diff_name)
+#
+#                     plot_peaks_sq_err(
+#                         peaks_mask,
+#                         qobs_arr,
+#                         qsim_arrs,
+#                         lc_idxs,
+#                         lc_labs,
+#                         cat,
+#                         out_peaks_sq_diff_path,
+#                         save_text_flag)
+#
+#                 if 'dm' in plot_types:
+#                     out_driest_name = (
+#                         f'driest_month_comp_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_driest_path = os.path.join(
+#                         out_dirs_dict['dm'], out_driest_name)
+#
+#                     plot_driest_periods(
+#                         qobs_driest,
+#                         driest_periods,
+#                         lc_labs,
+#                         lc_idxs,
+#                         cat,
+#                         off_idx,
+#                         out_driest_path,
+#                         save_text_flag)
+#
+#                 if 're' in plot_types:
+#                     out_rel_runoff_err_name = (
+#                         f'rel_mv_err_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#                     out_rel_runoff_err_path = os.path.join(
+#                         out_dirs_dict['re'], out_rel_runoff_err_name)
+#
+#                     plot_mv_runoff_errs(
+#                         rel_cumm_errs,
+#                         lc_labs,
+#                         cat,
+#                         mw_runoff_ws,
+#                         out_rel_runoff_err_path)
+#
+#                 if (sim_type == 'lo_hi') and ('pk' in plot_types):
+#                     out_peak_evts_name = (
+#                         f'peak_evts_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_peak_evts_path = os.path.join(
+#                         out_dirs_dict['pk'], out_peak_evts_name)
+#
+#                     plot_peak_events_seperately(
+#                             cat,
+#                             lc_labs,
+#                             peaks_mask,
+#                             qobs_arr,
+#                             [qsims_df.loc[:, f'kf_{kf:02d}_sim_{lc_idx:04d}'].values
+#                                 for lc_idx in lc_idxs],
+#                             out_peak_evts_path)
+#
+#                 elif (sim_type == 'ensemble') and ('pk' in plot_types):
+#                     out_peak_evts_name = (
+#                         f'peak_evts_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_peak_evts_path = os.path.join(
+#                         out_dirs_dict['pk'], out_peak_evts_name)
+#
+#                     plot_ensemble_peak_events_seperately(
+#                         cat,
+#                         lc_labs,
+#                         peaks_mask,
+#                         qobs_arr,
+#                         qsims_df.values,
+#                         sims_min_df.values,
+#                         sims_max_df.values,
+#                         out_peak_evts_path)
+#
+#                 if (sim_type == 'ensemble') and ('en' in plot_types):
+#                     out_ensemble_cmp_name = (
+#                         f'ensemble_means_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}_idxs_%0.6d_%0.6d.png')
+#
+#                     out_ensemble_cmp_path = os.path.join(
+#                         out_dirs_dict['en'], out_ensemble_cmp_name)
+#
+#                     plot_ensemble_sims(
+#                         qobs_arr,
+#                         qsims_df.values,
+#                         sims_min_df.values,
+#                         sims_max_df.values,
+#                         cat,
+#                         lc_labs,
+#                         out_ensemble_cmp_path)
+#
+#                 if (sim_type == 'ensemble') and ('sq' in plot_types):
+#                     out_ensemble_sq_diffs_cmp_name = (
+#                         f'ensemble_mean_sq_diffs_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_ensemble_sq_diffs_cmp_path = os.path.join(
+#                         out_dirs_dict['sq'], out_ensemble_sq_diffs_cmp_name)
+#
+#                     plot_ensemble_mean_sim_sq_diffs(
+#                             qobs_arr,
+#                             sims_mean_sq_diff.values,
+#                             cat,
+#                             lc_labs,
+#                             out_ensemble_sq_diffs_cmp_path,
+#                             save_text_flag)
+#
+#                 if (sim_type == 'ensemble') and ('pc' in plot_types):
+#                     out_ensemble_pk_ct_name = (
+#                         f'ensemble_peak_cntmnt_cts_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_ensemble_pk_ct_path = os.path.join(
+#                         out_dirs_dict['pc'], out_ensemble_pk_ct_name)
+#
+#                     plot_peak_cntmnt_cts(
+#                             lc_labs,
+#                             cat,
+#                             peak_cntmnt_cts,
+#                             peaks_mask,
+#                             out_ensemble_pk_ct_path,
+#                             save_text_flag)
+#
+#                 if (sim_type == 'ensemble') and ('vc' in plot_types):
+#                     out_ensemble_vl_ct_name = (
+#                         f'ensemble_val_cntmnt_cts_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_ensemble_vl_ct_path = os.path.join(
+#                         out_dirs_dict['vc'], out_ensemble_vl_ct_name)
+#
+#                     plot_peak_cntmnt_cts(
+#                             lc_labs,
+#                             cat,
+#                             value_cntmnt_cts,
+#                             np.ones_like(peaks_mask),
+#                             out_ensemble_vl_ct_path,
+#                             save_text_flag)
+#
+#                 if (sim_type == 'ensemble') and ('ed' in plot_types):
+#                     ens_prob_ftn_cts = []
+#
+#                     for ens_key in ensemble_peak_evts:
+#                         ens_prob_ftn_cts.append(
+#                             ensemble_peak_evts[ens_key].shape[1])
+#
+#                     out_ensemble_ed_ct_name = (
+#                         f'ensemble_peak_evts_probs_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_ensemble_ed_ct_path = os.path.join(
+#                         out_dirs_dict['ed'], out_ensemble_ed_ct_name)
+#
+#                     plot_obs_probs_in_ensemble_hist(
+#                         lc_labs,
+#                         cat,
+#                         event_probs,
+#                         ens_prob_ftn_cts,
+#                         out_ensemble_ed_ct_path)
+#
+#                 if (sim_type == 'ensemble') and ('vd' in plot_types):
+#                     ens_prob_ftn_cts = []
+#
+#                     for ens_key in ensemble_values:
+#                         ens_prob_ftn_cts.append(
+#                             ensemble_values[ens_key].shape[1])
+#
+#                     out_ensemble_vd_ct_name = (
+#                         f'ensemble_value_probs_cat_{cat}_{calib_valid_lab}_'
+#                         f'{opt_iter}_kf_{kf}.png')
+#
+#                     out_ensemble_vd_ct_path = os.path.join(
+#                         out_dirs_dict['vd'], out_ensemble_vd_ct_name)
+#
+#                     plot_obs_probs_in_ensemble_hist(
+#                         lc_labs,
+#                         cat,
+#                         value_probs,
+#                         ens_prob_ftn_cts,
+#                         out_ensemble_vd_ct_path)
+
+    return
+
+
+def plot_calib_valid_wvcb(
+        qsim_files,
+        parse_patt,
+        cat,
+        qsims_dir,
+        kfolds,
+        ):
+
+    out_dir = os.path.join(qsims_dir, 'hi_lo_calib_valid_movt')
+
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
     for qsim_file in qsim_files:
         calib_valid_lab, opt_iter, freq = search(
             parse_patt, os.path.basename(qsim_file))
 
-        qsims_df_orig = pd.read_csv(qsim_file, sep=';').iloc[off_idx:, :]
-
-        qobs_quants_masks_dict = get_quant_masks_dict(
-            qsims_df_orig.iloc[:, 0], n_q_quants)
-
-        qobs_arr = qsims_df_orig.iloc[:, 0].values
-
-        peaks_mask = get_peaks_mask(qobs_arr)
-
-        n_vals = qobs_arr.shape[0]
-        lorenz_x_vals = np.linspace(1., n_vals + 1., n_vals) / (n_vals + 1.)
+        if calib_valid_lab == 'valid':
+            continue
 
         best_prm_file_name = (
             f'best_prms_idxs_cat_{cat}_{opt_iter}_freq_{freq}.csv')
@@ -150,520 +729,58 @@ def plot_cat_discharge_errors(plot_args):
 
         lo_hi_lc_labs = best_prm_idxs_df.columns.tolist()
 
-        eff_ftns_dict = {
-            'ns': get_ns_cy,
-            'ln_ns': get_ln_ns_cy,
-            'kge': get_kge_cy,
-            'pcorr': get_pcorr_cy,
-            }
+        labs = ['calib', 'valid']
 
-        qobs_driest = get_driest_period(qobs_arr)
-        qobs_dry_mask = get_driest_mask(qobs_arr)
+        for kf in range(1, kfolds + 1):
+            wvcbs_dfs = {
+                lab:pd.read_csv(
+                    os.path.join(qsims_dir, 'perf_cdfs',
+                    f'perfs_wvcbs_cat_{cat}_{lab}_kf_{kf:02d}_{opt_iter}.csv'),
+                    sep=text_sep,
+                    index_col=0)
+                for lab in labs}
 
-        for sim_type in sim_types:
-            out_dirs_dict = {
-                'dm': os.path.join(err_dirs_dict[sim_type], 'driest_month'),
-                'dt': os.path.join(err_dirs_dict[sim_type], 'driest_timing'),
-                'lc': os.path.join(err_dirs_dict[sim_type], 'lorenz_curves'),
-                'mp': os.path.join(err_dirs_dict[sim_type], 'mean_peaks'),
-                'pe': os.path.join(err_dirs_dict[sim_type], 'peaks_eff'),
-                'ps': os.path.join(err_dirs_dict[sim_type], 'peaks_sq_diff'),
-                'qe': os.path.join(err_dirs_dict[sim_type], 'quant_effs'),
-                're': os.path.join(
-                    err_dirs_dict[sim_type], 'rel_mw_runoff_errs'),
-                'pk': os.path.join(err_dirs_dict[sim_type], 'peak_events'),
-                }
+            wvcb_vals_df = pd.DataFrame(
+                index=lo_hi_lc_labs,
+                columns=labs,
+                dtype=float)
 
-            if sim_type == 'ensemble':
-                out_dirs_dict['en'] = os.path.join(
-                    err_dirs_dict[sim_type], 'mean_sims')
+            for lab in labs:
+                wvcb_vals = wvcbs_dfs[lab].loc[
+                    best_prm_idxs_df.loc[f'kf_{kf:02d}_idxs'], 'wvcb']
 
-                out_dirs_dict['sq'] = os.path.join(
-                    err_dirs_dict[sim_type], 'sq_diffs_cmp')
+                wvcb_vals_df.loc[:, lab] = wvcb_vals.values
 
-                out_dirs_dict['pc'] = os.path.join(
-                    err_dirs_dict[sim_type], 'peak_cntmnt')
+            out_txt_name = (
+                f'calib_valid_wvcbs_cat_{cat}_{lab}_kf_{kf:02d}_{opt_iter}.csv')
 
-                out_dirs_dict['vc'] = os.path.join(
-                    err_dirs_dict[sim_type], 'value_cntmnt')
+            wvcb_vals_df.to_csv(
+                os.path.join(out_dir, out_txt_name), sep=text_sep)
 
-                out_dirs_dict['ed'] = os.path.join(
-                    err_dirs_dict[sim_type], 'events_prob_dist')
+            plt.figure(figsize=(13, 13))
 
-                out_dirs_dict['vd'] = os.path.join(
-                    err_dirs_dict[sim_type], 'values_prob_dist')
+            for i, idx in enumerate(wvcb_vals_df.index):
+                plt.scatter(
+                    wvcb_vals_df.loc[idx, labs[0]],
+                    wvcb_vals_df.loc[idx, labs[1]],
+                    label=idx,
+                    c=LC_CLRS[i],
+                    alpha=0.9)
 
-            do_not_cmpt = True
-            for dir_key in out_dirs_dict:
-                if dir_key not in plot_types:
-                    continue
+            plt.grid()
+            plt.legend()
 
-                mkdir_hm(out_dirs_dict[dir_key])
+            plt.xlabel(labs[0])
+            plt.ylabel(labs[1])
 
-                do_not_cmpt = False
+            plt.title(f'wvcb calib/valid movement for cat {cat}')
 
-            if do_not_cmpt:
-#                 print('Nothing to compute!')
-                continue
+            out_fig_name = out_txt_name.rsplit('.', 1)[0] + '.png'
 
-            for kf in range(1, kfolds + 1):
+            plt.savefig(
+                os.path.join(out_dir, out_fig_name), bbox_inches='tight')
 
-                if sim_type == 'lo_hi':
-                    lc_idxs = list(map(
-                        int,
-                        best_prm_idxs_df.loc[f'kf_{kf:02d}_idxs', :].values))
-
-                    lc_labs = lo_hi_lc_labs
-
-                    qsims_df = qsims_df_orig
-
-                elif sim_type == 'ensemble':
-                    lc_idxs = ensemble_lc_idxs
-                    lc_labs = ensemble_lc_labs
-
-                    perf_wvcb_df_name = (
-                        f'perfs_wvcbs_cat_{cat}_{calib_valid_lab}_kf_'
-                        f'{kf:02d}_{opt_iter}.csv')
-
-                    perf_wvcb_df_path = os.path.join(
-                        qsims_dir,
-                        'perf_cdfs',
-                        perf_wvcb_df_name)
-
-                    perfs_wvcbs_df = pd.read_csv(
-                        perf_wvcb_df_path,
-                        sep=text_sep,
-                        index_col=0)
-
-                    ensemble_avg_sims_df = pd.DataFrame(
-                        index=np.arange(0, qsims_df_orig.shape[0]),
-                        columns=ensemble_lc_labs,
-                        dtype=float)
-
-                    sims_min_df = ensemble_avg_sims_df.copy()
-                    sims_max_df = ensemble_avg_sims_df.copy()
-
-                    sims_mean_sq_diff = ensemble_avg_sims_df.copy()
-
-                    if 'ed' in plot_types:
-                        ensemble_peak_evts = {}
-
-                    if 'vd' in plot_types:
-                        ensemble_values = {}
-
-                    for ens_i, ensemble_lc_lab in enumerate(ensemble_lc_labs):
-                        ge = (
-                            perfs_wvcbs_df['wvcb'] >=
-                            ensemble_div_vals[ens_i])
-
-                        lt = (
-                            perfs_wvcbs_df['wvcb'] <
-                            ensemble_div_vals[ens_i + 1])
-
-                        ens_wvcbs_idxs = perfs_wvcbs_df['wvcb'].loc[
-                            (ge & lt)].index
-
-                        ens_sim_labs = [
-                            f'kf_{kf:02d}_sim_{sim_idx:04d}'
-                            for sim_idx in ens_wvcbs_idxs]
-
-                        ens_sims_df = qsims_df_orig[ens_sim_labs]
-
-                        if 'ed' in plot_types:
-                            ensemble_peak_evts[ensemble_lc_lab] = (
-                                ens_sims_df.values[peaks_mask, :].copy(
-                                    order='c'))
-
-                        if 'vd' in plot_types:
-                            ensemble_values[ensemble_lc_lab] = (
-                                ens_sims_df.values)
-
-                        obs_ser = qsims_df_orig['obs'].copy()
-                        obs_ser.name = None
-
-                        ens_sims_sq_diffs_df = (
-                            ens_sims_df.subtract(obs_ser, axis=0)) ** 2
-
-                        ens_avg_sim_ser = ens_sims_df.mean(axis=1)
-                        ens_min_sim_ser = ens_sims_df.min(axis=1)
-                        ens_max_sim_ser = ens_sims_df.max(axis=1)
-
-                        ensemble_avg_sims_df[ensemble_lc_lab][:] = (
-                            ens_avg_sim_ser.values)
-
-                        sims_min_df[ensemble_lc_lab][:] = (
-                            ens_min_sim_ser.values)
-
-                        sims_max_df[ensemble_lc_lab][:] = (
-                            ens_max_sim_ser.values)
-
-                        sims_mean_sq_diff[ensemble_lc_lab][:] = (
-                            ens_sims_sq_diffs_df.mean(axis=1).values)
-
-                    assert not np.isnan(ensemble_avg_sims_df.values).sum()
-                    qsims_df = ensemble_avg_sims_df
-
-                else:
-                    raise NotImplementedError
-
-                q_quant_effs_dicts = []
-                dry_timing_effs_dicts = []
-                lorenz_y_vals_list = []
-                peak_effs = []
-                qsim_arrs = []
-                driest_periods = []
-                rel_cumm_errs = []
-
-                if sim_type == 'ensemble':
-                    peak_cntmnt_cts = []
-                    event_probs = []
-                    value_cntmnt_cts = []
-                    value_probs = []
-
-                for lc_idx in lc_idxs:
-                    if sim_type == 'lo_hi':
-                        qsim_lab = f'kf_{kf:02d}_sim_{lc_idx:04d}'
-
-                    elif sim_type == 'ensemble':
-                        qsim_lab = lc_labs[lc_idx]
-
-                    else:
-                        raise NotImplementedError
-
-                    qsim_arr = qsims_df.loc[:, qsim_lab].values
-
-                    q_quant_effs_dict = get_q_quant_effs_dict(
-                        qobs_arr,
-                        qsim_arr,
-                        qobs_quants_masks_dict,
-                        eff_ftns_dict)
-
-                    q_quant_effs_dicts.append(q_quant_effs_dict)
-
-                    qsim_dry_mask = get_driest_mask(qsim_arr)
-
-                    dry_timing_dict = get_timing_effs_dict(
-                        qobs_dry_mask, qsim_dry_mask, eff_ftns_dict)
-
-                    dry_timing_effs_dicts.append(dry_timing_dict)
-
-                    lorenz_y_vals = get_lorenz_arr(qobs_arr, qsim_arr)
-                    lorenz_y_vals_list.append(lorenz_y_vals)
-
-                    peak_effs_dict = get_peaks_effs_dict(
-                        qobs_arr, qsim_arr, peaks_mask, eff_ftns_dict)
-
-                    peak_effs.append(peak_effs_dict)
-
-                    qsim_arrs.append(qsim_arr)
-
-                    driest_periods.append(get_driest_period(qsim_arr))
-
-                    rel_cumm_errs.append(get_mv_mean_runoff_err_arr(
-                        qobs_arr, qsim_arr, mw_runoff_ws))
-
-                    if sim_type == 'ensemble':
-                        peak_cntmnt_cts.append(
-                            get_peak_cntmnt_cts(
-                                qobs_arr,
-                                sims_min_df[qsim_lab].values,
-                                sims_max_df[qsim_lab].values,
-                                peaks_mask))
-
-                        value_cntmnt_cts.append(
-                            get_peak_cntmnt_cts(
-                                qobs_arr,
-                                sims_min_df[qsim_lab].values,
-                                sims_max_df[qsim_lab].values,
-                                np.ones_like(peaks_mask)))
-
-                    if (sim_type == 'ensemble') and ('ed' in plot_types):
-                        event_probs.append(get_obs_probs_in_ensemble(
-                            qobs_arr[peaks_mask],
-                            ensemble_peak_evts[ensemble_lc_labs[lc_idx]]))
-
-                    if (sim_type == 'ensemble') and ('vd' in plot_types):
-                        value_probs.append(get_obs_probs_in_ensemble(
-                            qobs_arr,
-                            ensemble_values[ensemble_lc_labs[lc_idx]]))
-
-                if 'qe' in plot_types:
-                    for eff_ftn_lab in eff_ftns_dict:
-                        out_quants_fig_name = (
-                            f'quant_effs_cat_{cat}_{calib_valid_lab}_'
-                            f'{opt_iter}_kf_{kf}_{eff_ftn_lab}.png')
-
-                        out_quants_fig_path = os.path.join(
-                            out_dirs_dict['qe'], out_quants_fig_name)
-
-                        plot_quant_effs(
-                            q_quant_effs_dicts,
-                            qobs_quants_masks_dict,
-                            eff_ftn_lab,
-                            lc_idxs,
-                            lc_labs,
-                            cat,
-                            out_quants_fig_path,
-                            save_text_flag)
-
-                if 'dt' in plot_types:
-                    out_driest_fig_name = (
-                        f'driest_timing_effs_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_driest_fig_path = os.path.join(
-                        out_dirs_dict['dt'], out_driest_fig_name)
-
-                    plot_driest_timing_effs(
-                        dry_timing_effs_dicts,
-                        lc_idxs,
-                        lc_labs,
-                        cat,
-                        out_driest_fig_path,
-                        save_text_flag)
-
-                if 'lc' in plot_types:
-                    out_lorenz_name = (
-                        f'lorenz_curves_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_lorenz_path = os.path.join(
-                        out_dirs_dict['lc'], out_lorenz_name)
-
-                    plot_lorenz_arr(
-                        lorenz_x_vals,
-                        lorenz_y_vals_list,
-                        lc_idxs,
-                        lc_labs,
-                        cat,
-                        out_lorenz_path)
-
-                if 'pe' in plot_types:
-                    out_peak_effs_name = (
-                        f'peak_effs_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_peaks_path = os.path.join(
-                        out_dirs_dict['pe'], out_peak_effs_name)
-
-                    plot_peak_effs(
-                        peak_effs,
-                        lc_idxs,
-                        lc_labs,
-                        cat,
-                        out_peaks_path,
-                        save_text_flag)
-
-                if 'mp' in plot_types:
-                    out_mean_peaks_name = (
-                        f'mean_peaks_comp_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_mean_peaks_path = os.path.join(
-                        out_dirs_dict['mp'], out_mean_peaks_name)
-
-                    plot_mean_peaks(
-                        peaks_mask,
-                        qobs_arr,
-                        qsim_arrs,
-                        lc_idxs,
-                        lc_labs,
-                        cat,
-                        out_mean_peaks_path,
-                        save_text_flag)
-
-                if 'ps' in plot_types:
-                    out_peaks_sq_diff_name = (
-                        f'peaks_sq_diff_comp_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_peaks_sq_diff_path = os.path.join(
-                        out_dirs_dict['ps'], out_peaks_sq_diff_name)
-
-                    plot_peaks_sq_err(
-                        peaks_mask,
-                        qobs_arr,
-                        qsim_arrs,
-                        lc_idxs,
-                        lc_labs,
-                        cat,
-                        out_peaks_sq_diff_path,
-                        save_text_flag)
-
-                if 'dm' in plot_types:
-                    out_driest_name = (
-                        f'driest_month_comp_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_driest_path = os.path.join(
-                        out_dirs_dict['dm'], out_driest_name)
-
-                    plot_driest_periods(
-                        qobs_driest,
-                        driest_periods,
-                        lc_labs,
-                        lc_idxs,
-                        cat,
-                        off_idx,
-                        out_driest_path,
-                        save_text_flag)
-
-                if 're' in plot_types:
-                    out_rel_runoff_err_name = (
-                        f'rel_mv_err_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-                    out_rel_runoff_err_path = os.path.join(
-                        out_dirs_dict['re'], out_rel_runoff_err_name)
-
-                    plot_mv_runoff_errs(
-                        rel_cumm_errs,
-                        lc_labs,
-                        cat,
-                        mw_runoff_ws,
-                        out_rel_runoff_err_path)
-
-                if (sim_type == 'lo_hi') and ('pk' in plot_types):
-                    out_peak_evts_name = (
-                        f'peak_evts_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_peak_evts_path = os.path.join(
-                        out_dirs_dict['pk'], out_peak_evts_name)
-
-                    plot_peak_events_seperately(
-                            cat,
-                            lc_labs,
-                            peaks_mask,
-                            qobs_arr,
-                            [qsims_df.loc[:, f'kf_{kf:02d}_sim_{lc_idx:04d}'].values
-                                for lc_idx in lc_idxs],
-                            out_peak_evts_path)
-
-                elif (sim_type == 'ensemble') and ('pk' in plot_types):
-                    out_peak_evts_name = (
-                        f'peak_evts_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_peak_evts_path = os.path.join(
-                        out_dirs_dict['pk'], out_peak_evts_name)
-
-                    plot_ensemble_peak_events_seperately(
-                        cat,
-                        lc_labs,
-                        peaks_mask,
-                        qobs_arr,
-                        qsims_df.values,
-                        sims_min_df.values,
-                        sims_max_df.values,
-                        out_peak_evts_path)
-
-                if (sim_type == 'ensemble') and ('en' in plot_types):
-                    out_ensemble_cmp_name = (
-                        f'ensemble_means_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}_idxs_%0.6d_%0.6d.png')
-
-                    out_ensemble_cmp_path = os.path.join(
-                        out_dirs_dict['en'], out_ensemble_cmp_name)
-
-                    plot_ensemble_sims(
-                        qobs_arr,
-                        qsims_df.values,
-                        sims_min_df.values,
-                        sims_max_df.values,
-                        cat,
-                        lc_labs,
-                        out_ensemble_cmp_path)
-
-                if (sim_type == 'ensemble') and ('sq' in plot_types):
-                    out_ensemble_sq_diffs_cmp_name = (
-                        f'ensemble_mean_sq_diffs_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_ensemble_sq_diffs_cmp_path = os.path.join(
-                        out_dirs_dict['sq'], out_ensemble_sq_diffs_cmp_name)
-
-                    plot_ensemble_mean_sim_sq_diffs(
-                            qobs_arr,
-                            sims_mean_sq_diff.values,
-                            cat,
-                            lc_labs,
-                            out_ensemble_sq_diffs_cmp_path,
-                            save_text_flag)
-
-                if (sim_type == 'ensemble') and ('pc' in plot_types):
-                    out_ensemble_pk_ct_name = (
-                        f'ensemble_peak_cntmnt_cts_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_ensemble_pk_ct_path = os.path.join(
-                        out_dirs_dict['pc'], out_ensemble_pk_ct_name)
-
-                    plot_peak_cntmnt_cts(
-                            lc_labs,
-                            cat,
-                            peak_cntmnt_cts,
-                            peaks_mask,
-                            out_ensemble_pk_ct_path,
-                            save_text_flag)
-
-                if (sim_type == 'ensemble') and ('vc' in plot_types):
-                    out_ensemble_vl_ct_name = (
-                        f'ensemble_val_cntmnt_cts_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_ensemble_vl_ct_path = os.path.join(
-                        out_dirs_dict['vc'], out_ensemble_vl_ct_name)
-
-                    plot_peak_cntmnt_cts(
-                            lc_labs,
-                            cat,
-                            value_cntmnt_cts,
-                            np.ones_like(peaks_mask),
-                            out_ensemble_vl_ct_path,
-                            save_text_flag)
-
-                if (sim_type == 'ensemble') and ('ed' in plot_types):
-                    ens_prob_ftn_cts = []
-
-                    for ens_key in ensemble_peak_evts:
-                        ens_prob_ftn_cts.append(
-                            ensemble_peak_evts[ens_key].shape[1])
-
-                    out_ensemble_ed_ct_name = (
-                        f'ensemble_peak_evts_probs_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_ensemble_ed_ct_path = os.path.join(
-                        out_dirs_dict['ed'], out_ensemble_ed_ct_name)
-
-                    plot_obs_probs_in_ensemble_hist(
-                        lc_labs,
-                        cat,
-                        event_probs,
-                        ens_prob_ftn_cts,
-                        out_ensemble_ed_ct_path)
-
-                if (sim_type == 'ensemble') and ('vd' in plot_types):
-                    ens_prob_ftn_cts = []
-
-                    for ens_key in ensemble_values:
-                        ens_prob_ftn_cts.append(
-                            ensemble_values[ens_key].shape[1])
-
-                    out_ensemble_vd_ct_name = (
-                        f'ensemble_value_probs_cat_{cat}_{calib_valid_lab}_'
-                        f'{opt_iter}_kf_{kf}.png')
-
-                    out_ensemble_vd_ct_path = os.path.join(
-                        out_dirs_dict['vd'], out_ensemble_vd_ct_name)
-
-                    plot_obs_probs_in_ensemble_hist(
-                        lc_labs,
-                        cat,
-                        value_probs,
-                        ens_prob_ftn_cts,
-                        out_ensemble_vd_ct_path)
-
+            plt.close()
     return
 
 
