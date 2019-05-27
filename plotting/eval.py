@@ -30,7 +30,7 @@ def plot_cat_qsims(cat_db):
 
     with h5py.File(cat_db, 'r') as db:
         # opt_iters = list(range(db['calib/kf_01/iter_prm_vecs'].shape[0]))
-        opt_iters = [4]
+        opt_iters = []
         long_short_break_freqs = ['A']
 
         cv_flag = db['data'].attrs['cv_flag']
@@ -262,16 +262,24 @@ class PlotCatQSims:
         for i in range(self.n_prm_vecs):
             fin_cumm_rho_arr = self.fin_cumm_rho_arrs[i]
 
-            if self.sim_lab == 'calib':
-                wvcb_val = (
-                    corr_diffs[i] - min_corr_diff) / min_max_corr_diff
+            wvcb_val = (
+                corr_diffs[i] - min_corr_diff) / min_max_corr_diff
 
-                self.wvcb_vals.append(wvcb_val)
+            # using independant wvcb for calib/valid
+            self.wvcb_vals.append(wvcb_val)
 
-                self.sim_perfs_df.loc[i, 'wvcb'] = wvcb_val
+            self.sim_perfs_df.loc[i, 'wvcb'] = wvcb_val
 
-            else:
-                wvcb_val = self.wvcb_vals[i]
+#             if self.sim_lab == 'calib':
+#                 wvcb_val = (
+#                     corr_diffs[i] - min_corr_diff) / min_max_corr_diff
+#
+#                 self.wvcb_vals.append(wvcb_val)
+#
+#                 self.sim_perfs_df.loc[i, 'wvcb'] = wvcb_val
+#
+#             else:
+#                 wvcb_val = self.wvcb_vals[i]
 
             assert 0 <= wvcb_val <= 1, (i, wvcb_val)
 
@@ -1012,13 +1020,16 @@ class PlotCatQSims:
                 columns=list(obj_ftns_dict.keys()) + ['wvcb', 'obj'],
                 dtype=np.float64)
 
-            if self.sim_lab == 'calib':
-                self.wvcb_vals = []
+            # using independant wvcb for calib and valid
+            self.wvcb_vals = []
 
-            else:
-                self.wvcb_vals = clr_vals_list[k - 1]
-
-                self.sim_perfs_df['wvcb'][:] = self.wvcb_vals
+#             if self.sim_lab == 'calib':
+#                 self.wvcb_vals = []
+#
+#             else:
+#                 self.wvcb_vals = clr_vals_list[k - 1]
+#
+#                 self.sim_perfs_df['wvcb'][:] = self.wvcb_vals
 
             all_hbv_prms = []
             for i in range(self.n_prm_vecs):
