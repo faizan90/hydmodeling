@@ -130,6 +130,9 @@ def plot_cats_best_prms_2d(dbs_dir):
                 aux_vars_dict[cat]['aspect_slope_scale'] = (
                     aspect_slope_scale_arr)
 
+    shape[0] = max(max_row, shape[0]) + 1
+    shape[1] = max(max_col, shape[1]) + 1
+
     plot_min_max_lims = (min_row - 1, max_row + 1, min_col - 1, max_col + 1)
 
     aux_prms_labs = list(aux_vars_dict[cat].keys())

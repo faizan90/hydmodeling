@@ -2940,5 +2940,5 @@ def plot_cats_ann_cycs_fdcs_comp(hgs_db_path, off_idx, out_dir):
                     off_idx,
                     out_dir)
 
-    plt.close()
+    plt.close('all')
     return
