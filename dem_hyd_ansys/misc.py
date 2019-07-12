@@ -42,7 +42,7 @@ def get_ras_as_array_GDAL(in_ras, in_band_no=1):
         in_band = in_ds.GetRasterBand(in_band_no)
         rows = in_ds.RasterYSize
         cols = in_ds.RasterXSize
-        ras_arr = np.array(in_band.ReadAsArray(0, 0, cols, rows))
+        ras_arr = np.asarray(in_band.ReadAsArray(0, 0, cols, rows))
         in_ds = None
         return ras_arr
 

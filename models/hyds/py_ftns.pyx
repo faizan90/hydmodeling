@@ -263,7 +263,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
         qsim_arr = np.full(
             cats_outflow_arr.shape[0], np.nan, dtype=DT_D_NP)
 
-    return {'outs_arr': np.array(outs_arr[:, 1:, :]),
+    return {'outs_arr': np.asarray(outs_arr[:, 1:, :]),
             'qsim_arr': np.asarray(qsim_arr),
             'inflow_arr': np.asarray(inflow_arr)}
 

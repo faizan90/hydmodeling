@@ -361,7 +361,7 @@ class PlotCatHBVSimKf:
         out_fig_loc = os.path.join(
             wat_bals_dir, f'kf_{self.kf_str}_HBV_water_bal_{self.cat}.png')
 
-        wat_bal_text = np.array([
+        wat_bal_text = np.asarray([
             ('Max. actual Q = %0.4f' %
              self.q_act_arr[self.off_idx:].max()).rstrip('0'),
             ('Max. sim. Q = %0.4f' %
@@ -445,8 +445,8 @@ class PlotCatHBVSimKf:
             q_act_sum_arr.append(curr_q_act_sum)
             q_sim_sum_arr.append(curr_comb_sum)
 
-        act_bal_w_et_arr = np.array(act_bal_w_et_arr)
-        act_bal_wo_et_arr = np.array(act_bal_wo_et_arr)
+        act_bal_w_et_arr = np.asarray(act_bal_w_et_arr)
+        act_bal_wo_et_arr = np.asarray(act_bal_wo_et_arr)
 
         act_bal_w_et_arr[act_bal_w_et_arr < min_vol_ratio_err] = (
             min_vol_ratio_err)
@@ -672,7 +672,7 @@ class PlotCatHBVSimKf:
 
     def full_sim(self):
 
-        full_sim_text = np.array([
+        full_sim_text = np.asarray([
             ('Max. actual Q = %0.4f' %
              self.q_act_arr[self.off_idx:].max()).rstrip('0'),
             ('Max. sim. Q = %0.4f' %
@@ -765,7 +765,7 @@ class PlotCatHBVSimKf:
 
             prec_sum_arr.append(curr_prec_sum)
 
-        act_bal_arr = np.array(act_bal_arr)
+        act_bal_arr = np.asarray(act_bal_arr)
 
         act_bal_arr[act_bal_arr < min_vol_err_w_et] = min_vol_err_w_et
         act_bal_arr[act_bal_arr > max_vol_err_w_et] = max_vol_err_w_et

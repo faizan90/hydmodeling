@@ -201,7 +201,7 @@ def solve_cats_sys(
 
         date_range = cdate_range.append(vdate_range)
 
-        uni_sel_idxs_arr = np.array([
+        uni_sel_idxs_arr = np.asarray([
             0,
             cdate_range.shape[0],
             cdate_range.shape[0] + vdate_range.shape[0],
@@ -849,14 +849,14 @@ def solve_cat(
                 aux_var_infos.append([0, 0])
 
             if len(aux_vars) < 1:
-                aux_vars = np.array(aux_vars, dtype=np.float64)
+                aux_vars = np.asarray(aux_vars, dtype=np.float64)
 
             else:
                 aux_vars = np.concatenate(aux_vars)
                 aux_vars = aux_vars.astype(np.float64, order='c')
 
             aux_var_infos = np.atleast_2d(
-                np.array(aux_var_infos, dtype=np.int32))
+                np.asarray(aux_var_infos, dtype=np.int32))
 
             assert aux_var_infos.shape[0] == 5
             assert aux_var_infos.shape[1] == 2
@@ -957,7 +957,7 @@ def solve_cat(
 
             assert len(use_prms_labs) == n_hm_params
 
-            prms_span_idxs = np.array(prms_span_idxs, dtype=np.int32)
+            prms_span_idxs = np.asarray(prms_span_idxs, dtype=np.int32)
 
             if n_stms > 0:
                 if route_type == 0:
@@ -980,7 +980,7 @@ def solve_cat(
                 else:
                     raise NotImplementedError('Incorrect route_type!')
 
-            bounds_arr = np.array(bounds_list)
+            bounds_arr = np.asarray(bounds_list)
             assert bounds_arr.ndim == 2
             assert prms_span_idxs.ndim == 2
 
@@ -1062,10 +1062,10 @@ def solve_cat(
         curr_cat_params.append([ini_arr, tem_arr, ppt_arr, pet_arr, q_arr])
 
         if n_stms:
-            stms_idxs = np.array(curr_us_stms_idxs, dtype=np.int32)
+            stms_idxs = np.asarray(curr_us_stms_idxs, dtype=np.int32)
 
         else:
-            stms_idxs = np.array([0], dtype=np.int32)
+            stms_idxs = np.asarray([0], dtype=np.int32)
 
         conv_ratio = in_cats_prcssed_df.loc[cat, 'area'] / 1000
 
@@ -1437,7 +1437,7 @@ def get_k_aux_dict(aux_dict, area_dict, cats, lf):
 
     if lf:
         out_dict = {
-            cat: np.array([
+            cat: np.asarray([
                 ((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
 
             for cat in cats}
@@ -1512,7 +1512,7 @@ def get_k_aux_vars_dict(
 
     if run_as_lump_flag:
         out_dict['area_ratios'] = {
-            cat: np.array([area_dict[cat].sum()]) for cat in cats}
+            cat: np.asarray([area_dict[cat].sum()]) for cat in cats}
 
     return out_dict
 
@@ -1575,7 +1575,7 @@ def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
             tags.append(i)
 
     tags.append(n_vals)
-    tags = np.array(tags, dtype=np.uint64)
+    tags = np.asarray(tags, dtype=np.uint64)
 
     assert np.all(tags[1:] - tags[:-1] > 0)
 

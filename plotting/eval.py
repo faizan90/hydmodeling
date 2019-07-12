@@ -99,7 +99,7 @@ class PlotCatQSims:
         bds_db = db['data/bds_dict']
         bds_dict = {key: bds_db[key][...] for key in bds_db}
 
-        self.hbv_min_max_bds = np.array(
+        self.hbv_min_max_bds = np.asarray(
             [bds_dict[prm_sym + '_bds'] for prm_sym in self.prms_syms])
 
         self.use_obs_flow_flag = db['data'].attrs['use_obs_flow_flag']
@@ -553,9 +553,9 @@ class PlotCatQSims:
             **{'obj': [None, 'Obj. val.', self.sim_perfs_df['obj'].values]},
             **{'wvcb': [None, 'wvcb', self.sim_perfs_df['wvcb'].values]}}
 
-        wvcb_vals_arr = np.array(self.wvcb_vals)
+        wvcb_vals_arr = np.asarray(self.wvcb_vals)
         for obj_key in obj_ftns_dict:
-            obj_vals = np.array(obj_ftns_dict[obj_key][2])
+            obj_vals = np.asarray(obj_ftns_dict[obj_key][2])
 
             # pre_obj_vals
             __, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
@@ -1110,8 +1110,8 @@ class PlotCatQSims:
                 fin_cumm_rho_arr = cumm_rho_arr * ft_corr
                 self.fin_cumm_rho_arrs.append(fin_cumm_rho_arr)
 
-            self.fin_cumm_rho_arrs = np.array(self.fin_cumm_rho_arrs)
-            all_hbv_prms = np.array(all_hbv_prms)
+            self.fin_cumm_rho_arrs = np.asarray(self.fin_cumm_rho_arrs)
+            all_hbv_prms = np.asarray(all_hbv_prms)
 
             if plot_qsims_flag:
                 plt.plot(qact_arr, color='r', alpha=0.7, lw=0.5)

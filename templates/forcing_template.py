@@ -180,7 +180,7 @@ def main():
         k_d_flags = [int(_) for _ in ref_cfp['PRM_FLAGS']['k_d'].split(ref_sep)]
         k_ll_flags = [int(_) for _ in ref_cfp['PRM_FLAGS']['k_ll'].split(ref_sep)]
 
-        all_prms_flags = np.array([
+        all_prms_flags = np.asarray([
             tt_flags,
             cm_flags,
             pcm_flags,

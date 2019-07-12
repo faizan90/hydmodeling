@@ -740,7 +740,7 @@ def get_k_aux_dict(aux_dict, area_dict, cats, lf):
 
     if lf:
         out_dict = {
-            cat: np.array([
+            cat: np.asarray([
                 ((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
 
             for cat in cats}
@@ -815,7 +815,7 @@ def get_k_aux_vars_dict(
 
     if run_as_lump_flag:
         out_dict['area_ratios'] = {
-            cat: np.array([area_dict[cat].sum()]) for cat in cats}
+            cat: np.asarray([area_dict[cat].sum()]) for cat in cats}
 
     return out_dict
 
@@ -878,7 +878,7 @@ def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
             tags.append(i)
 
     tags.append(n_vals)
-    tags = np.array(tags, dtype=np.uint64)
+    tags = np.asarray(tags, dtype=np.uint64)
 
     assert np.all(tags[1:] - tags[:-1] > 0)
 

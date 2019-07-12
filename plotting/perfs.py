@@ -2829,8 +2829,7 @@ def plot_cats_ann_cycs_fdcs_comp_kf(
         print('Annual cycle comparision available only for daily series!')
         return
 
-    qact_ann_cyc_df = get_daily_annual_cycles(
-        kf_qact_df.iloc[off_idx:])
+    qact_ann_cyc_df = get_daily_annual_cycles(kf_qact_df)
 
     kf_qsim_df = db[db_lab][kf_str]['out_cats_flow_df'].iloc[off_idx:]
     qsim_ann_cyc_df = get_daily_annual_cycles(kf_qsim_df)

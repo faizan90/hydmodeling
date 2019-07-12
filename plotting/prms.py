@@ -394,7 +394,7 @@ def plot_cat_best_prms_1d(cat_db):
     plt.figure(figsize=(max(20, best_prms_list[0].shape[0]), 12))
 
     tick_font_size = 10
-    best_params_arr = np.array(best_prms_list)
+    best_params_arr = np.asarray(best_prms_list)
     norm_pop = best_params_arr.copy()
 
     stats_cols = ['min', 'max', 'mean', 'stdev', 'min_bd', 'max_bd']

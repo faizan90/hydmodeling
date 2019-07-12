@@ -76,8 +76,9 @@ if __name__ == '__main__':
                                       ((buff_day - buff_days[0]) /
                                        (buff_days[-1] - buff_days[0])))))
 
-        tri_weights_arr = np.array(tri_weights_list +
-                                   tri_weights_list[:-1][::-1])
+        tri_weights_arr = np.asarray(
+            tri_weights_list + tri_weights_list[:-1][::-1])
+
         print('Triangular weights:', tri_weights_arr, '\n')
 
         wts_sum = np.sum(tri_weights_arr)

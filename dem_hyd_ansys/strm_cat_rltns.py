@@ -191,14 +191,14 @@ def plot_strm_rltn(
             _ = _poly.GetGeometryRef(
                 max_pts_idx).GetGeometryRef(0).GetPoints()
 
-        cats_poly_pts.append(np.array(_))
+        cats_poly_pts.append(np.asarray(_))
         centroids_list.append([_cent.GetX(), _cent.GetY()])
 
     for _cat_pt in sel_q_stn_locs_list:
         q_stns_pts.append([_cat_pt.GetX(), _cat_pt.GetY()])
 
     for _line in sel_stm_lines_list:
-        stm_lines_pts.append(np.array(_line.GetPoints()))
+        stm_lines_pts.append(np.asarray(_line.GetPoints()))
 
     assert len(cats_poly_pts) == len(q_stns_pts), 'Missed some polygons!'
 
