@@ -49,7 +49,7 @@ def solve_cats_sys(
         in_cats_prcssed_df,
         in_stms_prcssed_df,
         in_dem_net_df,
-        in_use_step_ser,
+        in_use_step_df,
         in_q_df,
         in_ppt_dfs_dict,
         in_tem_dfs_dict,
@@ -84,8 +84,8 @@ def solve_cats_sys(
     assert isinstance(in_stms_prcssed_df, pd.DataFrame)
     assert isinstance(in_dem_net_df, pd.DataFrame)
 
-    assert isinstance(in_use_step_ser, pd.Series)
-    assert np.issubdtype(in_use_step_ser.values.dtype, np.int32)
+    assert isinstance(in_use_step_df, pd.DataFrame)
+    assert np.issubdtype(in_use_step_df.values.dtype, np.int32)
 
     assert isinstance(in_q_df, pd.DataFrame)
 
@@ -336,25 +336,16 @@ def solve_cats_sys(
     dumm_dict = None
     kfold_prms_dict = {}
 
-    k_in_use_step_ser = in_use_step_ser.loc[date_range]
+    k_in_use_step_df = in_use_step_df.loc[date_range]
 
     assert np.all(
-        (k_in_use_step_ser.values >= 0) & (k_in_use_step_ser.values <= 1))
+        (k_in_use_step_df.values >= 0) & (k_in_use_step_df.values <= 1))
 
-    assert np.any(k_in_use_step_ser.values > 0)
-
-    if in_use_step_ser.values.sum() == in_use_step_ser.shape[0]:
-        use_step_flag = False
-
-    else:
-        use_step_flag = True
-
-    print('INFO: use_step_flag:', use_step_flag)
+    assert np.any(k_in_use_step_df.values > 0)
 
     kwargs = {
         'use_obs_flow_flag': use_obs_flow_flag,
         'run_as_lump_flag': run_as_lump_flag,
-        'use_step_flag': use_step_flag,
         'min_q_thresh': min_q_thresh,
         'time_freq': time_freq,
         'cv_flag': cv_flag,
@@ -402,7 +393,7 @@ def solve_cats_sys(
         calib_run = True
 
         prms_dict = solve_cat(
-            k_in_use_step_ser.iloc[beg_i:end_i],
+            k_in_use_step_df.iloc[beg_i:end_i],
             in_q_df.iloc[beg_i:end_i],
             k_ppt_dfs_dict,
             k_tem_dfs_dict,
@@ -451,7 +442,7 @@ def solve_cats_sys(
 
             # for the calibrated params, run for all validation time steps
             prms_dict = solve_cat(
-                k_in_use_step_ser.iloc[beg_i:end_i],
+                k_in_use_step_df.iloc[beg_i:end_i],
                 in_q_df.iloc[beg_i:end_i],
                 k_ppt_dfs_dict,
                 k_tem_dfs_dict,
@@ -483,7 +474,7 @@ def solve_cats_sys(
         else:
             # for the calibrated params, run for all the time steps
             solve_cat(
-                k_in_use_step_ser,
+                k_in_use_step_df,
                 in_q_df,
                 fin_ppt_dfs_dict,
                 fin_tem_dfs_dict,
@@ -515,7 +506,7 @@ def solve_cats_sys(
 
 
 def solve_cat(
-        in_use_step_ser,
+        in_use_step_df,
         in_q_df,
         in_ppt_dfs_dict,
         in_tem_dfs_dict,
@@ -571,7 +562,6 @@ def solve_cat(
 
     use_obs_flow_flag = int(kwargs['use_obs_flow_flag'])
     run_as_lump_flag = int(kwargs['run_as_lump_flag'])
-    use_step_flag = int(kwargs['use_step_flag'])
     min_q_thresh = float(kwargs['min_q_thresh'])
     time_freq = str(kwargs['time_freq'])
     cv_flag = int(kwargs['cv_flag'])
@@ -602,13 +592,7 @@ def solve_cat(
     else:
         obj_ftn_resamp_tags_arr = np.array([0, 1], dtype=np.uint64)
 
-    assert in_use_step_ser.shape[0] == in_q_df.shape[0]
-
-    if use_step_flag:
-        use_step_arr = in_use_step_ser.values.astype(np.int32, 'c')
-
-    else:
-        use_step_arr = np.array([0], dtype=np.int32)
+    assert in_use_step_df.shape[0] == in_q_df.shape[0]
 
     print('\n\n')
     print('#' * 10)
@@ -626,6 +610,16 @@ def solve_cat(
         print('#' * 10)
         print(f'Going through cat: {cat}')
         curr_cat_params = []
+
+        if in_use_step_df[cat].values.sum() != in_use_step_df.shape[0]:
+            use_step_flag = True
+            use_step_arr = in_use_step_df[cat].values.astype(np.int32, 'c')
+
+        else:
+            use_step_flag = False
+            use_step_arr = np.array([0], dtype=np.int32)
+
+        print('INFO: use_step_flag:', use_step_flag)
 
         curr_us_stm = None
         if in_dem_net_df.shape[0] != 0:

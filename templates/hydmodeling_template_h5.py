@@ -36,6 +36,8 @@ from hydmodeling import (
     plot_cats_qsims,
     plot_cats_discharge_errors)
 
+from hydmodeling.plotting.perfs import get_peaks_mask
+
 
 def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
 
@@ -143,15 +145,15 @@ def main():
 #     create_cumm_cats_flag = True
     create_stms_rels_flag = True
     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-#     plot_hbv_vars_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_var_errors_flag = True
+    plot_hbv_vars_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
 
@@ -490,14 +492,27 @@ def main():
         in_q_df = pd.read_csv(obs_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=time_fmt)
 
-        in_use_step_ser = pd.Series(
-            index=in_q_df.index,
-            data=np.ones(in_q_df.shape[0], dtype=np.int32))
-
         in_ppt_dfs_dict = get_data_dict_from_h5(ppt_file, ppt_ds_grp, True)
         in_temp_dfs_dict = get_data_dict_from_h5(temp_file, temp_ds_grp)
         in_pet_dfs_dict = get_data_dict_from_h5(pet_file, pet_ds_grp)
         in_cell_vars_dict = get_cell_vars_dict_from_h5(ppt_file)
+
+        in_use_step_df = pd.DataFrame(
+            columns=list(in_ppt_dfs_dict.keys()),
+            index=in_q_df.index,
+            data=np.zeros((in_q_df.shape[0], len(in_ppt_dfs_dict.keys())),
+                dtype=np.int32))
+
+        for col in in_use_step_df.columns:
+            if use_cv_time_flag:
+                in_use_step_df.loc[start_cdate:end_cdate, col
+                    ] = get_peaks_mask(
+                        in_q_df.loc[start_cdate:end_cdate, str(col)].values).astype(int)
+
+            else:
+                in_use_step_df.loc[start_cdate:end_cdate, col
+                    ] = get_peaks_mask(
+                        in_q_df.loc[start_date:end_date, str(col)].values).astype(int)
 
         aux_cell_vars_dict = {}
         aux_cell_vars_dict['area_ratios'] = in_cell_vars_dict['area_ratios']
@@ -525,7 +540,7 @@ def main():
             in_cats_prcssed_df,
             in_stms_prcssed_df,
             in_dem_net_df,
-            in_use_step_ser,
+            in_use_step_df,
             in_q_df,
             in_ppt_dfs_dict,
             in_temp_dfs_dict,
