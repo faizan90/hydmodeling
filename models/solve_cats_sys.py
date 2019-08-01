@@ -130,7 +130,7 @@ def solve_cats_sys(
     assert obj_ftn_wts.ndim == 1
     assert np.issubdtype(obj_ftn_wts.dtype, np.float64)
 
-    assert not obj_ftn_wts[3], 'Not functional anymore!'
+#     assert not obj_ftn_wts[3], 'Not functional anymore!'
 
     assert isinstance(min_q_thresh, (float, int))
     assert min_q_thresh >= 0
@@ -153,7 +153,7 @@ def solve_cats_sys(
     assert discharge_resampling_freq in ['Y', 'A', 'M', 'W']
 
     assert isinstance(fourtrans_maxi_freq, str)
-    assert fourtrans_maxi_freq in ['Y', 'A', 'M', 'W']
+    assert fourtrans_maxi_freq[-1] in ['Y', 'A', 'M', 'W']
 
     sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
     assert np.all(np.isfinite(sel_cats))
@@ -980,7 +980,7 @@ def solve_cat(
 
             curr_cat_params.append(bounds_arr)
 
-            assert not obj_ftn_wts[3], 'Not functional anymore!'
+#             assert not obj_ftn_wts[3], 'Not functional anymore!'
 
             curr_cat_params.append(obj_ftn_wts)
 
@@ -1581,27 +1581,46 @@ def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs):
     if n_recs % 2:
         n_recs -= 1  # same is used inside the opt
 
-    if (ft_maxi_freq == 'A') or (ft_maxi_freq == 'Y'):
+    ft_maxi_freq_scale = ft_maxi_freq[-1]
+
+    ft_freq_mult = ft_maxi_freq[:-1]
+    if not ft_freq_mult:
+        ft_freq_mult = 1
+
+    else:
+        ft_freq_mult = float(ft_freq_mult)
+
+    assert ft_freq_mult > 0, 'Should be greater than zero!'
+
+    print('ft_maxi_freq_scale:', ft_maxi_freq_scale)
+    print('ft_freq_mult:', ft_freq_mult)
+
+    if (ft_maxi_freq_scale == 'A') or (ft_maxi_freq_scale == 'Y'):
         # assuming 365 days a year
-        assert n_recs > 365
+        assert n_recs > (365 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_recs // 365  # leap years?
+        ft_maxi_freq_idx = n_recs // (365 * ft_freq_mult)  # leap years?
 
-    elif ft_maxi_freq == 'M':
-        # assuming a 30 day month
-        assert n_recs > 30
+    elif ft_maxi_freq_scale == 'M':
+        # assuming a 30.5 day month
+        assert n_recs > (30.5 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_recs // 30
+        ft_maxi_freq_idx = n_recs // (30.5 * ft_freq_mult)
 
-    elif ft_maxi_freq == 'W':
-        assert n_recs > 7
+    elif ft_maxi_freq_scale == 'W':
+        assert n_recs > (7 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_recs // 7
+        ft_maxi_freq_idx = n_recs // (7 * ft_freq_mult)
 
     else:
         raise ValueError(f'ft_maxi_freq not defined for: {ft_maxi_freq}!')
 
+    ft_maxi_freq_idx = int(ft_maxi_freq_idx)
+
+    print('ft_maxi_freq_idx:', ft_maxi_freq_idx)
     assert ft_maxi_freq_idx > 1, 'No. of values is too little!'
 
+    # subtracted 1 for the zero wave
+    # in opt the count starts from the second wave
     return ft_maxi_freq_idx - 1
 

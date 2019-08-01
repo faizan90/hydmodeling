@@ -12,6 +12,7 @@ from ..miscs.misc_ftns cimport get_ns, get_ln_ns, get_kge, cmpt_resampled_arr
 from ..miscs.misc_ftns_partial cimport (
     get_ns_prt, get_ln_ns_prt, get_kge_prt, cmpt_resampled_arr_prt)
 from ..ft.dfti cimport cmpt_real_fourtrans_1d, cmpt_cumm_freq_pcorrs
+from ..ft.effs cimport get_ft_eff
 
 from ..hbvs.hbv_mult_cat_loop cimport hbv_mult_cat_loop
 from ..miscs.dtypes cimport (
@@ -261,14 +262,23 @@ cdef DT_D obj_ftn(
             q_ft_tfms[tid[0] + 1].orig[i] = qsim_arr[i]
 
         cmpt_real_fourtrans_1d(q_ft_tfms[tid[0] + 1])
+ 
+#         cmpt_cumm_freq_pcorrs(
+#             q_ft_tfms[0], 
+#             q_ft_tfms[tid[0] + 1], 
+#             q_ft_tfms[tid[0] + 1].pcorrs)
+# 
+#         res = obj_ftn_wts[3] * (
+#                q_ft_tfms[tid[0] + 1].pcorrs[obj_longs[ft_maxi_freq_idx_i]])
 
-        cmpt_cumm_freq_pcorrs(
-            q_ft_tfms[0], 
-            q_ft_tfms[tid[0] + 1], 
-            q_ft_tfms[tid[0] + 1].pcorrs)
-
-        res = obj_ftn_wts[3] * (
-               q_ft_tfms[tid[0] + 1].pcorrs[obj_longs[ft_maxi_freq_idx_i]])
+        # scaling the value isn't meaningful here
+        res = res + (
+            obj_ftn_wts[3] * get_ft_eff(
+                obj_longs,
+                qsim_arr,
+                obj_doubles,
+                q_ft_tfms[0],
+                q_ft_tfms[tid[0] + 1]))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[3]
 

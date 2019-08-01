@@ -543,7 +543,7 @@ class PlotCatHBVSimKf:
             self.q_act_arr,
             'r-',
             label='Actual Flow',
-            lw=0.8,
+            lw=0.5,
             alpha=0.7)
 
         discharge_ax.plot(
@@ -874,11 +874,13 @@ class PlotCatHBVSimKf:
 
         bar_x = np.arange(0, self.n_recs, 1)
 
-        discharge_ax.plot(self.q_act_arr, 'r-', label='Actual Flow', lw=0.8)
+        discharge_ax.plot(self.q_act_arr, 'r-', label='Actual Flow', lw=0.5)
+
         discharge_ax.plot(
             self.q_sim_arr, 'b-', label='Simulated Flow', lw=0.5, alpha=0.5)
 
         vol_err_ax.axhline(1.0, color='k', lw=1)
+
         vol_err_ax.plot(
             self.vol_diff_arr,
             lw=0.5,
@@ -905,6 +907,7 @@ class PlotCatHBVSimKf:
         scatt_size = 5
 
         balance_ax.axhline(1.0, color='k', lw=1)
+
         balance_ax.scatter(
             self.bal_idxs,
             act_bal_arr,
@@ -913,6 +916,7 @@ class PlotCatHBVSimKf:
             label='Actual Outflow (Q + ET)',
             alpha=0.6,
             s=scatt_size)
+
         balance_ax.scatter(
             self.bal_idxs,
             sim_bal_arr,
@@ -921,15 +925,17 @@ class PlotCatHBVSimKf:
             label='Simulated Outflow (Q + ET)',
             alpha=0.6,
             s=scatt_size)
+
         balance_ax.set_ylim(min_vol_err_w_et, max_vol_err_w_et)
 
-        prec_ax.bar(
+        prec_ax.plot(
             bar_x,
             self.prec_arr,
             label='Precipitation',
-            edgecolor='none',
-            width=1.0)
+            lw=0.1)
+
         prec_sums_ax = prec_ax.twinx()
+
         prec_sums_ax.scatter(
             self.bal_idxs,
             prec_sum_arr,
@@ -953,14 +959,15 @@ class PlotCatHBVSimKf:
             bbox={'facecolor': 'white', 'alpha': 0.5, 'pad': 2})
 
         pet_ax.plot(
-            self.pet_arr, 'r-', lw=0.8, label='Potential Evapotranspiration')
+            self.pet_arr, 'r-', lw=0.5, label='Potential Evapotranspiration')
 
         pet_ax.plot(
             self.evap_arr,
             'b-',
             lw=0.5,
             label='Evapotranspiration',
-            alpha=0.5)
+            alpha=0.6)
+
         pet_ax.plot(pet_trend, 'r-.', lw=0.9, label='PET Trend')
         pet_ax.plot(et_trend, 'b-.', lw=0.9, label='ET Trend')
 
@@ -972,56 +979,57 @@ class PlotCatHBVSimKf:
             fontsize=font_size,
             bbox={'facecolor': 'white', 'alpha': 0.5, 'pad': 2})
 
-        snow_ax.plot(self.snow_arr, lw=0.5, label='Snow')
+        snow_ax.plot(self.snow_arr, lw=0.1, label='Snow')
 
-        liqu_ax.bar(
+        liqu_ax.plot(
             bar_x,
             self.liqu_arr,
-            width=1.0,
-            edgecolor='none',
-            label='Liquid Precipitation')
+            label='Liquid Precipitation',
+            lw=0.1)
 
-        sm_ax.plot(self.sm_arr, lw=0.5, label='Soil Moisture')
+        sm_ax.plot(self.sm_arr, lw=0.1, label='Soil Moisture')
         sm_ax.axhline(self.fc, color='r', ls='-.', lw=1, label='fc')
         sm_ax.axhline(self.pwp, color='b', ls='-.', lw=1, label='pwp')
 
-        tot_run_ax.bar(
+        tot_run_ax.plot(
             bar_x,
             self.tot_run_arr,
-            width=1.0,
             label='Total Runoff',
-            edgecolor='none')
+            lw=0.1)
 
         u_res_sto_ax.plot(
-            self.ur_sto_arr, lw=0.5, label='Upper Reservoir - Storage')
+            self.ur_sto_arr, lw=0.1, label='Upper Reservoir - Storage')
 
-        ur_run_uu_ax.bar(
+        ur_run_uu_ax.plot(
             bar_x,
             self.ur_run_uu,
             label='Upper Reservoir - Quick Runoff',
-            width=2.0,
-            edgecolor='none')
+            lw=0.1)
 
-        ur_run_ul_ax.bar(
+        ur_run_ul_ax.plot(
             bar_x,
             self.ur_run_ul,
             label='Upper Reservoir - Slow Runoff',
-            width=1.0,
-            edgecolor='none')
+            lw=0.1)
 
-        ur_to_lr_run_ax.bar(
+        ur_to_lr_run_ax.plot(
             bar_x,
             self.ur_to_lr_run,
             label='Upper Reservoir  - Percolation',
-            width=1.0,
-            edgecolor='none')
+            lw=0.1)
 
         l_res_sto_ax.plot(
-            self.lr_sto_arr, lw=0.5, label='Lower Reservoir - Storage')
+            self.lr_sto_arr, lw=0.1, label='Lower Reservoir - Storage')
 
+        prec_ax.fill_between(bar_x, 0, self.prec_arr, alpha=0.3)
+        liqu_ax.fill_between(bar_x, 0, self.liqu_arr, alpha=0.3)
+        tot_run_ax.fill_between(bar_x, 0, self.tot_run_arr, alpha=0.3)
         snow_ax.fill_between(bar_x, 0, self.snow_arr, alpha=0.3)
         sm_ax.fill_between(bar_x, 0, self.sm_arr, alpha=0.3)
         u_res_sto_ax.fill_between(bar_x, 0, self.ur_sto_arr, alpha=0.3)
+        ur_run_uu_ax.fill_between(bar_x, 0, self.ur_run_uu, alpha=0.3)
+        ur_run_ul_ax.fill_between(bar_x, 0, self.ur_run_ul, alpha=0.3)
+        ur_to_lr_run_ax.fill_between(bar_x, 0, self.ur_to_lr_run, alpha=0.3)
         l_res_sto_ax.fill_between(bar_x, 0, self.lr_sto_arr, alpha=0.3)
 
         full_sim_text = full_sim_text.reshape(6, 6)

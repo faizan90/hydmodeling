@@ -319,7 +319,7 @@ cpdef dict hbv_opt(args):
 
     n_route_prms = n_prms - n_hm_prms
 
-    if not n_route_prms:
+    if n_route_prms <= 0:
         n_route_prms = 1
 
     route_prms = np.full((n_cpus, n_route_prms), np.nan, dtype=DT_D_NP)

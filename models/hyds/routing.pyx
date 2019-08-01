@@ -6,7 +6,6 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
-
 cdef void tfm_opt_to_route_prms(
         const DT_D[::1] opt_prms,
               DT_D[::1] route_prms,

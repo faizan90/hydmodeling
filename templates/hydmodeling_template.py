@@ -427,14 +427,27 @@ def main():
         in_q_df = pd.read_csv(obs_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=time_fmt)
 
-        in_use_step_ser = pd.Series(
-            index=in_q_df.index,
-            data=np.ones(in_q_df.shape[0], dtype=np.int32))
-
         in_ppt_dfs_dict = load_pickle(ppt_file)
         in_temp_dfs_dict = load_pickle(temp_file)
         in_pet_dfs_dict = load_pickle(pet_file)
         in_cell_vars_dict = load_pickle(cell_vars_file)
+
+        in_use_step_df = pd.DataFrame(
+            columns=list(in_ppt_dfs_dict.keys()),
+            index=in_q_df.index,
+            data=np.ones((in_q_df.shape[0], len(in_ppt_dfs_dict.keys())),
+                dtype=np.int32))
+
+#         for col in in_use_step_df.columns:
+#             if use_cv_time_flag:
+#                 in_use_step_df.loc[start_cdate:end_cdate, col
+#                     ] = get_peaks_mask(
+#                         in_q_df.loc[start_cdate:end_cdate, str(col)].values).astype(int)
+#
+#             else:
+#                 in_use_step_df.loc[start_cdate:end_cdate, col
+#                     ] = get_peaks_mask(
+#                         in_q_df.loc[start_date:end_date, str(col)].values).astype(int)
 
         aux_cell_vars_dict = {}
         aux_cell_vars_dict['area_ratios'] = in_cell_vars_dict['area_ratios']
@@ -462,7 +475,7 @@ def main():
             in_cats_prcssed_df,
             in_stms_prcssed_df,
             in_dem_net_df,
-            in_use_step_ser,
+            in_use_step_df,
             in_q_df,
             in_ppt_dfs_dict,
             in_temp_dfs_dict,

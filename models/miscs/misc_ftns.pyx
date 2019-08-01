@@ -1,3 +1,4 @@
+
 # cython: nonecheck=False
 # cython: boundscheck=False
 # cython: wraparound=False
@@ -5,7 +6,6 @@
 # cython: language_level=3
 # cython: infer_types=False
 # cython: embedsignature=True
-
 
 import numpy as np
 cimport numpy as np

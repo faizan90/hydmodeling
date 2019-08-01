@@ -61,8 +61,8 @@ def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
                     print('\n')
                     print('#' * 30)
                     print(
-                        f'WARNING: Set {nan_ct} to zero in dataset {key}'
-                        f' in file: {os.path.basename(path_to_h5)}!')
+                        f'WARNING: Set {nan_ct} values to zero in dataset '
+                        f'{key} in file: {os.path.basename(path_to_h5)}!')
                     print('#' * 30)
                     print('\n')
 
@@ -500,19 +500,19 @@ def main():
         in_use_step_df = pd.DataFrame(
             columns=list(in_ppt_dfs_dict.keys()),
             index=in_q_df.index,
-            data=np.zeros((in_q_df.shape[0], len(in_ppt_dfs_dict.keys())),
+            data=np.ones((in_q_df.shape[0], len(in_ppt_dfs_dict.keys())),
                 dtype=np.int32))
 
-        for col in in_use_step_df.columns:
-            if use_cv_time_flag:
-                in_use_step_df.loc[start_cdate:end_cdate, col
-                    ] = get_peaks_mask(
-                        in_q_df.loc[start_cdate:end_cdate, str(col)].values).astype(int)
-
-            else:
-                in_use_step_df.loc[start_cdate:end_cdate, col
-                    ] = get_peaks_mask(
-                        in_q_df.loc[start_date:end_date, str(col)].values).astype(int)
+#         for col in in_use_step_df.columns:
+#             if use_cv_time_flag:
+#                 in_use_step_df.loc[start_cdate:end_cdate, col
+#                     ] = get_peaks_mask(
+#                         in_q_df.loc[start_cdate:end_cdate, str(col)].values).astype(int)
+#
+#             else:
+#                 in_use_step_df.loc[start_cdate:end_cdate, col
+#                     ] = get_peaks_mask(
+#                         in_q_df.loc[start_date:end_date, str(col)].values).astype(int)
 
         aux_cell_vars_dict = {}
         aux_cell_vars_dict['area_ratios'] = in_cell_vars_dict['area_ratios']
@@ -859,7 +859,7 @@ def main():
 
 
 if __name__ == '__main__':
-    _save_log_ = False
+    _save_log_ = True
     if _save_log_:
         from std_logger import StdFileLoggerCtrl
 

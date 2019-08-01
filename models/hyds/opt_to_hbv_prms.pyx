@@ -6,7 +6,6 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
-
 cdef void tfm_opt_to_hbv_prms(
         const DT_UL[:, ::1] prms_flags,
         const DT_UL[:, ::1] f_var_infos,

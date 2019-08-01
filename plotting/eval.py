@@ -30,7 +30,7 @@ def plot_cat_qsims(cat_db):
 
     with h5py.File(cat_db, 'r') as db:
         # opt_iters = list(range(db['calib/kf_01/iter_prm_vecs'].shape[0]))
-        opt_iters = []
+        opt_iters = [7]
         long_short_break_freqs = ['A']
 
         cv_flag = db['data'].attrs['cv_flag']
@@ -941,7 +941,8 @@ class PlotCatQSims:
 
             self.opt_iter_lab = f'{self.opt_iter}'
 
-        plot_qsims_flag = False
+        plot_qsims_flag = True
+        print('plot_qsims_flag:', plot_qsims_flag)
 
         if self.sim_lab == 'calib':
             clr_vals_list = []
