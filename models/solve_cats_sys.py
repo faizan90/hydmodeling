@@ -1600,25 +1600,23 @@ def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs, off_idx):
 
     if (ft_maxi_freq_scale == 'A') or (ft_maxi_freq_scale == 'Y'):
         # assuming 365 days a year
-        assert n_ft_pts > (365 * ft_freq_mult)
+#         assert n_ft_pts > (365 * ft_freq_mult)
 
         ft_maxi_freq_idx = n_ft_pts // (365 * ft_freq_mult)  # leap years?
 
     elif ft_maxi_freq_scale == 'M':
         # assuming a 30.5 day month
-        assert n_ft_pts > (30.5 * ft_freq_mult)
+#         assert n_ft_pts > (30.5 * ft_freq_mult)
 
         ft_maxi_freq_idx = n_ft_pts // (30.5 * ft_freq_mult)
 
     elif ft_maxi_freq_scale == 'W':
-        assert n_ft_pts > (7 * ft_freq_mult)
+#         assert n_ft_pts > (7 * ft_freq_mult)
 
         ft_maxi_freq_idx = n_ft_pts // (7 * ft_freq_mult)
 
     else:
         raise ValueError(f'ft_maxi_freq not defined for: {ft_maxi_freq}!')
-
-#     ft_maxi_freq_idx = 0
 
     ft_maxi_freq_idx = int(ft_maxi_freq_idx)
 

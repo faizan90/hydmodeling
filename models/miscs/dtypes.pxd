@@ -22,7 +22,8 @@ ctypedef struct ForFourTrans1DReal:
     DT_D *amps      # Amplitudes of ft. Starting from index 1 to N//2.
     DT_D *angs      # Angles of ft. Starting from index 1 to N//2.
     DT_D *pcorrs    # Cummulative pearson corrs for each frequency
-    DT_UL n_pts     # number of values in orig
+    DT_UL n_pts     # Number of values in orig
+    DT_D *sq_amps   # Square of amplitudes
 
 ctypedef vector[ForFourTrans1DReal *] ForFourTrans1DRealVec
 

@@ -859,7 +859,7 @@ def main():
 
 
 if __name__ == '__main__':
-    _save_log_ = True
+    _save_log_ = False
     if _save_log_:
         from std_logger import StdFileLoggerCtrl
 

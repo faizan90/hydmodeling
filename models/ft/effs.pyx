@@ -41,18 +41,20 @@ cdef DT_D get_ft_eff(
 
         DT_UL n_pts = obs_for_four_trans_struct.n_pts
 
-        DT_D mean_sdiff, var_sdiff, ft_sdiff
-        DT_D qsim_mean, pow_spec_sum, prt_pow_spec_sum, eff
+        DT_D qsim_mean, mean_sdiff, var_sdiff 
+        DT_D ft_sdiff
+        DT_D prt_pow_spec_sum, eff
 
         DT_D *obs_amps
         DT_D *sim_amps
         DT_D *obs_angs
         DT_D *sim_angs
+        DT_D *sq_obs_amps
 
-    qsim_mean = get_mean(qsim_arr, &obj_longs[off_idx_i])
+#     qsim_mean = get_mean(qsim_arr, &obj_longs[off_idx_i])
 
 #     mean_sdiff = (obj_doubles[mean_ref_i] - qsim_mean)**2
-#   
+
 #     var_sdiff = (
 #         (obj_doubles[act_std_dev_i]**2) -
 #         get_variance(&qsim_mean, qsim_arr, &obj_longs[off_idx_i]))**2
@@ -62,45 +64,27 @@ cdef DT_D get_ft_eff(
 
     obs_amps = obs_for_four_trans_struct.amps
     obs_angs = obs_for_four_trans_struct.angs
+    sq_obs_amps = obs_for_four_trans_struct.sq_amps
 
     sim_amps = sim_for_four_trans_struct.amps
     sim_angs = sim_for_four_trans_struct.angs
 
     ft_sdiff = 0.0
-    pow_spec_sum = 0.0
     prt_pow_spec_sum = 0.0
     for i in range(obj_longs[ft_maxi_freq_idx_i], (n_pts // 2) + 1):
-        ft_sdiff += ((obs_amps[i]**2) - (
+        ft_sdiff += (sq_obs_amps[i] - (
             (obs_amps[i] * sim_amps[i]) * (cos(obs_angs[i] - sim_angs[i]))))**2
 
-        # difference between obs_amps and sim_amps unaccounted
-#         prt_pow_spec_sum += (obs_amps[i] * sim_amps[i])
-        prt_pow_spec_sum += (obs_amps[i]**2)
+        # ideally, maximum will be (obs_amps[i]**2 + obs_amps[i]**2)**2
+        prt_pow_spec_sum += (sq_obs_amps[i])**2
 
-#     for i in range((n_pts // 2) - 1):
-#         pow_spec_sum += (obs_amps[i] * sim_amps[i])
-
-    eff = ((1.0 / 3.0) * (
+    eff = ((3.0 / 3.0) * (
         (-mean_sdiff / obj_doubles[mean_ref_i]) +
         (-var_sdiff / (obj_doubles[act_std_dev_i]**2)) +
-        (-((ft_sdiff / prt_pow_spec_sum)) - 1))) + 1
-
-    # keep this, it works
-#     eff = ((1.0 / 3.0) * (
-#         (-mean_sdiff / obj_doubles[mean_ref_i]) +
-#         (-var_sdiff / (obj_doubles[act_std_dev_i]**2)) +
-#         ((ft_sdiff / prt_pow_spec_sum) - 1))) + 1
-
-#     eff = (-mean_sdiff / obj_doubles[mean_ref_i])
-#     eff = (-var_sdiff / (obj_doubles[act_std_dev_i]**2))
-#     eff = (ft_sdiff / prt_pow_spec_sum) - 1
-
-#     with gil:
-# #         if eff > 1:
-# #             print(f'WARNING: eff ge 1 ({eff})!')
-#         print(eff)
+        (-((ft_sdiff / prt_pow_spec_sum)) - 0))) + 1
 
     return eff
+
 
 cpdef cmpt_obj_val_cy_debug(
         const DT_D[::1] qobs_arr,
@@ -113,7 +97,7 @@ cpdef cmpt_obj_val_cy_debug(
 
         DT_UL n_recs, n_pts_ft, q_sorig, q_sft, q_sampang
 
-        DT_D ft_sdiff, pow_spec_sum, prt_pow_spec_sum
+        DT_D ft_sdiff
 
         DT_D *obs_amps
         DT_D *sim_amps
@@ -162,8 +146,6 @@ cpdef cmpt_obj_val_cy_debug(
     sim_angs = sim_for_four_trans_struct.angs
  
     ft_sdiff = 0.0
-    pow_spec_sum = 0.0
-    prt_pow_spec_sum = 0.0
     for i in range(ft_maxi_freq_idx, (n_pts_ft // 2) + 1):
         ft_sdiff += ((obs_amps[i]**2) - (
             (obs_amps[i] * sim_amps[i]) * (cos(obs_angs[i] - sim_angs[i]))))**2

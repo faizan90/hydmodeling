@@ -628,10 +628,15 @@ cpdef dict hbv_opt(args):
 
             q_ft_tfms[i].n_pts = n_pts_ft
 
+            q_ft_tfms[i].sq_amps = <DT_D *> malloc(q_sampang)
+
         for i in range(n_pts_ft):
             q_ft_tfms[0].orig[i] = qact_arr[off_idx + i]
 
         cmpt_real_fourtrans_1d(q_ft_tfms[0])
+
+        for i in range((n_pts_ft // 2) + 1):
+            q_ft_tfms[0].sq_amps[i] = (q_ft_tfms[0].amps[i]**2)
 
         obj_longs[ft_maxi_freq_idx_i] = ft_maxi_freq_idx
 
@@ -993,17 +998,19 @@ cpdef dict hbv_opt(args):
     if obj_ftn_wts[3]:
         for i in range(n_cpus + 1):
             free(q_ft_tfms[i].orig)
-    
+
             free(q_ft_tfms[i].ft)
-    
+
             free(q_ft_tfms[i].amps)
-    
+
             free(q_ft_tfms[i].angs)
-    
+
             free(q_ft_tfms[i].pcorrs)
-    
+
+            free(q_ft_tfms[i].sq_amps)
+
             free(q_ft_tfms[i])
-    
+
         q_ft_tfms.clear()
 
     tid = 0
