@@ -66,6 +66,7 @@ from ..miscs.dtypes cimport (
     resamp_obj_ftns_flag_i,
     a_zero_i,
     ft_maxi_freq_idx_i,
+    n_pts_ft_i,
     rnof_q_conv_i,
     demr_i,
     ln_demr_i,
@@ -118,7 +119,7 @@ cpdef dict hbv_opt(args):
         DT_UL resamp_obj_ftns_flag, ft_maxi_freq_idx
         
         # size in bytes
-        DT_UL q_sorig, q_sft, q_sampang, q_stfm
+        DT_UL q_sorig, q_sft, q_sampang
 
         DT_D obj_ftn_tol, res, prm_pcnt_tol
         DT_D tol_curr = np.inf, tol_pre = np.inf
@@ -599,14 +600,17 @@ cpdef dict hbv_opt(args):
             &comb_ctr)
 
     if obj_ftn_wts[3]:
-        n_pts_ft = n_recs
+        n_pts_ft = n_recs - off_idx
         if n_recs % 2:
             n_pts_ft -= 1
 
+        assert n_pts_ft > 1
+
+        obj_longs[n_pts_ft_i] = n_pts_ft
+
         q_sorig = n_pts_ft * sizeof(DT_D)
         q_sft = ((n_pts_ft // 2) + 1) * sizeof(DT_DC)
-        q_sampang = (((n_pts_ft // 2) - 1) * sizeof(DT_D))
-        q_stfm = q_sorig + q_sft + q_sampang + sizeof(DT_UL)
+        q_sampang = (((n_pts_ft // 2) + 1) * sizeof(DT_D))
 
         for i in range(n_cpus + 1):
             q_ft_tfms.push_back(<ForFourTrans1DReal *> malloc(
@@ -625,7 +629,7 @@ cpdef dict hbv_opt(args):
             q_ft_tfms[i].n_pts = n_pts_ft
 
         for i in range(n_pts_ft):
-            q_ft_tfms[0].orig[i] = qact_arr[i]
+            q_ft_tfms[0].orig[i] = qact_arr[off_idx + i]
 
         cmpt_real_fourtrans_1d(q_ft_tfms[0])
 

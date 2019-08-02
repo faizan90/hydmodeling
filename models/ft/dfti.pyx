@@ -42,8 +42,8 @@ cdef void cmpt_real_fourtrans_1d(
 
     mkl_real_dft(for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
 
-    for i in range((n_pts // 2) - 1):
-        ft = for_four_trans_struct.ft[i + 1]
+    for i in range((n_pts // 2) + 1):
+        ft = for_four_trans_struct.ft[i]
 
         angs[i] = atan2(cimag(ft), creal(ft))
 
@@ -76,7 +76,7 @@ cdef void cmpt_cumm_freq_pcorrs(
     sim_amps = sim_for_four_trans_struct.amps
     sim_angs = sim_for_four_trans_struct.angs
 
-    for i in range((n_pts // 2) - 1):
+    for i in range((n_pts // 2) + 1):
         obs_amps_sq_sum += obs_amps[i]**2
         sim_amps_sq_sum += sim_amps[i]**2
 
@@ -89,7 +89,7 @@ cdef void cmpt_cumm_freq_pcorrs(
     freq_cov_scale = pcorr / tot_cov
 
     freq_corrs[0] = freq_cov_scale * freq_corrs[0]
-    for i in range(1, (n_pts // 2) - 1):
+    for i in range(1, (n_pts // 2) + 1):
         freq_corrs[i] = freq_corrs[i - 1] + (freq_cov_scale * freq_corrs[i])
     return
 

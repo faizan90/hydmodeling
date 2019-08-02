@@ -569,7 +569,8 @@ def solve_cat(
     discharge_resampling_freq = kwargs['discharge_resampling_freq']
     ft_maxi_freq = kwargs['fourtrans_maxi_freq']
 
-    ft_maxi_freq_idx = get_ft_maxi_freq_idx(ft_maxi_freq, in_q_df.shape[0])
+    ft_maxi_freq_idx = get_ft_maxi_freq_idx(
+        ft_maxi_freq, in_q_df.shape[0], warm_up_steps)
 
     if resamp_obj_ftns_flag:
         if discharge_resampling_freq in ['Y', 'A']:
@@ -1576,10 +1577,12 @@ def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
     return tags
 
 
-def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs):
+def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs, off_idx):
 
-    if n_recs % 2:
-        n_recs -= 1  # same is used inside the opt
+    n_ft_pts = n_recs - off_idx
+
+    if n_ft_pts % 2:
+        n_ft_pts -= 1  # same is used inside the opt
 
     ft_maxi_freq_scale = ft_maxi_freq[-1]
 
@@ -1597,30 +1600,30 @@ def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs):
 
     if (ft_maxi_freq_scale == 'A') or (ft_maxi_freq_scale == 'Y'):
         # assuming 365 days a year
-        assert n_recs > (365 * ft_freq_mult)
+        assert n_ft_pts > (365 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_recs // (365 * ft_freq_mult)  # leap years?
+        ft_maxi_freq_idx = n_ft_pts // (365 * ft_freq_mult)  # leap years?
 
     elif ft_maxi_freq_scale == 'M':
         # assuming a 30.5 day month
-        assert n_recs > (30.5 * ft_freq_mult)
+        assert n_ft_pts > (30.5 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_recs // (30.5 * ft_freq_mult)
+        ft_maxi_freq_idx = n_ft_pts // (30.5 * ft_freq_mult)
 
     elif ft_maxi_freq_scale == 'W':
-        assert n_recs > (7 * ft_freq_mult)
+        assert n_ft_pts > (7 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_recs // (7 * ft_freq_mult)
+        ft_maxi_freq_idx = n_ft_pts // (7 * ft_freq_mult)
 
     else:
         raise ValueError(f'ft_maxi_freq not defined for: {ft_maxi_freq}!')
 
+#     ft_maxi_freq_idx = 0
+
     ft_maxi_freq_idx = int(ft_maxi_freq_idx)
 
     print('ft_maxi_freq_idx:', ft_maxi_freq_idx)
-    assert ft_maxi_freq_idx > 1, 'No. of values is too little!'
+    assert ft_maxi_freq_idx >= 0, 'No. of values is too little!'
 
-    # subtracted 1 for the zero wave
-    # in opt the count starts from the second wave
-    return ft_maxi_freq_idx - 1
+    return ft_maxi_freq_idx
 
