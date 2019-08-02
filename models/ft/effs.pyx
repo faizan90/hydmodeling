@@ -86,7 +86,7 @@ cdef DT_D get_ft_eff(
     return eff
 
 
-cpdef cmpt_obj_val_cy_debug(
+cpdef tuple cmpt_obj_val_cy_debug(
         const DT_D[::1] qobs_arr,
               DT_D[::1] qsim_arr,
         const DT_UL off_idx,

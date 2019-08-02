@@ -554,3 +554,25 @@ def lin_regsn_cy(
     lin_regsn(x_arr, y_arr, y_arr_interp, &off_idx, &corr, &slope, &intercept)
 
     return np.asarray(y_arr_interp), corr, slope, intercept
+
+
+cpdef tuple get_asymms_sample(DT_D[:] u, DT_D[:] v):
+
+    cdef:
+        Py_ssize_t i
+
+        DT_UL n_vals
+        DT_D asymm_1, asymm_2
+
+    n_vals = u.shape[0]
+
+    asymm_1 = 0.0
+    asymm_2 = 0.0
+    for i in range(n_vals):
+        asymm_1 += (u[i] + v[i] - 1)**3
+        asymm_2 += (u[i] - v[i])**3
+
+    asymm_1 = asymm_1 / n_vals
+    asymm_2 = asymm_2 / n_vals
+
+    return (asymm_1, asymm_2)

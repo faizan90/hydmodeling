@@ -18,8 +18,40 @@ from .perfs import (
     plot_cat_prms_transfer_perfs,
     plot_cat_vars_errors,
     plot_cat_discharge_errors)
+from .stats import plot_cat_stats
 
 from ..misc import traceback_wrapper
+
+
+def plot_cats_stats(dbs_dir, n_cpus):
+
+    cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
+
+    assert cats_dbs
+
+    n_cats = len(cats_dbs)
+    n_cpus = min(n_cats, n_cpus)
+
+    n_cpus = min(n_cats, n_cpus)
+
+    cats_paths_gen = ((cat_db,) for cat_db in cats_dbs)
+
+    if (n_cpus > 1) and (n_cats > 1):
+        mp_pool = ProcessPool(n_cpus)
+        mp_pool.restart(True)
+
+        print(list(
+            mp_pool.uimap(plot_cat_stats, cats_paths_gen)))
+
+        mp_pool.clear()
+        mp_pool.close()
+        mp_pool.join()
+
+    else:
+        for cat_paths in cats_paths_gen:
+            plot_cat_stats(cat_paths)
+
+    return
 
 
 def plot_cats_discharge_errors(dbs_dir, n_cpus):

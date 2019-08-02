@@ -13,7 +13,9 @@ from .miscs.misc_ftns import (
     get_aspect_and_slope_scale_arr_cy,
 
     get_ns_var_res_cy,
-    get_ln_ns_var_res_cy)
+    get_ln_ns_var_res_cy,
+
+    get_asymms_sample)
 
 from .miscs.misc_ftns_partial import (
     get_ns_prt_cy,
