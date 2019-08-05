@@ -138,9 +138,9 @@ def main():
     plot_opt_evo_flag = False
     plot_var_errors_flag = False
     plot_hbv_vars_flag = False
+    plot_stats_flag = False
     plot_qsims_flag = False
     plot_cats_discharge_errs_flag = False
-    plot_stats_flag = False
 
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
@@ -156,9 +156,9 @@ def main():
 #     plot_opt_evo_flag = True
 #     plot_var_errors_flag = True
 #     plot_hbv_vars_flag = True
+    plot_stats_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
-    plot_stats_flag = True
 
     use_cv_time_flag = False
     use_cv_time_flag = True
@@ -583,7 +583,6 @@ def main():
     #=========================================================================
     # Plot the k-fold results
     #=========================================================================
-
     if plot_kfold_perfs_flag:
         _beg_t = timeit.default_timer()
 
@@ -603,7 +602,6 @@ def main():
     #=========================================================================
     # Plot the best k-fold params
     #=========================================================================
-
     if plot_best_kfold_prms_flag:
         _beg_t = timeit.default_timer()
 
@@ -622,7 +620,6 @@ def main():
     #============================ ============================================
     # Plot final parameter population
     #=========================================================================
-
     if plot_prm_vecs_flag:
         _beg_t = timeit.default_timer()
 
@@ -641,7 +638,6 @@ def main():
     #=========================================================================
     # Plot hbv prms for all catchments per kfold in 2d
     #=========================================================================
-
     if plot_2d_kfold_prms_flag:
         _beg_t = timeit.default_timer()
 
@@ -660,7 +656,6 @@ def main():
     #=========================================================================
     # Plot annual cycle and FDC comparison
     #=========================================================================
-
     if plot_ann_cys_fdcs_flag:
         _beg_t = timeit.default_timer()
 
@@ -683,7 +678,6 @@ def main():
     #=========================================================================
     # Plot catchment parameter transfer comparison
     #=========================================================================
-
     if plot_prm_trans_comp_flag:
         _beg_t = timeit.default_timer()
 
@@ -702,7 +696,6 @@ def main():
     #=========================================================================
     # Plot catchment parameter transfer comparison
     #=========================================================================
-
     if plot_opt_evo_flag:
 
         plot_evo_obj_flag = cfp['PLOT_OPT_RES'].getboolean(
@@ -753,7 +746,6 @@ def main():
     #=========================================================================
     # Plot sorted errors w.r.t given variables
     #=========================================================================
-
     if plot_var_errors_flag:
         err_var_labs = cfp['PLOT_OPT_RES']['err_var_labs'].split(sep)
         assert err_var_labs, err_var_labs
@@ -774,38 +766,17 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #=========================================================================
-    # plot the discharge simulations
-    #=========================================================================
-
-    if plot_qsims_flag:
+    #==========================================================================
+    # Plot stats
+    #==========================================================================
+    if plot_stats_flag:
         print('\n\n')
         print('#' * 10)
-        print('Plotting discharge simulations...')
+        print('Plotting stats...')
 
         _beg_t = timeit.default_timer()
 
-        plot_cats_qsims(dbs_dir, n_cpus)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-
-        print(f'Took {_tot_t:0.4f} seconds!')
-        print('#' * 10)
-
-    #=========================================================================
-    # plot the discharge simulations errors for different quantiles
-    #=========================================================================
-
-    if plot_cats_discharge_errs_flag:
-        print('\n\n')
-        print('#' * 10)
-        print(
-            'Plotting discharge simulations errors for various quantiles...')
-
-        _beg_t = timeit.default_timer()
-
-        plot_cats_discharge_errors(dbs_dir, n_cpus)
+        plot_cats_stats(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -816,7 +787,6 @@ def main():
     #=========================================================================
     # plot the hbv variables
     #=========================================================================
-
     if plot_hbv_vars_flag:
         print('\n\n')
         print('#' * 10)
@@ -856,15 +826,16 @@ def main():
         print('#' * 10)
 
     #=========================================================================
-
-    if plot_stats_flag:
+    # plot the discharge simulations
+    #=========================================================================
+    if plot_qsims_flag:
         print('\n\n')
         print('#' * 10)
-        print('Plotting stats...')
+        print('Plotting discharge simulations...')
 
         _beg_t = timeit.default_timer()
 
-        plot_cats_stats(dbs_dir, n_cpus)
+        plot_cats_qsims(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
@@ -872,6 +843,28 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
+    #=========================================================================
+    # plot the discharge simulations errors for different quantiles
+    #=========================================================================
+    if plot_cats_discharge_errs_flag:
+        print('\n\n')
+        print('#' * 10)
+        print(
+            'Plotting discharge simulations errors for various quantiles...')
+
+        _beg_t = timeit.default_timer()
+
+        plot_cats_discharge_errors(dbs_dir, n_cpus)
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #=========================================================================
+
+    #=========================================================================
     os.chdir(old_chdir)
     return
 
