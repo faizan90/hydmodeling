@@ -73,9 +73,11 @@ def solve_cats_sys(
         cv_list,
         use_resampled_obj_ftns_flag,
         discharge_resampling_freq,
-        ft_freq,
-        ft_freq_aft_flag,
-        ft_freq_inc_flag):
+        ft_beg_freq,
+        ft_beg_freq_inc_flag,
+        ft_end_freq,
+        ft_end_freq_inc_flag
+        ):
 
     '''Optimize parameters for a given catchment
 
@@ -154,11 +156,15 @@ def solve_cats_sys(
     assert isinstance(discharge_resampling_freq, str)
     assert discharge_resampling_freq in ['Y', 'A', 'M', 'W']
 
-    assert isinstance(ft_freq, str)
-    assert ft_freq[-1] in ['Y', 'A', 'M', 'W']
+    assert isinstance(ft_beg_freq, str)
+    assert ft_beg_freq[-1] in ['Y', 'A', 'M', 'W', 'D']
 
-    assert isinstance(ft_freq_aft_flag, bool)
-    assert isinstance(ft_freq_inc_flag, bool)
+    assert isinstance(ft_beg_freq_inc_flag, bool)
+
+    assert isinstance(ft_end_freq, str)
+    assert ft_end_freq[-1] in ['Y', 'A', 'M', 'W', 'D']
+
+    assert isinstance(ft_end_freq_inc_flag, bool)
 
     sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
     assert np.all(np.isfinite(sel_cats))
@@ -356,9 +362,11 @@ def solve_cats_sys(
         'cv_flag': cv_flag,
         'resamp_obj_ftns_flag': use_resampled_obj_ftns_flag,
         'discharge_resampling_freq': discharge_resampling_freq,
-        'ft_freq': ft_freq,
-        'ft_freq_aft_flag': ft_freq_aft_flag,
-        'ft_freq_inc_flag': ft_freq_inc_flag}
+        'ft_beg_freq': ft_beg_freq,
+        'ft_beg_freq_inc_flag': ft_beg_freq_inc_flag,
+        'ft_end_freq': ft_end_freq,
+        'ft_end_freq_inc_flag': ft_end_freq_inc_flag,
+        }
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -574,16 +582,20 @@ def solve_cat(
     cv_flag = int(kwargs['cv_flag'])
     resamp_obj_ftns_flag = kwargs['resamp_obj_ftns_flag']
     discharge_resampling_freq = kwargs['discharge_resampling_freq']
-    ft_freq = kwargs['ft_freq']
-    ft_freq_aft_flag = kwargs['ft_freq_aft_flag']
-    ft_freq_inc_flag = kwargs['ft_freq_inc_flag']
 
-    ft_beg_idx, ft_end_idx = get_ft_freq_idx(
-        ft_freq,
+    ft_beg_freq = kwargs['ft_beg_freq']
+    ft_beg_freq_inc_flag = kwargs['ft_beg_freq_inc_flag']
+    ft_end_freq = kwargs['ft_end_freq']
+    ft_end_freq_inc_flag = kwargs['ft_end_freq_inc_flag']
+
+    ft_beg_idx, ft_end_idx = get_fts_freq_idxs(
+        ft_beg_freq,
+        ft_end_freq,
         in_q_df.shape[0],
         warm_up_steps,
-        ft_freq_aft_flag,
-        ft_freq_inc_flag)
+        ft_beg_freq_inc_flag,
+        ft_end_freq_inc_flag,
+        time_freq)
 
     if resamp_obj_ftns_flag:
         if discharge_resampling_freq in ['Y', 'A']:
@@ -1590,21 +1602,11 @@ def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
     return tags
 
 
-def get_ft_freq_idx(
-        ft_freq,
-        n_recs,
-        off_idx,
-        ft_freq_aft_flag,
-        ft_freq_inc_flag):
-
-    n_ft_pts = n_recs - off_idx
-
-    if n_ft_pts % 2:
-        n_ft_pts -= 1  # same is used inside the opt
+def get_ft_freq_scale_and_mult(ft_freq):
 
     ft_freq_scale = ft_freq[-1]
-
     ft_freq_mult = ft_freq[:-1]
+
     if not ft_freq_mult:
         ft_freq_mult = 1
 
@@ -1613,57 +1615,140 @@ def get_ft_freq_idx(
 
     assert ft_freq_mult > 0, 'Should be greater than zero!'
 
-    print('ft_freq_scale:', ft_freq_scale)
-    print('ft_freq_mult:', ft_freq_mult)
-    print('ft_freq_aft_flag:', ft_freq_aft_flag)
-    print('ft_freq_inc_flag:', ft_freq_inc_flag)
+    return ft_freq_scale, ft_freq_mult
+
+
+def get_step_scalar(time_freq):
+
+    if time_freq == 'H':
+        step_scalar = 1.0 / 24.0
+
+    elif time_freq == 'D':
+        step_scalar = 1.0
+
+    elif time_freq == 'W':
+        step_scalar = 7.0
+
+    elif time_freq == 'M':
+        step_scalar = 30.5
+
+    elif time_freq == 'Y':
+        step_scalar = 365.0
+
+    else:
+        raise NotImplementedError
+    return step_scalar
+
+
+def get_freq_scalar(ft_freq_scale):
 
     if (ft_freq_scale == 'A') or (ft_freq_scale == 'Y'):
-        # assuming 365 days a year
-#         assert n_ft_pts > (365 * ft_freq_mult)
-
-        ft_freq_idx = n_ft_pts // (365 * ft_freq_mult)  # leap years?
+        # assuming 365.25 days a year
+        freq_scalar = 365.25  # leap years?
 
     elif ft_freq_scale == 'M':
         # assuming a 30.5 day month
-#         assert n_ft_pts > (30.5 * ft_freq_mult)
-
-        ft_freq_idx = n_ft_pts // (30.5 * ft_freq_mult)
+        freq_scalar = 30.5
 
     elif ft_freq_scale == 'W':
-#         assert n_ft_pts > (7 * ft_freq_mult)
+        freq_scalar = 7.0
 
-        ft_freq_idx = n_ft_pts // (7 * ft_freq_mult)
-
-    else:
-        raise ValueError(f'ft_freq not defined for: {ft_freq}!')
-
-    ft_freq_idx = int(ft_freq_idx)
-
-    print('ft_freq_idx:', ft_freq_idx)
-
-    assert ft_freq_idx >= 0, 'No. of values is too little!'
-
-    if ft_freq_inc_flag and ft_freq_aft_flag:
-        ft_beg_idx = ft_freq_idx
-        ft_end_idx = max(ft_freq_idx + 1, int(n_ft_pts // 2) + 1)
-
-    elif ft_freq_inc_flag and (not ft_freq_aft_flag):
-        ft_beg_idx = 0
-        ft_end_idx = ft_freq_idx + 1
-
-    elif (not ft_freq_inc_flag) and ft_freq_aft_flag:
-        ft_beg_idx = ft_freq_idx + 1
-        ft_end_idx = max(ft_freq_idx + 2, int(n_ft_pts // 2) + 1)
+    elif ft_freq_scale == 'D':
+        freq_scalar = 1.0
 
     else:
-        ft_beg_idx = 0
-        ft_end_idx = ft_freq_idx
+        raise ValueError(f'ft_freq not defined for: {ft_freq_scale}!')
 
-    print('ft_beg_idx, ft_end_idx:', ft_beg_idx, ft_end_idx)
+    return freq_scalar
 
-    assert ft_beg_idx >= 0
-    assert ft_beg_idx < ft_end_idx, 'too few points to work with!'
+
+def get_ft_freq_idx(freq, n_pts, time_freq):
+
+    freq_scale, freq_mult = get_ft_freq_scale_and_mult(freq)
+
+    step_scalar = get_step_scalar(time_freq)
+
+    freq_scalar = get_freq_scalar(freq_scale)
+
+    freq_idx = int(step_scalar * n_pts / (freq_scalar * freq_mult))
+
+    return freq_idx
+
+
+def get_fts_freq_idxs(
+        ft_beg_freq,
+        ft_end_freq,
+        n_recs,
+        off_idx,
+        ft_beg_freq_inc_flag,
+        ft_end_freq_inc_flag,
+        time_freq):
+
+    n_ft_pts = n_recs - off_idx
+
+    if n_ft_pts % 2:
+        n_ft_pts -= 1  # same is used inside the opt
+
+    print('n_ft_pts:', n_ft_pts)
+
+    ft_beg_idx = get_ft_freq_idx(ft_beg_freq, n_ft_pts, time_freq)
+    ft_end_idx = get_ft_freq_idx(ft_end_freq, n_ft_pts, time_freq)
+
+    print('initial ft_beg_idx, ft_end_idx:', ft_beg_idx, ft_end_idx)
+    assert (ft_beg_idx >= 0) and (ft_end_idx >= 0)
+
+    freq_beg_inc = 0
+    freq_end_inc = 0
+
+    # begin freq idx adj.
+    if (not ft_beg_freq_inc_flag) and (ft_end_idx > ft_beg_idx):
+        freq_beg_inc += 1
+
+    elif (ft_beg_freq_inc_flag) and (ft_end_idx > ft_beg_idx):
+        pass
+
+    elif (not ft_beg_freq_inc_flag) and (ft_end_idx < ft_beg_idx):
+        pass
+
+    elif (ft_beg_freq_inc_flag) and (ft_end_idx < ft_beg_idx):
+        freq_beg_inc += 1
+
+    else:
+        raise ValueError('Unknown state!')
+
+    # end freq idx adj.
+    if (not ft_end_freq_inc_flag) and (ft_end_idx > ft_beg_idx):
+        pass
+
+    elif (ft_end_freq_inc_flag) and (ft_end_idx > ft_beg_idx):
+        freq_end_inc += 1
+
+    elif (not ft_end_freq_inc_flag) and (ft_end_idx < ft_beg_idx):
+        freq_end_inc += 1
+
+    elif (ft_end_freq_inc_flag) and (ft_end_idx < ft_beg_idx):
+        pass
+
+    else:
+        raise ValueError('Unknown state!')
+
+    if ft_beg_idx > ft_end_idx:
+        ft_beg_idx, ft_end_idx = (
+            ft_end_idx + freq_end_inc, ft_beg_idx + freq_beg_inc)
+
+    else:
+        ft_beg_idx += freq_beg_inc
+        ft_end_idx += freq_end_inc
+
+    print('final ft_beg_idx, ft_end_idx:', ft_beg_idx, ft_end_idx)
+
+    assert 0 <= ft_beg_idx <= ((n_ft_pts // 2) + 1), (
+        'Specified frequency is too fine for the input length!')
+
+    assert 0 <= ft_end_idx <= ((n_ft_pts // 2) + 1), (
+        'Specified frequency is too fine for the input length!')
+
+    assert ft_beg_idx < ft_end_idx
 
     return ft_beg_idx, ft_end_idx
 

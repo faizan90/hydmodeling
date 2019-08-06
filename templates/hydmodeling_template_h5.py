@@ -341,9 +341,13 @@ def main():
     discharge_resampling_freq = cfp['OPT_HYD_MODEL'][
         'discharge_resampling_freq']
 
-    ft_freq = cfp['OPT_HYD_MODEL']['ft_freq']
-    ft_freq_aft_flag = cfp['OPT_HYD_MODEL'].getboolean('ft_freq_aft_flag')
-    ft_freq_inc_flag = cfp['OPT_HYD_MODEL'].getboolean('ft_freq_inc_flag')
+    ft_beg_freq = cfp['OPT_HYD_MODEL']['ft_beg_freq']
+    ft_beg_freq_inc_flag = cfp['OPT_HYD_MODEL'].getboolean(
+        'ft_beg_freq_inc_flag')
+
+    ft_end_freq = cfp['OPT_HYD_MODEL']['ft_end_freq']
+    ft_end_freq_inc_flag = cfp['OPT_HYD_MODEL'].getboolean(
+        'ft_end_freq_inc_flag')
 
     in_opt_schm_vars_dict = cfp['OPT_SCHM_VARS']
 
@@ -568,9 +572,10 @@ def main():
             cv_list,
             use_resampled_obj_ftns_flag,
             discharge_resampling_freq,
-            ft_freq,
-            ft_freq_aft_flag,
-            ft_freq_inc_flag)
+            ft_beg_freq,
+            ft_beg_freq_inc_flag,
+            ft_end_freq,
+            ft_end_freq_inc_flag)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
