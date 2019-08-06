@@ -65,19 +65,24 @@ from ..miscs.dtypes cimport (
     use_step_flag_i,
     resamp_obj_ftns_flag_i,
     a_zero_i,
-    ft_maxi_freq_idx_i,
-    n_pts_ft_i,
+    ft_beg_idx_i,
+    ft_end_idx_i,
     rnof_q_conv_i,
     demr_i,
     ln_demr_i,
     mean_ref_i,
     act_std_dev_i,
     err_val_i,
-    min_q_thresh_i)
+    min_q_thresh_i,
+    ft_demr_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
 
+
+cdef extern from "complex.h" nogil:
+    cdef:
+        DT_D cabs(DT_DC)
 
 cdef extern from "../miscs/rand_gen_mp.h" nogil:
     cdef:
@@ -116,8 +121,8 @@ cpdef dict hbv_opt(args):
         DT_UL opt_flag = 1, use_obs_flow_flag, use_step_flag
         DT_UL max_iters, max_cont_iters, off_idx, n_prms, n_hm_prms
         DT_UL iter_curr = 0, last_succ_i = 0, n_succ = 0, cont_iter = 0
-        DT_UL resamp_obj_ftns_flag, ft_maxi_freq_idx
-        
+        DT_UL resamp_obj_ftns_flag, ft_beg_idx, ft_end_idx
+
         # size in bytes
         DT_UL q_sorig, q_sft, q_sampang
 
@@ -127,7 +132,6 @@ cpdef dict hbv_opt(args):
 
         list idxs_shuff_list
 
-        ForFourTrans1DReal *q_ft
         ForFourTrans1DRealVec q_ft_tfms
 
         DT_UL[::1] prm_opt_stop_arr, obj_longs, use_step_arr
@@ -211,6 +215,7 @@ cpdef dict hbv_opt(args):
         DT_UL n_cpus, n_resamp_tags = 0, a_zero = 0
 
         DT_D min_q_thresh, mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
+        DT_D ft_demr
 
         dict out_dict
 
@@ -223,7 +228,7 @@ cpdef dict hbv_opt(args):
     obj_ftn_wts = args[1]
 
     if obj_ftn_wts[3]:
-        ft_maxi_freq_idx = args[9]
+        ft_beg_idx, ft_end_idx = args[9]
 
     opt_schm = args[8]
 
@@ -528,7 +533,7 @@ cpdef dict hbv_opt(args):
     obj_longs[use_step_flag_i] = use_step_flag
     obj_longs[resamp_obj_ftns_flag_i] = resamp_obj_ftns_flag
     obj_longs[a_zero_i] = a_zero
-    
+
     obj_doubles = np.full(obj_doubles_ct, np.nan, dtype=DT_D_NP)
     obj_doubles[rnof_q_conv_i] = rnof_q_conv
     obj_doubles[demr_i] = demr
@@ -606,8 +611,6 @@ cpdef dict hbv_opt(args):
 
         assert n_pts_ft > 1
 
-        obj_longs[n_pts_ft_i] = n_pts_ft
-
         q_sorig = n_pts_ft * sizeof(DT_D)
         q_sft = ((n_pts_ft // 2) + 1) * sizeof(DT_DC)
         q_sampang = (((n_pts_ft // 2) + 1) * sizeof(DT_D))
@@ -624,21 +627,23 @@ cpdef dict hbv_opt(args):
 
             q_ft_tfms[i].angs = <DT_D *> malloc(q_sampang)
 
-            q_ft_tfms[i].pcorrs = <DT_D *> malloc(q_sampang)
-
             q_ft_tfms[i].n_pts = n_pts_ft
-
-            q_ft_tfms[i].sq_amps = <DT_D *> malloc(q_sampang)
 
         for i in range(n_pts_ft):
             q_ft_tfms[0].orig[i] = qact_arr[off_idx + i]
+            q_ft_tfms[1].orig[i] = mean_ref
 
         cmpt_real_fourtrans_1d(q_ft_tfms[0])
+        cmpt_real_fourtrans_1d(q_ft_tfms[1])
 
-        for i in range((n_pts_ft // 2) + 1):
-            q_ft_tfms[0].sq_amps[i] = (q_ft_tfms[0].amps[i]**2)
+        ft_demr = 0.0
+        for i in range(ft_beg_idx, ft_end_idx):
+            ft_demr += cabs(q_ft_tfms[0].ft[i] - q_ft_tfms[1].ft[i])**2
 
-        obj_longs[ft_maxi_freq_idx_i] = ft_maxi_freq_idx
+        obj_longs[ft_beg_idx_i] = ft_beg_idx
+        obj_longs[ft_end_idx_i] = ft_end_idx
+
+        obj_doubles[ft_demr_i] = ft_demr
 
     # for the selected parameters, get obj vals
     for i in prange(
@@ -868,6 +873,10 @@ cpdef dict hbv_opt(args):
             elif opt_schm == 2:
                 pre_obj_vals[t_i] = res
 
+        for i in range(n_prm_vecs):
+            if np.isnan(pre_obj_vals[i]):
+                raise RuntimeError('res is Nan!')
+
         if opt_schm == 1:
             post_de(
                 prm_opt_stop_arr,
@@ -1004,10 +1013,6 @@ cpdef dict hbv_opt(args):
             free(q_ft_tfms[i].amps)
 
             free(q_ft_tfms[i].angs)
-
-            free(q_ft_tfms[i].pcorrs)
-
-            free(q_ft_tfms[i].sq_amps)
 
             free(q_ft_tfms[i])
 

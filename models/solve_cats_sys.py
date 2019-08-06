@@ -73,7 +73,9 @@ def solve_cats_sys(
         cv_list,
         use_resampled_obj_ftns_flag,
         discharge_resampling_freq,
-        fourtrans_maxi_freq):
+        ft_freq,
+        ft_freq_aft_flag,
+        ft_freq_inc_flag):
 
     '''Optimize parameters for a given catchment
 
@@ -152,8 +154,11 @@ def solve_cats_sys(
     assert isinstance(discharge_resampling_freq, str)
     assert discharge_resampling_freq in ['Y', 'A', 'M', 'W']
 
-    assert isinstance(fourtrans_maxi_freq, str)
-    assert fourtrans_maxi_freq[-1] in ['Y', 'A', 'M', 'W']
+    assert isinstance(ft_freq, str)
+    assert ft_freq[-1] in ['Y', 'A', 'M', 'W']
+
+    assert isinstance(ft_freq_aft_flag, bool)
+    assert isinstance(ft_freq_inc_flag, bool)
 
     sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
     assert np.all(np.isfinite(sel_cats))
@@ -351,7 +356,9 @@ def solve_cats_sys(
         'cv_flag': cv_flag,
         'resamp_obj_ftns_flag': use_resampled_obj_ftns_flag,
         'discharge_resampling_freq': discharge_resampling_freq,
-        'fourtrans_maxi_freq': fourtrans_maxi_freq}
+        'ft_freq': ft_freq,
+        'ft_freq_aft_flag': ft_freq_aft_flag,
+        'ft_freq_inc_flag': ft_freq_inc_flag}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -567,10 +574,16 @@ def solve_cat(
     cv_flag = int(kwargs['cv_flag'])
     resamp_obj_ftns_flag = kwargs['resamp_obj_ftns_flag']
     discharge_resampling_freq = kwargs['discharge_resampling_freq']
-    ft_maxi_freq = kwargs['fourtrans_maxi_freq']
+    ft_freq = kwargs['ft_freq']
+    ft_freq_aft_flag = kwargs['ft_freq_aft_flag']
+    ft_freq_inc_flag = kwargs['ft_freq_inc_flag']
 
-    ft_maxi_freq_idx = get_ft_maxi_freq_idx(
-        ft_maxi_freq, in_q_df.shape[0], warm_up_steps)
+    ft_beg_idx, ft_end_idx = get_ft_freq_idx(
+        ft_freq,
+        in_q_df.shape[0],
+        warm_up_steps,
+        ft_freq_aft_flag,
+        ft_freq_inc_flag)
 
     if resamp_obj_ftns_flag:
         if discharge_resampling_freq in ['Y', 'A']:
@@ -1145,7 +1158,7 @@ def solve_cat(
         else:
             curr_cat_params.append(cat_area_ratios_arr)
 
-        curr_cat_params.append(ft_maxi_freq_idx)
+        curr_cat_params.append((ft_beg_idx, ft_end_idx))
 
         if calib_run:
             opt_strt_time = timeit.default_timer()
@@ -1577,16 +1590,21 @@ def get_resample_tags_arr(in_resamp_idxs, warm_up_steps):
     return tags
 
 
-def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs, off_idx):
+def get_ft_freq_idx(
+        ft_freq,
+        n_recs,
+        off_idx,
+        ft_freq_aft_flag,
+        ft_freq_inc_flag):
 
     n_ft_pts = n_recs - off_idx
 
     if n_ft_pts % 2:
         n_ft_pts -= 1  # same is used inside the opt
 
-    ft_maxi_freq_scale = ft_maxi_freq[-1]
+    ft_freq_scale = ft_freq[-1]
 
-    ft_freq_mult = ft_maxi_freq[:-1]
+    ft_freq_mult = ft_freq[:-1]
     if not ft_freq_mult:
         ft_freq_mult = 1
 
@@ -1595,33 +1613,57 @@ def get_ft_maxi_freq_idx(ft_maxi_freq, n_recs, off_idx):
 
     assert ft_freq_mult > 0, 'Should be greater than zero!'
 
-    print('ft_maxi_freq_scale:', ft_maxi_freq_scale)
+    print('ft_freq_scale:', ft_freq_scale)
     print('ft_freq_mult:', ft_freq_mult)
+    print('ft_freq_aft_flag:', ft_freq_aft_flag)
+    print('ft_freq_inc_flag:', ft_freq_inc_flag)
 
-    if (ft_maxi_freq_scale == 'A') or (ft_maxi_freq_scale == 'Y'):
+    if (ft_freq_scale == 'A') or (ft_freq_scale == 'Y'):
         # assuming 365 days a year
 #         assert n_ft_pts > (365 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_ft_pts // (365 * ft_freq_mult)  # leap years?
+        ft_freq_idx = n_ft_pts // (365 * ft_freq_mult)  # leap years?
 
-    elif ft_maxi_freq_scale == 'M':
+    elif ft_freq_scale == 'M':
         # assuming a 30.5 day month
 #         assert n_ft_pts > (30.5 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_ft_pts // (30.5 * ft_freq_mult)
+        ft_freq_idx = n_ft_pts // (30.5 * ft_freq_mult)
 
-    elif ft_maxi_freq_scale == 'W':
+    elif ft_freq_scale == 'W':
 #         assert n_ft_pts > (7 * ft_freq_mult)
 
-        ft_maxi_freq_idx = n_ft_pts // (7 * ft_freq_mult)
+        ft_freq_idx = n_ft_pts // (7 * ft_freq_mult)
 
     else:
-        raise ValueError(f'ft_maxi_freq not defined for: {ft_maxi_freq}!')
+        raise ValueError(f'ft_freq not defined for: {ft_freq}!')
 
-    ft_maxi_freq_idx = int(ft_maxi_freq_idx)
+    ft_freq_idx = int(ft_freq_idx)
 
-    print('ft_maxi_freq_idx:', ft_maxi_freq_idx)
-    assert ft_maxi_freq_idx >= 0, 'No. of values is too little!'
+    print('ft_freq_idx:', ft_freq_idx)
 
-    return ft_maxi_freq_idx
+    assert ft_freq_idx >= 0, 'No. of values is too little!'
+
+    if ft_freq_inc_flag and ft_freq_aft_flag:
+        ft_beg_idx = ft_freq_idx
+        ft_end_idx = max(ft_freq_idx + 1, int(n_ft_pts // 2) + 1)
+
+    elif ft_freq_inc_flag and (not ft_freq_aft_flag):
+        ft_beg_idx = 0
+        ft_end_idx = ft_freq_idx + 1
+
+    elif (not ft_freq_inc_flag) and ft_freq_aft_flag:
+        ft_beg_idx = ft_freq_idx + 1
+        ft_end_idx = max(ft_freq_idx + 2, int(n_ft_pts // 2) + 1)
+
+    else:
+        ft_beg_idx = 0
+        ft_end_idx = ft_freq_idx
+
+    print('ft_beg_idx, ft_end_idx:', ft_beg_idx, ft_end_idx)
+
+    assert ft_beg_idx >= 0
+    assert ft_beg_idx < ft_end_idx, 'too few points to work with!'
+
+    return ft_beg_idx, ft_end_idx
 
