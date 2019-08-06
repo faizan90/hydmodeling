@@ -8,8 +8,8 @@ import os
 import time
 import timeit
 from shutil import copy2
-from datetime import datetime
 import configparser as cfpm
+from datetime import datetime
 from collections import OrderedDict
 
 import h5py

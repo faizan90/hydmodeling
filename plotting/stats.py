@@ -214,7 +214,7 @@ class PlotCatStats:
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
             f'{self._qsim_mean:0.3f}, '
-            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'Obs. and Sim. variance: {self._qobs_var:0.3f}, '
             f'{self._qsim_var:0.3f}'
             )
 
@@ -260,7 +260,7 @@ class PlotCatStats:
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
             f'{self._qsim_mean:0.3f}, '
-            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'Obs. and Sim. variance: {self._qobs_var:0.3f}, '
             f'{self._qsim_var:0.3f}'
             )
 
@@ -330,7 +330,7 @@ class PlotCatStats:
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
             f'{self._qsim_mean:0.3f}, '
-            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'Obs. and Sim. variance: {self._qobs_var:0.3f}, '
             f'{self._qsim_var:0.3f}'
             )
 
@@ -377,7 +377,7 @@ class PlotCatStats:
             f'Sim-to-Obs fourier correlation: {freq_cov_cntrb_sim[-1]:0.4f}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
             f'{self._qsim_mean:0.3f}, '
-            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'Obs. and Sim. variance: {self._qobs_var:0.3f}, '
             f'{self._qsim_var:0.3f}'
             )
 
@@ -427,7 +427,7 @@ class PlotCatStats:
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
             f'{self._qsim_mean:0.3f}, '
-            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'Obs. and Sim. variance: {self._qobs_var:0.3f}, '
             f'{self._qsim_var:0.3f}'
             )
 

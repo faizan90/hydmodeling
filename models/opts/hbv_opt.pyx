@@ -74,7 +74,8 @@ from ..miscs.dtypes cimport (
     act_std_dev_i,
     err_val_i,
     min_q_thresh_i,
-    ft_demr_i)
+    ft_demr_1_i,
+    ft_demr_2_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -215,7 +216,7 @@ cpdef dict hbv_opt(args):
         DT_UL n_cpus, n_resamp_tags = 0, a_zero = 0
 
         DT_D min_q_thresh, mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
-        DT_D ft_demr
+        DT_D ft_demr_1, ft_demr_2
 
         dict out_dict
 
@@ -636,14 +637,19 @@ cpdef dict hbv_opt(args):
         cmpt_real_fourtrans_1d(q_ft_tfms[0])
         cmpt_real_fourtrans_1d(q_ft_tfms[1])
 
-        ft_demr = 0.0
+        ft_demr_1 = 0.0
         for i in range(ft_beg_idx, ft_end_idx):
-            ft_demr += cabs(q_ft_tfms[0].ft[i] - q_ft_tfms[1].ft[i])**2
+            ft_demr_1 += cabs(q_ft_tfms[0].ft[i] - q_ft_tfms[1].ft[i])**2
+
+        ft_demr_2 = 0.0
+        for i in range((n_pts_ft // 2) + 1):
+            ft_demr_2 += cabs(q_ft_tfms[0].ft[i] - q_ft_tfms[1].ft[i])
 
         obj_longs[ft_beg_idx_i] = ft_beg_idx
         obj_longs[ft_end_idx_i] = ft_end_idx
 
-        obj_doubles[ft_demr_i] = ft_demr
+        obj_doubles[ft_demr_1_i] = ft_demr_1
+        obj_doubles[ft_demr_2_i] = ft_demr_2
 
     # for the selected parameters, get obj vals
     for i in prange(

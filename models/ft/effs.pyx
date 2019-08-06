@@ -37,7 +37,8 @@ from ..miscs.dtypes cimport (
     ft_end_idx_i,
     mean_ref_i,
     act_std_dev_i,
-    ft_demr_i)
+    ft_demr_1_i,
+    ft_demr_2_i)
 
 
 cdef DT_D get_ft_eff(
@@ -54,18 +55,26 @@ cdef DT_D get_ft_eff(
 
         DT_UL n_pts = obs_for_four_trans_struct.n_pts
 
-        DT_D abs_ft_diff
+        DT_D abs_ft_sq_diff, abs_ft_diff
 
     mkl_real_dft(
         sim_for_four_trans_struct.orig, sim_for_four_trans_struct.ft, n_pts)
 
-    abs_ft_diff = 0.0
+    abs_ft_sq_diff = 0.0
     for i in range(obj_longs[ft_beg_idx_i], obj_longs[ft_end_idx_i]):
-        abs_ft_diff += (cabs(
-            obs_for_four_trans_struct.ft[i] - 
+        abs_ft_sq_diff += (cabs(
+            obs_for_four_trans_struct.ft[i] -
             sim_for_four_trans_struct.ft[i])**2)
 
-    return 1.0 - (abs_ft_diff / obj_doubles[ft_demr_i])
+    abs_ft_diff = 0.0
+    for i in range((n_pts // 2) + 1):
+        abs_ft_diff += cabs(
+            obs_for_four_trans_struct.ft[i] - sim_for_four_trans_struct.ft[i])
+
+    # weights should sum upto 1
+    return (
+        (0.85 * (1.0 - (abs_ft_sq_diff / obj_doubles[ft_demr_1_i]))) +
+        (0.15 * (1.0 - (abs_ft_diff    / obj_doubles[ft_demr_2_i]))))
 
 
 # cdef DT_D get_ft_eff(

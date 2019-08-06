@@ -22,8 +22,6 @@ from ..miscs.dtypes cimport (
     use_step_flag_i,
     resamp_obj_ftns_flag_i,
     a_zero_i,
-    ft_beg_idx_i,
-    ft_end_idx_i,
     demr_i,
     ln_demr_i,
     mean_ref_i,
