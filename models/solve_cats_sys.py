@@ -1644,7 +1644,7 @@ def get_freq_scalar(ft_freq_scale):
 
     if (ft_freq_scale == 'A') or (ft_freq_scale == 'Y'):
         # assuming 365.25 days a year
-        freq_scalar = 365.25  # leap years?
+        freq_scalar = 365.0  # leap years?
 
     elif ft_freq_scale == 'M':
         # assuming a 30.5 day month

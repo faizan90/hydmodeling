@@ -73,6 +73,12 @@ class PlotCatStats:
         self._out_dir = out_dir
         self._n_steps = self._qobs_arr.shape[0]
 
+        self._qobs_mean = self._qobs_arr.mean()
+        self._qobs_var = self._qobs_arr.var()
+
+        self._qsim_mean = self._qsim_arr.mean()
+        self._qsim_var = self._qsim_arr.var()
+
         mkdir_hm(self._out_dir)
 
         self._qobs_probs = (
@@ -203,9 +209,14 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Fourier trasnform absolute difference\n'
+            f'Discharge Fourier transform absolute difference\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
-            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}')
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+            f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
+            f'{self._qsim_mean:0.3f}, '
+            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'{self._qsim_var:0.3f}'
+            )
 
         cntrb_fig_name = (
             f'ft_abs_diff_kf_{self._kf:02d}_{self._run_type}_'
@@ -244,9 +255,14 @@ class PlotCatStats:
         plt.legend()
 
         plt.title(
-            f'Fourier amplitudes\n'
+            f'Discharge Fourier amplitudes\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
-            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}')
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+            f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
+            f'{self._qsim_mean:0.3f}, '
+            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'{self._qsim_var:0.3f}'
+            )
 
         cntrb_fig_name = (
             f'ft_amps_kf_{self._kf:02d}_{self._run_type}_'
@@ -276,9 +292,10 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Fourier phase difference\n'
+            f'Discharge Fourier phase difference\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
-            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}')
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
+            )
 
         cntrb_fig_name = (
             f'ft_phas_diff_kf_{self._kf:02d}_{self._run_type}_'
@@ -308,9 +325,14 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Fourier normalized amplitude difference\n'
+            f'Disharge Fourier normalized amplitude difference\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
-            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}')
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+            f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
+            f'{self._qsim_mean:0.3f}, '
+            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'{self._qsim_var:0.3f}'
+            )
 
         cntrb_fig_name = (
             f'ft_amps_diff_kf_{self._kf:02d}_{self._run_type}_'
@@ -349,10 +371,15 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Fourier frequency correlation contribution\n'
+            f'Dscharge Fourier frequency correlation contribution\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
-            f'Sim-to-Obs fourier correlation: {freq_cov_cntrb_sim[-1]:0.4f}')
+            f'Sim-to-Obs fourier correlation: {freq_cov_cntrb_sim[-1]:0.4f}\n'
+            f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
+            f'{self._qsim_mean:0.3f}, '
+            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'{self._qsim_var:0.3f}'
+            )
 
         cntrb_fig_name = (
             f'ft_full_wvcb_kf_{self._kf:02d}_{self._run_type}_'
@@ -395,9 +422,14 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Fourier frequency correlation contribution gradient\n'
+            f'Discharge Fourier frequency correlation contribution gradient\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
-            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}')
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+            f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
+            f'{self._qsim_mean:0.3f}, '
+            f'Obs. and Sim. mean: {self._qobs_var:0.3f}, '
+            f'{self._qsim_var:0.3f}'
+            )
 
         cntrb_fig_name = (
             f'ft_full_wvcb_grad_kf_{self._kf:02d}_{self._run_type}_'
