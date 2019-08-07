@@ -6,7 +6,7 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
-from libc.math cimport cos, atan2
+from libc.math cimport cos
 
 
 cdef extern from "intel_dfti.h" nogil:
@@ -19,9 +19,8 @@ cdef extern from "intel_dfti.h" nogil:
 
 cdef extern from "complex.h" nogil:
     cdef:
-        DT_D creal(DT_DC)
-        DT_D cimag(DT_DC)
-
+        DT_D cabs(DT_DC)
+        DT_D carg(DT_DC)
 
 cdef void cmpt_real_fourtrans_1d(
     ForFourTrans1DReal *for_four_trans_struct) nogil except +:
@@ -44,9 +43,9 @@ cdef void cmpt_real_fourtrans_1d(
     for i in range((n_pts // 2) + 1):
         ft = for_four_trans_struct.ft[i]
 
-        angs[i] = atan2(cimag(ft), creal(ft))
+        angs[i] = carg(ft)
 
-        amps[i] = ((creal(ft)**2) + (cimag(ft)**2))**0.5
+        amps[i] = cabs(ft)
     return
 
 
