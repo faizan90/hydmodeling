@@ -153,8 +153,19 @@ class PlotCatStats:
         max_cov_obs = freq_cov_cntrb_obs[-1]
         freq_cov_cntrb_obs /= max_cov_obs
 
+#         freq_cov_cntrb_grad_obs = (
+#             freq_cov_cntrb_obs[1:] - freq_cov_cntrb_obs[:-1]) / (
+#                 freq_cov_cntrb_obs[1:])
+
+        _obs_indiv_cntrb = (
+            (ft_obs_amps * ft_obs_amps) * np.cos(ft_obs_phas - ft_obs_phas))
+        _obs_indiv_cntrb /= max_cov_obs
+
         freq_cov_cntrb_grad_obs = (
-            freq_cov_cntrb_obs[1:] - freq_cov_cntrb_obs[:-1])
+            _obs_indiv_cntrb[1:] - _obs_indiv_cntrb[:-1]) / (
+                _obs_indiv_cntrb[1:])
+
+        freq_cov_cntrb_grad_obs[np.abs(freq_cov_cntrb_grad_obs) > 20] = 20
 
         ft_sim = np.fft.rfft(self._qsim_arr[:n_ft_pts])[ft_ofst_idx:]
         ft_sim_phas = np.angle(ft_sim)
@@ -167,8 +178,15 @@ class PlotCatStats:
             (ft_obs_amps * ft_sim_amps) * np.cos(ft_obs_phas - ft_sim_phas))
         freq_cov_cntrb_sim /= max_cov_sim
 
+        _sim_indiv_cntrb = (
+            (ft_obs_amps * ft_sim_amps) * np.cos(ft_obs_phas - ft_sim_phas))
+        _sim_indiv_cntrb /= max_cov_sim
+
         freq_cov_cntrb_grad_sim = (
-            freq_cov_cntrb_sim[1:] - freq_cov_cntrb_sim[:-1])
+            _sim_indiv_cntrb[1:] - _sim_indiv_cntrb[:-1]) / (
+                _sim_indiv_cntrb[1:])
+
+        freq_cov_cntrb_grad_sim[np.abs(freq_cov_cntrb_grad_sim) > 20] = 20
 
         self._plot_fts_wvcbs(
             freq_cov_cntrb_obs,
@@ -325,7 +343,7 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Disharge Fourier normalized amplitude difference\n'
+            f'Discharge Fourier normalized amplitude difference\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
@@ -371,7 +389,7 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Dscharge Fourier frequency correlation contribution\n'
+            f'Discharge Fourier frequency correlation contribution\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
             f'Sim-to-Obs fourier correlation: {freq_cov_cntrb_sim[-1]:0.4f}\n'
@@ -401,14 +419,14 @@ class PlotCatStats:
         # wvcb gradient
         plt.figure(figsize=(15, 7))
 
-        plt.semilogx(
+        plt.plot(
             freq_cov_cntrb_grad_obs,
             label='obs',
             alpha=line_alpha + 0.2,
             color='red',
             lw=line_lw)
 
-        plt.semilogx(
+        plt.plot(
             freq_cov_cntrb_grad_sim,
             label='sim',
             alpha=line_alpha,
@@ -422,7 +440,8 @@ class PlotCatStats:
         plt.grid()
 
         plt.title(
-            f'Discharge Fourier frequency correlation contribution gradient\n'
+            f'Discharge Fourier frequency correlation contribution normalized'
+            f' gradient\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '

@@ -156,7 +156,7 @@ def main():
 #     plot_opt_evo_flag = True
 #     plot_var_errors_flag = True
 #     plot_hbv_vars_flag = True
-#     plot_stats_flag = True
+    plot_stats_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
 
