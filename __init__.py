@@ -3,7 +3,9 @@ Created on 23 Jun 2018
 
 @author: Faizan_TR
 '''
-# import matplotlib
+# import matplotlib as mpl
+# mpl.rc('font', size=16)
+
 # matplotlib.use('Cairo')
 
 from .dem_hyd_ansys import (
