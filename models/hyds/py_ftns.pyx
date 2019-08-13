@@ -67,10 +67,11 @@ cpdef dict hbv_loop_py(
               DT_D[:, ::1] prms_arr,
         const DT_D[:, ::1] inis_arr,
         const DT_D[::1] area_arr,
-        const DT_D rnof_q_conv):
+        const DT_D rnof_q_conv,
+              DT_UL opt_flag=0):
 
     cdef:
-        DT_UL n_time_steps = temp_arr.shape[1], opt_flag = 0
+        DT_UL n_time_steps = temp_arr.shape[1]
         DT_UL n_cells = temp_arr.shape[0]
 
         DT_D loop_ret
@@ -85,7 +86,13 @@ cpdef dict hbv_loop_py(
     assert temp_arr.shape[0] == prms_arr.shape[0] == area_arr.shape[0]
     assert prms_arr.shape[1] == n_hbv_prms
 
-    outs_arr = np.zeros((n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
+    if opt_flag == 0:
+        outs_arr = np.zeros(
+            (n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
+
+    else:
+        outs_arr = np.zeros((n_cells, 1, n_hbv_cols), dtype=DT_D_NP)
+
     qsim_arr = np.zeros(n_time_steps, dtype=DT_D_NP)
 
     loop_ret = hbv_loop(
