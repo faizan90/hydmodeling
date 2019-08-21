@@ -33,6 +33,12 @@ cdef DT_D hbv_loop(
     const DT_UL *opt_flag,
     ) nogil except +:
 
+    '''
+     outs_arr can be initialized with values
+     all other arrays should either hold some
+     input values or zeros in case of outputs
+    '''
+
     cdef:
         Py_ssize_t i, j, o_i
 

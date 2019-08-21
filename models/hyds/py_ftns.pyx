@@ -87,11 +87,11 @@ cpdef dict hbv_loop_py(
     assert prms_arr.shape[1] == n_hbv_prms
 
     if opt_flag == 0:
-        outs_arr = np.zeros(
+        outs_arr = np.empty(
             (n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
 
     else:
-        outs_arr = np.zeros((n_cells, 1, n_hbv_cols), dtype=DT_D_NP)
+        outs_arr = np.empty((n_cells, 1, n_hbv_cols), dtype=DT_D_NP)
 
     qsim_arr = np.zeros(n_time_steps, dtype=DT_D_NP)
 
@@ -121,7 +121,8 @@ cpdef dict hbv_c_loop_py(
         const DT_D[:, ::1] prms_arr,
         const DT_D[:, ::1] inis_arr,
         const DT_D[::1] area_arr,
-        const DT_D rnof_q_conv):
+        const DT_D rnof_q_conv,
+              DT_UL opt_flag=0):
 
     cdef:
         DT_UL n_time_steps = temp_arr.shape[1], opt_flag = 0
@@ -139,7 +140,13 @@ cpdef dict hbv_c_loop_py(
     assert temp_arr.shape[0] == prms_arr.shape[0] == area_arr.shape[0]
     assert prms_arr.shape[1] == n_hbv_prms
 
-    outs_arr = np.zeros((n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
+    if opt_flag == 0:
+        outs_arr = np.empty(
+            (n_cells, n_time_steps + 1, n_hbv_cols), dtype=DT_D_NP)
+
+    else:
+        outs_arr = np.empty((n_cells, 1, n_hbv_cols), dtype=DT_D_NP)
+
     qsim_arr = np.zeros(n_time_steps, dtype=DT_D_NP)
 
     loop_ret = hbv_c_loop(
@@ -165,14 +172,14 @@ cpdef dict hbv_c_loop_py(
     return out_dict
 
 
-cpdef dict hbv_mult_cat_loop_py(args):
+cpdef dict hbv_mult_cat_loop_py(args, DT_UL opt_flag=0):
  
     '''Distributed HBV with multiple catchments and routing
     '''
     cdef:
         long curr_us_stm
         DT_UL route_type, cat_no, n_cpus, use_obs_flow_flag, use_step_flag
-        DT_UL cat, stm, off_idx, n_cells, opt_flag = 0
+        DT_UL cat, stm, off_idx, n_cells
         DT_UL n_stms, n_hm_prms
 
         DT_D rnof_q_conv, signal, min_q_thresh
@@ -215,8 +222,14 @@ cpdef dict hbv_mult_cat_loop_py(args):
 
     inflow_arr = np.zeros(cats_outflow_arr.shape[0], dtype=DT_D_NP)
     qsim_arr = inflow_arr.copy()
-    outs_arr = np.zeros((n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols),
-                        dtype=DT_D_NP)
+
+    if opt_flag == 0:
+        outs_arr = np.empty(
+            (n_cells, cats_outflow_arr.shape[0] + 1, n_hbv_cols),
+            dtype=DT_D_NP)
+
+    else:
+        outs_arr = np.empty((n_cells, 1, n_hbv_cols), dtype=DT_D_NP)
 
     for cat in cat_to_idx_dict:
         cat_to_idx_map[cat] = cat_to_idx_dict[cat]
@@ -273,6 +286,7 @@ cpdef dict hbv_mult_cat_loop_py(args):
     return {'outs_arr': np.asarray(outs_arr[:, 1:, :]),
             'qsim_arr': np.asarray(qsim_arr),
             'inflow_arr': np.asarray(inflow_arr)}
+
 
 cpdef np.ndarray tfm_opt_to_hbv_prms_py(
         const DT_UL[:, ::1] prms_flags,

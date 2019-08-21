@@ -34,11 +34,11 @@ def plot_cat_diags(plot_args):
 
         off_idx = db['data'].attrs['off_idx']
 
-        grid_rows = db['data/rows'][...]
-        grid_rows -= grid_rows.min()
-
-        grid_cols = db['data/cols'][...]
-        grid_cols -= grid_cols.min()
+#         grid_rows = db['data/rows'][...]
+#         grid_rows -= grid_rows.min()
+#
+#         grid_cols = db['data/cols'][...]
+#         grid_cols -= grid_cols.min()
 
         for kf in range(1, kfolds + 1):
             for run_type in ['calib', 'valid']:
@@ -50,7 +50,7 @@ def plot_cat_diags(plot_args):
 
                     continue
 
-                plot_cat_diags_cls = PlotCatDiagnostics(
+                plot_cat_diags_1d_cls = PlotCatDiagnostics1D(
                     db[f'{run_type}/kf_{kf:02d}/qact_arr'][...],
                     db[f'{run_type}/kf_{kf:02d}/qsim_arr'][...],
                     db[f'{run_type}/kf_{kf:02d}/ppt_arr'][...],
@@ -58,23 +58,29 @@ def plot_cat_diags(plot_args):
                     cat,
                     kf,
                     run_type,
-                    grid_rows,
-                    grid_cols,
-                    os.path.join(out_dir, '13_diagnostics'),
+#                     grid_rows,
+#                     grid_cols,
+                    os.path.join(out_dir, '13_diagnostics_1D'),
                     )
 
-                plot_cat_diags_cls.plot_emp_cops()
-                plot_cat_diags_cls.plot_fts()
-                plot_cat_diags_cls.plot_lorenz_curves()
-                plot_cat_diags_cls.plot_quantile_effs()
-                plot_cat_diags_cls.plot_sorted_sq_diffs()
-                plot_cat_diags_cls.plot_peak_qevents()
-                plot_cat_diags_cls.plot_mw_discharge_ratios()
-                plot_cat_diags_cls.plot_hi_err_qevents()
+                plot_cat_diags_1d_cls.plot_emp_cops()
+                plot_cat_diags_1d_cls.plot_fts()
+                plot_cat_diags_1d_cls.plot_lorenz_curves()
+                plot_cat_diags_1d_cls.plot_quantile_effs()
+                plot_cat_diags_1d_cls.plot_sorted_sq_diffs()
+                plot_cat_diags_1d_cls.plot_peak_qevents()
+                plot_cat_diags_1d_cls.plot_mw_discharge_ratios()
+                plot_cat_diags_1d_cls.plot_hi_err_qevents()
     return
 
 
-class PlotCatDiagnostics:
+class PlotCatDiagnostics2D:
+
+    def __init__(self):
+        return
+
+
+class PlotCatDiagnostics1D:
 
     '''For internal use only'''
 
@@ -87,8 +93,8 @@ class PlotCatDiagnostics:
             cat,
             kf,
             run_type,
-            grid_rows,
-            grid_cols,
+#             grid_rows,
+#             grid_cols,
             out_dir,
             ):
 
@@ -124,18 +130,18 @@ class PlotCatDiagnostics:
 
         self._ppt_ranks = np.argsort(np.argsort(self._ppt_arr)) + 1
 
-        if ppt_arr.shape[0] > 1:
-            self._ppt_dist_arr = ppt_arr[:, off_idx:]
-            self._grid_rows = grid_rows
-            self._grid_cols = grid_cols
-            self._grid_shape = (
-                self._grid_rows.max() + 1, self._grid_cols.max() + 1)
-
-        else:
-            self._ppt_dist_arr = None
-            self._grid_rows = None
-            self._grid_cols = None
-            self._grid_shape = None
+#         if ppt_arr.shape[0] > 1:
+#             self._ppt_dist_arr = ppt_arr[:, off_idx:]
+#             self._grid_rows = grid_rows
+#             self._grid_cols = grid_cols
+#             self._grid_shape = (
+#                 self._grid_rows.max() + 1, self._grid_cols.max() + 1)
+#
+#         else:
+#             self._ppt_dist_arr = None
+#             self._grid_rows = None
+#             self._grid_cols = None
+#             self._grid_shape = None
         return
 
     def plot_hi_err_qevents(self):
@@ -174,7 +180,7 @@ class PlotCatDiagnostics:
             if i == n_evts:
                 break
 
-        self._plot_hi_err_qevents_2d(
+        self._plot_hi_err_qevents(
             hi_qerr_idxs,
             ppt_max,
             qmax,
@@ -182,14 +188,15 @@ class PlotCatDiagnostics:
             aft_steps,
             sq_diffs,
             sum_sq_diffs)
-
-        self._plot_hi_err_qevents_2d_ppt(
-            hi_qerr_idxs,
-            ppt_max,
-            bef_steps,
-            aft_steps,
-            sq_diffs,
-            sum_sq_diffs)
+#
+#         if self._ppt_dist_arr is not None:
+#             self._plot_hi_err_qevents_2d_ppt(
+#                 hi_qerr_idxs,
+#                 ppt_max,
+#                 bef_steps,
+#                 aft_steps,
+#                 sq_diffs,
+#                 sum_sq_diffs)
         return
 
     def plot_mw_discharge_ratios(self):
@@ -207,7 +214,7 @@ class PlotCatDiagnostics:
          qsim_mw_mean_arr,
          qmw_diff_arr,
          qmw_ratio_arr) = (
-            self._get_mw_runoff_diff_ratio_arrs(ws))
+            self._get_mw_qdiff_ratio_arrs(ws))
 
         fig = plt.figure(figsize=(15, 7))
 
@@ -753,7 +760,7 @@ class PlotCatDiagnostics:
         plt.close()
         return
 
-    def _plot_hi_err_qevents_2d(
+    def _plot_hi_err_qevents(
             self,
             hi_qerr_idxs,
             ppt_max,
@@ -902,121 +909,121 @@ class PlotCatDiagnostics:
             plt.close()
         return
 
-    def _plot_hi_err_qevents_2d_ppt(
-            self,
-            hi_qerr_idxs,
-            ppt_max,
-            bef_steps,
-            aft_steps,
-            sq_diffs,
-            sum_sq_diffs):
+#     def _plot_hi_err_qevents_2d_ppt(
+#             self,
+#             hi_qerr_idxs,
+#             ppt_max,
+#             bef_steps,
+#             aft_steps,
+#             sq_diffs,
+#             sum_sq_diffs):
+#
+#         out_dir = os.path.join(self._out_dir, 'hi_qerrs_ppt')
+#         mkdir_hm(out_dir)
+#
+#         n_evt_steps = aft_steps + bef_steps
+#
+#         loc_rows = max(1, int(0.25 * n_evt_steps))
+#         loc_cols = max(1, int(np.ceil(n_evt_steps / loc_rows)))
+#
+#         sca_fac = 3
+#         loc_rows *= sca_fac
+#         loc_cols *= sca_fac
+#
+#         legend_rows = 1
+#         legend_cols = loc_cols
+#
+#         plot_shape = (loc_rows + legend_rows, loc_cols)
+#
+#         cen_crds = (0.5 * np.array(self._grid_shape)).astype(int)
+#
+#         for hi_qerr_idx in hi_qerr_idxs:
+#             bef_idx = max(0, hi_qerr_idx - bef_steps)
+#             aft_idx = min(hi_qerr_idx + aft_steps + 1, self._qobs_arr.shape[0])
+#
+#             curr_row = 0
+#             curr_col = 0
+#
+#             sq_diff = sq_diffs[hi_qerr_idx]
+#             tot_pcnt = 100 * (sq_diff / sum_sq_diffs)
+#
+#             plt.figure(figsize=(12, 14))
+#
+#             for step in range(bef_idx, aft_idx):
+#                 ax = plt.subplot2grid(
+#                     plot_shape,
+#                     loc=(curr_row, curr_col),
+#                     rowspan=sca_fac,
+#                     colspan=sca_fac)
+#
+#                 plot_grid = np.full(self._grid_shape, np.nan)
+#                 plot_grid[self._grid_rows, self._grid_cols] = (
+#                     self._ppt_dist_arr[:, step])
+#
+#                 plot_grid = np.flipud(plot_grid)
+#
+#                 ps = ax.imshow(
+#                     plot_grid,
+#                     origin='lower',
+#                     cmap=plt.get_cmap('gist_rainbow'),
+#                     zorder=1,
+#                     vmin=0,
+#                     vmax=ppt_max)
+#
+#                 ax.text(
+#                     *cen_crds,
+#                     f'  {step}\n({self._ppt_ranks[step]:0.2f})',
+#                     size='x-small')
+#
+#                 ax.set_ylim(0, self._grid_shape[0])
+#                 ax.set_xlim(0, self._grid_shape[1])
+#
+#                 ax.set_xticks([])
+#                 ax.set_yticks([])
+#                 ax.set_xticklabels([])
+#                 ax.set_yticklabels([])
+#                 ax.set_axis_off()
+#
+#                 curr_col += sca_fac
+#                 if curr_col >= loc_cols:
+#                     curr_col = 0
+#                     curr_row += sca_fac
+#
+#             cb_ax = plt.subplot2grid(
+#                 plot_shape,
+#                 loc=(plot_shape[0] - 1, 0),
+#                 rowspan=1,
+#                 colspan=legend_cols)
+#
+#             cb_ax.set_axis_off()
+#             cb = plt.colorbar(
+#                 ps,
+#                 ax=cb_ax,
+#                 fraction=0.9,
+#                 aspect=20,
+#                 orientation='horizontal')
+#
+#             cb.set_label('Precipitation')
+#
+#             plt.suptitle(
+#                 f'Hi error discharge precipitation comparison at '
+#                 f'index: {hi_qerr_idx}\n'
+#                 f'Catchment: {self._cat}, Kf: {self._kf}, '
+#                 f'Run Type: {self._run_type.upper()}, '
+#                 f'Steps: {self._n_steps}\n'
+#                 f'Squared difference: {sq_diff:0.2f}, {tot_pcnt:0.3f}% '
+#                 f'of the total ({sum_sq_diffs:0.2f})'
+#                 )
+#
+#             fig_name = (
+#                 f'hi_qerr_ppt_kf_{self._kf:02d}_{self._run_type}_'
+#                 f'cat_{self._cat}_idx_{hi_qerr_idx}.png')
+#
+#             plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
+#             plt.close()
+#         return
 
-        out_dir = os.path.join(self._out_dir, 'hi_qerrs_ppt')
-        mkdir_hm(out_dir)
-
-        n_evt_steps = aft_steps + bef_steps
-
-        loc_rows = max(1, int(0.25 * n_evt_steps))
-        loc_cols = max(1, int(np.ceil(n_evt_steps / loc_rows)))
-
-        sca_fac = 3
-        loc_rows *= sca_fac
-        loc_cols *= sca_fac
-
-        legend_rows = 1
-        legend_cols = loc_cols
-
-        plot_shape = (loc_rows + legend_rows, loc_cols)
-
-        cen_crds = (0.5 * np.array(self._grid_shape)).astype(int)
-
-        for hi_qerr_idx in hi_qerr_idxs:
-            bef_idx = max(0, hi_qerr_idx - bef_steps)
-            aft_idx = min(hi_qerr_idx + aft_steps + 1, self._qobs_arr.shape[0])
-
-            curr_row = 0
-            curr_col = 0
-
-            sq_diff = sq_diffs[hi_qerr_idx]
-            tot_pcnt = 100 * (sq_diff / sum_sq_diffs)
-
-            plt.figure(figsize=(12, 14))
-
-            for step in range(bef_idx, aft_idx):
-                ax = plt.subplot2grid(
-                    plot_shape,
-                    loc=(curr_row, curr_col),
-                    rowspan=sca_fac,
-                    colspan=sca_fac)
-
-                plot_grid = np.full(self._grid_shape, np.nan)
-                plot_grid[self._grid_rows, self._grid_cols] = (
-                    self._ppt_dist_arr[:, step])
-
-                plot_grid = np.flipud(plot_grid)
-
-                ps = ax.imshow(
-                    plot_grid,
-                    origin='lower',
-                    cmap=plt.get_cmap('gist_rainbow'),
-                    zorder=1,
-                    vmin=0,
-                    vmax=ppt_max)
-
-                ax.text(
-                    *cen_crds,
-                    f'  {step}\n({self._ppt_ranks[step]:0.2f})',
-                    size='x-small')
-
-                ax.set_ylim(0, self._grid_shape[0])
-                ax.set_xlim(0, self._grid_shape[1])
-
-                ax.set_xticks([])
-                ax.set_yticks([])
-                ax.set_xticklabels([])
-                ax.set_yticklabels([])
-                ax.set_axis_off()
-
-                curr_col += sca_fac
-                if curr_col >= loc_cols:
-                    curr_col = 0
-                    curr_row += sca_fac
-
-            cb_ax = plt.subplot2grid(
-                plot_shape,
-                loc=(plot_shape[0] - 1, 0),
-                rowspan=1,
-                colspan=legend_cols)
-
-            cb_ax.set_axis_off()
-            cb = plt.colorbar(
-                ps,
-                ax=cb_ax,
-                fraction=0.9,
-                aspect=20,
-                orientation='horizontal')
-
-            cb.set_label('Precipitation')
-
-            plt.suptitle(
-                f'Hi error discharge precipitation comparison at '
-                f'index: {hi_qerr_idx}\n'
-                f'Catchment: {self._cat}, Kf: {self._kf}, '
-                f'Run Type: {self._run_type.upper()}, '
-                f'Steps: {self._n_steps}\n'
-                f'Squared difference: {sq_diff:0.2f}, {tot_pcnt:0.3f}% '
-                f'of the total ({sum_sq_diffs:0.2f})'
-                )
-
-            fig_name = (
-                f'hi_qerr_ppt_kf_{self._kf:02d}_{self._run_type}_'
-                f'cat_{self._cat}_idx_{hi_qerr_idx}.png')
-
-            plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
-            plt.close()
-        return
-
-    def _get_mw_runoff_diff_ratio_arrs(self, ws):
+    def _get_mw_qdiff_ratio_arrs(self, ws):
 
         ref_mv_mean_arr = np.zeros(self._n_steps - ws)
         sim_mv_mean_arr = ref_mv_mean_arr.copy()

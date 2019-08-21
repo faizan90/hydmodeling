@@ -45,6 +45,9 @@ DT_D hbv_c_loop(
 
 	/*
 	 * Implementation of distributed hbv_loop in cpp
+	 * outs_arr can be initialized with values
+	 * all other arrays should either hold some
+	 * input values or zeros in case of outputs
 	 */
 
 	size_t i, j, k, m, n, p, cur_p, out_inc_n;
