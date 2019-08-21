@@ -76,7 +76,8 @@ def solve_cats_sys(
         ft_beg_freq,
         ft_beg_freq_inc_flag,
         ft_end_freq,
-        ft_end_freq_inc_flag
+        ft_end_freq_inc_flag,
+        use_res_cat_runoff_flag,
         ):
 
     '''Optimize parameters for a given catchment
@@ -165,6 +166,8 @@ def solve_cats_sys(
     assert ft_end_freq[-1] in ['Y', 'A', 'M', 'W', 'D']
 
     assert isinstance(ft_end_freq_inc_flag, bool)
+
+    assert isinstance(use_res_cat_runoff_flag, bool)
 
     sel_cats = in_cats_prcssed_df.index.values.copy(order='C')
     assert np.all(np.isfinite(sel_cats))
@@ -366,6 +369,7 @@ def solve_cats_sys(
         'ft_beg_freq_inc_flag': ft_beg_freq_inc_flag,
         'ft_end_freq': ft_end_freq,
         'ft_end_freq_inc_flag': ft_end_freq_inc_flag,
+        'use_res_cat_runoff_flag': use_res_cat_runoff_flag,
         }
 
     old_wd = os.getcwd()
@@ -587,6 +591,7 @@ def solve_cat(
     ft_beg_freq_inc_flag = kwargs['ft_beg_freq_inc_flag']
     ft_end_freq = kwargs['ft_end_freq']
     ft_end_freq_inc_flag = kwargs['ft_end_freq_inc_flag']
+    use_res_cat_runoff_flag = int(kwargs['use_res_cat_runoff_flag'])
 
     ft_beg_idx, ft_end_idx = get_fts_freq_idxs(
         ft_beg_freq,
@@ -1016,7 +1021,6 @@ def solve_cat(
             assert n_prm_vecs >= 3
 
             _opt_list = []
-            # TODO: Add minimum value constraints
             if opt_schm_vars_dict['opt_schm'] == 'DE':
                 _opt_list.extend(
                     [opt_schm_vars_dict['mu_sc_fac_bds'],
@@ -1140,7 +1144,8 @@ def solve_cat(
             n_hm_params,
             use_step_flag,
             use_step_arr,
-            min_q_thresh])
+            min_q_thresh,
+            use_res_cat_runoff_flag])
 
         assert cat_area_ratios_arr.shape[0] == n_cells
 
@@ -1254,6 +1259,8 @@ def solve_cat(
                 data_sb.attrs['run_as_lump_flag'] = run_as_lump_flag
                 data_sb.attrs['route_type'] = route_type
                 data_sb.attrs['cv_flag'] = cv_flag
+                data_sb.attrs['use_res_cat_runoff_flag'] = (
+                    use_res_cat_runoff_flag)
 
                 data_sb['obj_ftn_wts'] = obj_ftn_wts
 

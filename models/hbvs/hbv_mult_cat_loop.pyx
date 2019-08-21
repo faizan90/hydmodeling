@@ -47,13 +47,13 @@ cdef extern from "hbv_c_loop.h" nogil:
 
 cdef DT_D hbv_mult_cat_loop(
     const DT_UL[::1] stm_idxs,
-    const DT_UL[::1] misc_longs,
+    const DT_UL[::1] obj_longs,
 
     const DT_D[::1] qact_arr,
     const DT_D[::1] area_arr,
           DT_D[::1] qsim_arr,
           DT_D[::1] inflow_arr,
-    const DT_D[::1] misc_doubles,
+    const DT_D[::1] obj_doubles,
           DT_D[::1] route_prms,
 
     const DT_D[:, ::1] inis_arr,
@@ -75,12 +75,12 @@ cdef DT_D hbv_mult_cat_loop(
     cdef:
         Py_ssize_t i
         DT_UL n_recs = qsim_arr.shape[0], stm_idx, cat_idx
-        DT_D res, min_q_thresh = misc_doubles[min_q_thresh_i]
+        DT_D res, min_q_thresh = obj_doubles[min_q_thresh_i]
 
     for i in range(n_recs):
         qsim_arr[i] = 0.0
 
-    if (misc_longs[n_stms_i] > 0):
+    if (obj_longs[n_stms_i] > 0):
         route_strms(
             stm_idxs,
             cat_to_idx_map,
@@ -91,8 +91,8 @@ cdef DT_D hbv_mult_cat_loop(
             cats_outflow_arr,
             stms_inflow_arr,
             stms_outflow_arr,
-            &misc_longs[n_stms_i],
-            &misc_longs[route_type_i])
+            &obj_longs[n_stms_i],
+            &obj_longs[route_type_i])
 
     if use_c == 1:
         res = hbv_c_loop(
@@ -105,11 +105,11 @@ cdef DT_D hbv_mult_cat_loop(
             &qsim_arr[0],
             &outs_arr[0, 0, 0],
             &n_recs,
-            &misc_longs[n_cells_i],
-            &misc_longs[n_hbv_prms_i],
-            &misc_longs[n_hbv_cols_i],
-            &misc_doubles[rnof_q_conv_i],
-            &misc_longs[opt_flag_i])
+            &obj_longs[n_cells_i],
+            &obj_longs[n_hbv_prms_i],
+            &obj_longs[n_hbv_cols_i],
+            &obj_doubles[rnof_q_conv_i],
+            &obj_longs[opt_flag_i])
     else:
         res = hbv_loop(
             temp_arr,
@@ -120,29 +120,29 @@ cdef DT_D hbv_mult_cat_loop(
             area_arr,
             qsim_arr,
             outs_arr,
-            &misc_doubles[rnof_q_conv_i],
-            &misc_longs[opt_flag_i])
+            &obj_doubles[rnof_q_conv_i],
+            &obj_longs[opt_flag_i])
 
     if res == 0.0:
         for i in range(n_recs):
             if qsim_arr[i] < min_q_thresh:
                 qsim_arr[i] = min_q_thresh
 
-        if (misc_longs[curr_us_stm_i] != -2):
-            stm_idx = stm_to_idx_map[misc_longs[1]]
+        if (obj_longs[curr_us_stm_i] != -2):
+            stm_idx = stm_to_idx_map[obj_longs[curr_us_stm_i]]
             for i in range(n_recs):
                 qsim_arr[i] = qsim_arr[i] + stms_outflow_arr[i, stm_idx]
 
-        cat_idx = cat_to_idx_map[misc_longs[cat_no_i]]
-        if misc_longs[use_obs_flow_flag_i] == 0:
+        cat_idx = cat_to_idx_map[obj_longs[cat_no_i]]
+        if obj_longs[use_obs_flow_flag_i] == 0:
             for i in range(n_recs):
                 cats_outflow_arr[i, cat_idx] = qsim_arr[i]
-        elif misc_longs[use_obs_flow_flag_i] == 1:
+        elif obj_longs[use_obs_flow_flag_i] == 1:
             for i in range(n_recs):
                 cats_outflow_arr[i, cat_idx] = qact_arr[i]
         else:
             with gil: print(
                 ('Incorrect use_obs_flow_flag: %d' % 
-                 misc_longs[use_obs_flow_flag_i]))
+                 obj_longs[use_obs_flow_flag_i]))
 
     return res

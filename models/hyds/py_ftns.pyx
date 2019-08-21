@@ -35,7 +35,8 @@ from ..miscs.dtypes cimport (
     n_hbv_prms_i,
     rnof_q_conv_i,
     err_val_i,
-    min_q_thresh_i)
+    min_q_thresh_i,
+    use_res_cat_runoff_flag_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -179,7 +180,7 @@ cpdef dict hbv_mult_cat_loop_py(args, DT_UL opt_flag=0):
     cdef:
         long curr_us_stm
         DT_UL route_type, cat_no, n_cpus, use_obs_flow_flag, use_step_flag
-        DT_UL cat, stm, off_idx, n_cells
+        DT_UL cat, stm, off_idx, n_cells, use_res_cat_runoff_flag
         DT_UL n_stms, n_hm_prms
 
         DT_D rnof_q_conv, signal, min_q_thresh
@@ -216,7 +217,8 @@ cpdef dict hbv_mult_cat_loop_py(args, DT_UL opt_flag=0):
      n_hm_prms,
      use_step_flag,
      use_step_arr,
-     min_q_thresh) = args[6]
+     min_q_thresh,
+     use_res_cat_runoff_flag) = args[6]
 
     area_arr = args[7]
 
@@ -249,6 +251,7 @@ cpdef dict hbv_mult_cat_loop_py(args, DT_UL opt_flag=0):
     misc_longs[opt_flag_i] = opt_flag
     misc_longs[n_cells_i] = n_cells
     misc_longs[n_hbv_prms_i] = n_hbv_prms
+    misc_longs[use_res_cat_runoff_flag_i] = use_res_cat_runoff_flag
 
     misc_doubles = np.zeros(obj_doubles_ct, dtype=DT_D_NP)
     misc_doubles[rnof_q_conv_i] = rnof_q_conv

@@ -38,6 +38,8 @@ cdef DT_D obj_ftn(
         const DT_D[::1] f_vars,
         const DT_D[::1] obj_doubles,
               DT_D[::1] route_prms,
+              DT_D[::1] qact_qres_arr,
+              DT_D[::1] qsim_qres_arr,
 
         const DT_D[:, ::1] inis_arr,
               DT_D[:, ::1] temp_arr,

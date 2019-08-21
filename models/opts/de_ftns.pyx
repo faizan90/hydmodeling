@@ -81,7 +81,7 @@ cdef void pre_de(
         tid = threadid()
 
         # get inidicies except t_i
-        del_idx(idx_rng, del_idx_rng[tid], &t_i)
+        del_idx(idx_rng, del_idx_rng[tid], t_i)
 
         # select indicies randomly from del_idx_rng
         ch_r_l = 1

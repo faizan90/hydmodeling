@@ -65,7 +65,8 @@ def solve_cats_sys_forcings(
         use_obs_flow_flag,
         run_as_lump_flag,
         run_times,
-        sim_prms_dict):
+        sim_prms_dict,
+        use_res_cat_runoff_flag):
 
     '''run for a given set of catchments'''
 
@@ -146,6 +147,8 @@ def solve_cats_sys_forcings(
         raise ValueError(f'cv_list has incorrect number of values!')
 
     assert isinstance(sim_prms_dict, dict)
+
+    assert isinstance(use_res_cat_runoff_flag, bool)
 
     print('Running simulation...')
 
@@ -259,7 +262,8 @@ def solve_cats_sys_forcings(
         'use_step_flag': use_step_flag,
         'min_q_thresh': min_q_thresh,
         'time_freq': time_freq,
-        'kfolds': kfolds}
+        'kfolds': kfolds,
+        'use_res_cat_runoff_flag': use_res_cat_runoff_flag}
 
     old_wd = os.getcwd()
     os.chdir(out_dir)
@@ -362,6 +366,7 @@ def solve_cat_forcings(
     min_q_thresh = float(kwargs['min_q_thresh'])
     time_freq = str(kwargs['time_freq'])
     kfolds = int(kwargs['kfolds'])
+    use_res_cat_runoff_flag = int(kwargs['use_res_cat_runoff_flag'])
 
     assert in_use_step_ser.shape[0] == in_q_df.shape[0]
 
@@ -539,7 +544,8 @@ def solve_cat_forcings(
             n_hm_params,
             use_step_flag,
             use_step_arr,
-            min_q_thresh])
+            min_q_thresh,
+            use_res_cat_runoff_flag])
 
         assert cat_area_ratios_arr.shape[0] == n_cells
 

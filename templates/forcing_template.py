@@ -136,6 +136,9 @@ def main():
     min_q_thresh = ref_cfp['OPT_HYD_MODEL'].getfloat('min_q_thresh')
     run_as_lump_flag = ref_cfp['OPT_HYD_MODEL'].getboolean('run_as_lump_flag')
 
+    use_res_cat_runoff_flag = ref_cfp['OPT_HYD_MODEL'].getboolean(
+        'use_res_cat_runoff_flag')
+
     if run_sim_flag:
 
         sim_prms_dict = get_ref_sim_prms_dict(ref_sim_dir, kfolds)
@@ -233,6 +236,7 @@ def main():
             run_as_lump_flag,
             run_times,
             sim_prms_dict,
+            use_res_cat_runoff_flag,
             )
 
         _end_t = timeit.default_timer()

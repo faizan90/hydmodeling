@@ -16,6 +16,7 @@ cdef use_obs_flow_flag_i = 7, opt_flag_i = 8, n_cells_i = 9
 cdef n_hbv_prms_i = 10, use_step_flag_i = 11
 cdef resamp_obj_ftns_flag_i = 12, a_zero_i = 13
 cdef ft_beg_idx_i = 14, ft_end_idx_i = 15
+cdef use_res_cat_runoff_flag_i = 16
 
 # obj_doubles indicies
 cdef rnof_q_conv_i = 0, demr_i = 1, ln_demr_i = 2, mean_ref_i = 3
@@ -24,7 +25,7 @@ cdef ft_demr_1_i = 7, ft_demr_2_i = 8
 
 cdef n_hbv_cols = 10, n_hbv_prms = 11
 
-cdef obj_longs_ct = 16, obj_doubles_ct = 9
+cdef obj_longs_ct = 17, obj_doubles_ct = 9
 
 cdef err_val = 1e9
 

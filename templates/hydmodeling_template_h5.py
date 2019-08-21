@@ -39,6 +39,8 @@ from hydmodeling import (
 
 # from hydmodeling.plotting.perfs import get_peaks_mask
 
+# raise Exception
+
 
 def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
 
@@ -145,23 +147,23 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-#     create_stms_rels_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-#     plot_hbv_vars_flag = True
+    create_stms_rels_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_var_errors_flag = True
+    plot_hbv_vars_flag = True
     plot_diags_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-    use_cv_time_flag = True
+#     use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing
@@ -348,6 +350,15 @@ def main():
     ft_end_freq = cfp['OPT_HYD_MODEL']['ft_end_freq']
     ft_end_freq_inc_flag = cfp['OPT_HYD_MODEL'].getboolean(
         'ft_end_freq_inc_flag')
+
+    use_res_cat_runoff_flag = cfp['OPT_HYD_MODEL'].getboolean(
+        'use_res_cat_runoff_flag')
+
+    if use_res_cat_runoff_flag and use_resampled_obj_ftns_flag:
+        raise NotImplementedError
+
+    if use_res_cat_runoff_flag and (obj_ftn_wts[1] or obj_ftn_wts[3]):
+        raise NotImplementedError
 
     in_opt_schm_vars_dict = cfp['OPT_SCHM_VARS']
 
@@ -575,7 +586,8 @@ def main():
             ft_beg_freq,
             ft_beg_freq_inc_flag,
             ft_end_freq,
-            ft_end_freq_inc_flag)
+            ft_end_freq_inc_flag,
+            use_res_cat_runoff_flag)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
