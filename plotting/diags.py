@@ -74,7 +74,9 @@ def plot_cat_diags(plot_args):
     return
 
 
-class PlotCatDiagnostics2D:
+class PlotCatsDiagnostics2D:
+
+    '''For internal use only'''
 
     def __init__(self):
         return
