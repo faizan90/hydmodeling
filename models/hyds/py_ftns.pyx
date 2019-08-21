@@ -125,7 +125,7 @@ cpdef dict hbv_c_loop_py(
               DT_UL opt_flag=0):
 
     cdef:
-        DT_UL n_time_steps = temp_arr.shape[1], opt_flag = 0
+        DT_UL n_time_steps = temp_arr.shape[1]
         DT_UL n_cells = temp_arr.shape[0]
 
         DT_D loop_ret
