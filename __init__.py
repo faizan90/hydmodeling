@@ -64,6 +64,6 @@ from .plotting import (
     plot_cats_best_prms_1d,
     plot_cats_best_prms_2d,
 
-    plot_cats_stats)
+    plot_cats_diags)
 
 from .forcings import solve_cats_sys_forcings

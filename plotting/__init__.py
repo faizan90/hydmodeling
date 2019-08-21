@@ -18,12 +18,12 @@ from .perfs import (
     plot_cat_prms_transfer_perfs,
     plot_cat_vars_errors,
     plot_cat_discharge_errors)
-from .stats import plot_cat_stats
+from .diags import plot_cat_diags
 
 from ..misc import traceback_wrapper
 
 
-def plot_cats_stats(dbs_dir, n_cpus):
+def plot_cats_diags(dbs_dir, n_cpus):
 
     cats_dbs = glob(os.path.join(dbs_dir, 'cat_*.hdf5'))
 
@@ -41,7 +41,7 @@ def plot_cats_stats(dbs_dir, n_cpus):
         mp_pool.restart(True)
 
         print(list(
-            mp_pool.uimap(plot_cat_stats, cats_paths_gen)))
+            mp_pool.uimap(plot_cat_diags, cats_paths_gen)))
 
         mp_pool.clear()
         mp_pool.close()
@@ -49,7 +49,7 @@ def plot_cats_stats(dbs_dir, n_cpus):
 
     else:
         for cat_paths in cats_paths_gen:
-            plot_cat_stats(cat_paths)
+            plot_cat_diags(cat_paths)
 
     return
 

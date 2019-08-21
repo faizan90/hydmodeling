@@ -23,7 +23,7 @@ plt.ioff()
 
 
 @traceback_wrapper
-def plot_cat_stats(plot_args):
+def plot_cat_diags(plot_args):
 
     cat_db, = plot_args
 
@@ -33,6 +33,12 @@ def plot_cat_stats(plot_args):
         cat = db.attrs['cat']
 
         off_idx = db['data'].attrs['off_idx']
+
+        grid_rows = db['data/rows'][...]
+        grid_rows -= grid_rows.min()
+
+        grid_cols = db['data/cols'][...]
+        grid_cols -= grid_cols.min()
 
         for kf in range(1, kfolds + 1):
             for run_type in ['calib', 'valid']:
@@ -44,7 +50,7 @@ def plot_cat_stats(plot_args):
 
                     continue
 
-                plot_cat_stats_cls = PlotCatStats(
+                plot_cat_diags_cls = PlotCatDiagnostics(
                     db[f'{run_type}/kf_{kf:02d}/qact_arr'][...],
                     db[f'{run_type}/kf_{kf:02d}/qsim_arr'][...],
                     db[f'{run_type}/kf_{kf:02d}/ppt_arr'][...],
@@ -52,20 +58,23 @@ def plot_cat_stats(plot_args):
                     cat,
                     kf,
                     run_type,
-                    os.path.join(out_dir, '13_stats'),
+                    grid_rows,
+                    grid_cols,
+                    os.path.join(out_dir, '13_diagnostics'),
                     )
 
-                plot_cat_stats_cls.plot_emp_cops()
-                plot_cat_stats_cls.plot_fts()
-                plot_cat_stats_cls.plot_lorenz_curves()
-                plot_cat_stats_cls.plot_quantile_effs()
-                plot_cat_stats_cls.plot_sorted_sq_diffs()
-#                 plot_cat_stats_cls.plot_peak_events_seperately()
-                plot_cat_stats_cls.plot_mw_discharge_ratios()
+                plot_cat_diags_cls.plot_emp_cops()
+                plot_cat_diags_cls.plot_fts()
+                plot_cat_diags_cls.plot_lorenz_curves()
+                plot_cat_diags_cls.plot_quantile_effs()
+                plot_cat_diags_cls.plot_sorted_sq_diffs()
+                plot_cat_diags_cls.plot_peak_qevents()
+                plot_cat_diags_cls.plot_mw_discharge_ratios()
+                plot_cat_diags_cls.plot_hi_err_qevents()
     return
 
 
-class PlotCatStats:
+class PlotCatDiagnostics:
 
     '''For internal use only'''
 
@@ -78,6 +87,8 @@ class PlotCatStats:
             cat,
             kf,
             run_type,
+            grid_rows,
+            grid_cols,
             out_dir,
             ):
 
@@ -105,17 +116,86 @@ class PlotCatStats:
 
         mkdir_hm(self._out_dir)
 
-        self._qobs_probs = (
-            np.argsort(np.argsort(self._qobs_arr)) + 1) / (self._n_steps + 1.0)
+        self._qobs_ranks = np.argsort(np.argsort(self._qobs_arr)) + 1
+        self._qobs_probs = self._qobs_ranks / (self._n_steps + 1.0)
 
-        self._qsim_probs = (
-            np.argsort(np.argsort(self._qsim_arr)) + 1) / (self._n_steps + 1.0)
+        self._qsim_ranks = np.argsort(np.argsort(self._qsim_arr)) + 1
+        self._qsim_probs = self._qsim_ranks / (self._n_steps + 1.0)
+
+        self._ppt_ranks = np.argsort(np.argsort(self._ppt_arr)) + 1
+
+        if ppt_arr.shape[0] > 1:
+            self._ppt_dist_arr = ppt_arr[:, off_idx:]
+            self._grid_rows = grid_rows
+            self._grid_cols = grid_cols
+            self._grid_shape = (
+                self._grid_rows.max() + 1, self._grid_cols.max() + 1)
+
+        else:
+            self._ppt_dist_arr = None
+            self._grid_rows = None
+            self._grid_cols = None
+            self._grid_shape = None
+        return
+
+    def plot_hi_err_qevents(self):
+
+        n_evts = 10
+        bef_steps = 10
+        aft_steps = 10
+
+        assert 0 < n_evts < self._n_steps
+
+        sq_diffs = (self._qobs_arr - self._qsim_arr) ** 2
+
+        qmax = max(self._qobs_arr.max(), self._qsim_arr.max())
+        sum_sq_diffs = sq_diffs.sum()
+        ppt_max = self._ppt_arr.max()
+
+        qerr_idxs = np.argsort(sq_diffs)[::-1]
+        hi_qerr_idxs = [qerr_idxs[0]]
+
+        i = 0
+        for qerr_idx in qerr_idxs[1:]:
+            take_idx = True
+
+            for hi_qerr_idx in hi_qerr_idxs:
+                if ((hi_qerr_idx - bef_steps) <
+                    qerr_idx <
+                    (hi_qerr_idx + aft_steps)):
+
+                    take_idx = False
+                    break
+
+            if take_idx:
+                hi_qerr_idxs.append(qerr_idx)
+                i += 1
+
+            if i == n_evts:
+                break
+
+        self._plot_hi_err_qevents_2d(
+            hi_qerr_idxs,
+            ppt_max,
+            qmax,
+            bef_steps,
+            aft_steps,
+            sq_diffs,
+            sum_sq_diffs)
+
+        self._plot_hi_err_qevents_2d_ppt(
+            hi_qerr_idxs,
+            ppt_max,
+            bef_steps,
+            aft_steps,
+            sq_diffs,
+            sum_sq_diffs)
         return
 
     def plot_mw_discharge_ratios(self):
 
-        mwq_dir = os.path.join(self._out_dir, 'moving_window_ratio')
-        mkdir_hm(mwq_dir)
+        out_dir = os.path.join(self._out_dir, 'mw_ratios')
+        mkdir_hm(out_dir)
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -186,7 +266,7 @@ class PlotCatStats:
         diff_ratio_ax.legend(loc=1)
 
         diff_ratio_ax.set_xlabel('Time')
-        diff_ratio_ax.set_ylabel('Moving window runoff difference')
+        diff_ratio_ax.set_ylabel('Moving window discharge difference')
 
         ratio_ax = diff_ratio_ax.twinx()
 
@@ -208,7 +288,7 @@ class PlotCatStats:
             ls='-.',
             label='mean ratio')
 
-        ratio_ax.set_ylabel('Moving window runoff ratio')
+        ratio_ax.set_ylabel('Moving window discharge ratio')
 
         ratio_ax.set_ylim(0, 2)
 
@@ -226,26 +306,26 @@ class PlotCatStats:
             f'Max. diff: {qmw_diff_arr.max():0.3f}'
             )
 
-        mwq_fig_name = (
+        fig_name = (
             f'mwq_ratio_ws_{ws}_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
         plt.savefig(
-            os.path.join(mwq_dir, mwq_fig_name), bbox_inches='tight')
+            os.path.join(out_dir, fig_name), bbox_inches='tight')
 
         plt.close()
         return
 
-    def plot_peak_events_seperately(self):
+    def plot_peak_qevents(self):
 
-        peaks_dir = os.path.join(self._out_dir, 'peaks_cmp')
-        mkdir_hm(peaks_dir)
+        out_dir = os.path.join(self._out_dir, 'peaks_cmp')
+        mkdir_hm(out_dir)
 
         line_alpha = 0.7
         line_lw = 1.3
 
         bef_steps = 10
-        aft_steps = 15
+        aft_steps = 10
         ws = 30
         steps_per_cycle = 365  # should be enough to have peaks_per_cycle peaks
         peaks_per_cycle = 2
@@ -289,6 +369,34 @@ class PlotCatStats:
                 alpha=line_alpha,
                 lw=line_lw + 0.2)
 
+            dis_ax.axvline(
+                evt_idx,
+                alpha=line_alpha,
+                color='orange',
+                label='event_step',
+                lw=line_lw)
+
+            for x, y in zip(x_arr, self._qsim_arr[bef_idx:aft_idx]):
+
+                text = f'{self._qobs_ranks[x]}, {self._qsim_ranks[x]}'
+
+                if y < (0.5 * qmax):
+                    va = 'bottom'
+                    text = '  ' + text
+
+                else:
+                    va = 'top'
+                    text = text + '  '
+
+                dis_ax.text(
+                    x,
+                    y,
+                    text,
+                    rotation=90,
+                    alpha=0.8,
+                    va=va,
+                    size='x-small')
+
             dis_ax.set_xlabel('Time')
             dis_ax.set_ylabel('Discharge')
 
@@ -304,6 +412,33 @@ class PlotCatStats:
                 label='ppt',
                 alpha=line_alpha * 0.7,
                 lw=line_lw + 0.2)
+
+            ppt_ax.axvline(
+                evt_idx,
+                alpha=line_alpha,
+                color='orange',
+                lw=line_lw)
+
+            for x, y in zip(x_arr, self._ppt_arr[bef_idx:aft_idx]):
+
+                text = f'{self._ppt_ranks[x]}'
+
+                if y < (0.5 * ppt_max):
+                    va = 'bottom'
+                    text = '  ' + text
+
+                else:
+                    va = 'top'
+                    text = text + '  '
+
+                ppt_ax.text(
+                    x,
+                    y,
+                    text,
+                    rotation=90,
+                    alpha=0.8,
+                    va=va,
+                    size='x-small')
 
             ppt_ax.set_ylim(0, ppt_max)
 
@@ -321,20 +456,20 @@ class PlotCatStats:
                 f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
                 )
 
-            peak_fig_name = (
+            fig_name = (
                 f'peak_cmp_kf_{self._kf:02d}_{self._run_type}_'
                 f'cat_{self._cat}_idx_{evt_idx}.png')
 
             plt.savefig(
-                os.path.join(peaks_dir, peak_fig_name), bbox_inches='tight')
+                os.path.join(out_dir, fig_name), bbox_inches='tight')
 
             plt.close()
         return
 
     def plot_sorted_sq_diffs(self):
 
-        sq_diffs_dir = os.path.join(self._out_dir, 'sq_diffs')
-        mkdir_hm(sq_diffs_dir)
+        out_dir = os.path.join(self._out_dir, 'sq_diffs')
+        mkdir_hm(out_dir)
 
         line_alpha = 0.7
 
@@ -359,20 +494,20 @@ class PlotCatStats:
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
             )
 
-        sq_diffs_fig_name = (
+        fig_name = (
             f'sq_diffs_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
         plt.savefig(
-            os.path.join(sq_diffs_dir, sq_diffs_fig_name), bbox_inches='tight')
+            os.path.join(out_dir, fig_name), bbox_inches='tight')
 
         plt.close()
         return
 
     def plot_quantile_effs(self):
 
-        quants_dir = os.path.join(self._out_dir, 'quant_effs')
-        mkdir_hm(quants_dir)
+        out_dir = os.path.join(self._out_dir, 'quant_effs')
+        mkdir_hm(out_dir)
 
         line_alpha = 0.7
 
@@ -400,11 +535,12 @@ class PlotCatStats:
                 txt_obj = plt.text(
                     bar_x_crds[i],
                     q_quant_effs_dict[eff_ftn_lab][i],
-                    f'{q_quant_effs_dict[eff_ftn_lab][i]:0.2f}',
+                    f'  {q_quant_effs_dict[eff_ftn_lab][i]:0.2f}',
                     va='top',
                     ha='left',
                     color=text_color,
-                    alpha=line_alpha)
+                    alpha=line_alpha,
+                    size='x-small')
 
                 plt_texts.append(txt_obj)
 
@@ -429,20 +565,20 @@ class PlotCatStats:
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
             )
 
-        quants_fig_name = (
+        fig_name = (
             f'quants_eff_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
         plt.savefig(
-            os.path.join(quants_dir, quants_fig_name), bbox_inches='tight')
+            os.path.join(out_dir, fig_name), bbox_inches='tight')
 
         plt.close()
         return
 
     def plot_lorenz_curves(self):
 
-        lorenz_dir = os.path.join(self._out_dir, 'lorenz')
-        mkdir_hm(lorenz_dir)
+        out_dir = os.path.join(self._out_dir, 'lorenz')
+        mkdir_hm(out_dir)
 
         line_alpha = 0.7
 
@@ -491,20 +627,20 @@ class PlotCatStats:
             f'Cummulative squared difference: {cumm_sq_diff:0.3f}'
             )
 
-        lrnz_fig_name = (
+        fig_name = (
             f'lorenz_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
         plt.savefig(
-            os.path.join(lorenz_dir, lrnz_fig_name), bbox_inches='tight')
+            os.path.join(out_dir, fig_name), bbox_inches='tight')
 
         plt.close()
         return
 
     def plot_fts(self):
 
-        fts_dir = os.path.join(self._out_dir, 'fts')
-        mkdir_hm(fts_dir)
+        out_dir = os.path.join(self._out_dir, 'fts')
+        mkdir_hm(out_dir)
 
         n_ft_pts = self._qobs_arr.shape[0]
         if n_ft_pts % 2:
@@ -559,26 +695,26 @@ class PlotCatStats:
         self._plot_fts_wvcbs(
             freq_cov_cntrb_obs,
             freq_cov_cntrb_sim,
-            fts_dir)
+            out_dir)
 
         self._plot_fts_wvcbs_grad(
             freq_cov_cntrb_grad_obs,
             freq_cov_cntrb_grad_sim,
-            fts_dir)
+            out_dir)
 
-        self._plot_fts_phas_diff(ft_obs_phas, ft_sim_phas, fts_dir)
+        self._plot_fts_phas_diff(ft_obs_phas, ft_sim_phas, out_dir)
 
-        self._plot_fts_amps_diff(ft_obs_amps, ft_sim_amps, fts_dir)
+        self._plot_fts_amps_diff(ft_obs_amps, ft_sim_amps, out_dir)
 
-        self._plot_fts_amps(ft_obs_amps, ft_sim_amps, fts_dir)
+        self._plot_fts_amps(ft_obs_amps, ft_sim_amps, out_dir)
 
-        self._plot_fts_abs_diff(ft_obs, ft_sim, fts_dir)
+        self._plot_fts_abs_diff(ft_obs, ft_sim, out_dir)
         return
 
     def plot_emp_cops(self):
 
-        ecops_dir = os.path.join(self._out_dir, 'ecops')
-        mkdir_hm(ecops_dir)
+        out_dir = os.path.join(self._out_dir, 'ecops')
+        mkdir_hm(out_dir)
 
         spcorr = np.corrcoef(self._qobs_arr, self._qsim_arr)[0, 1]
 
@@ -606,15 +742,278 @@ class PlotCatStats:
             f'Spearman Correlation: {spcorr:0.4f}, '
             f'Asymm_1: {asymm_1:0.4E}, Asymm_2: {asymm_2:0.4E}')
 
-        out_fig_name = (
+        fig_name = (
             f'ecop_obs_sim_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
         plt.savefig(
-            os.path.join(ecops_dir, out_fig_name),
+            os.path.join(out_dir, fig_name),
             bbox_inches='tight')
 
         plt.close()
+        return
+
+    def _plot_hi_err_qevents_2d(
+            self,
+            hi_qerr_idxs,
+            ppt_max,
+            qmax,
+            bef_steps,
+            aft_steps,
+            sq_diffs,
+            sum_sq_diffs):
+
+        out_dir = os.path.join(self._out_dir, 'hi_qerrs')
+        mkdir_hm(out_dir)
+
+        line_alpha = 0.7
+        line_lw = 1.3
+
+        for hi_qerr_idx in hi_qerr_idxs:
+            fig = plt.figure(figsize=(15, 7))
+
+            dis_ax = plt.subplot2grid(
+                (4, 1), (1, 0), rowspan=3, colspan=1, fig=fig)
+
+            ppt_ax = plt.subplot2grid(
+                (4, 1), (0, 0), rowspan=1, colspan=1, fig=fig)
+
+            bef_idx = max(0, hi_qerr_idx - bef_steps)
+            aft_idx = min(hi_qerr_idx + aft_steps + 1, self._qobs_arr.shape[0])
+
+            x_arr = np.arange(bef_idx, aft_idx)
+
+            dis_ax.plot(
+                x_arr,
+                self._qsim_arr[bef_idx:aft_idx],
+                alpha=line_alpha,
+                color='blue',
+                label='sim',
+                lw=line_lw)
+
+            dis_ax.plot(
+                x_arr,
+                self._qobs_arr[bef_idx:aft_idx],
+                label='obs',
+                color='red',
+                alpha=line_alpha,
+                lw=line_lw + 0.2)
+
+            dis_ax.axvline(
+                hi_qerr_idx,
+                alpha=line_alpha,
+                color='orange',
+                label='event_step',
+                lw=line_lw)
+
+            for x, y in zip(x_arr, self._qsim_arr[bef_idx:aft_idx]):
+
+                text = (
+                    f'{100 * (sq_diffs[x] / sum_sq_diffs):0.3f}%, '
+                    f'{self._qobs_ranks[x]}, {self._qsim_ranks[x]}')
+
+                if y < (0.5 * qmax):
+                    va = 'bottom'
+                    text = '  ' + text
+
+                else:
+                    va = 'top'
+                    text = text + '  '
+
+                dis_ax.text(
+                    x,
+                    y,
+                    text,
+                    rotation=90,
+                    alpha=0.8,
+                    va=va,
+                    size='x-small')
+
+            dis_ax.set_xlabel('Time')
+            dis_ax.set_ylabel('Discharge')
+
+            dis_ax.legend()
+            dis_ax.grid()
+
+            dis_ax.set_ylim(0, qmax)
+
+            ppt_ax.fill_between(
+                x_arr,
+                0,
+                self._ppt_arr[bef_idx:aft_idx],
+                label='ppt',
+                alpha=line_alpha * 0.7,
+                lw=line_lw + 0.2)
+
+            ppt_ax.axvline(
+                hi_qerr_idx,
+                alpha=line_alpha,
+                color='orange',
+                lw=line_lw)
+
+            for x, y in zip(x_arr, self._ppt_arr[bef_idx:aft_idx]):
+
+                text = f'{self._ppt_ranks[x]}'
+
+                if y < (0.5 * ppt_max):
+                    va = 'bottom'
+                    text = '  ' + text
+                else:
+                    va = 'top'
+                    text = text + '  '
+
+                ppt_ax.text(
+                    x,
+                    y,
+                    text,
+                    rotation=90,
+                    alpha=0.8,
+                    va=va,
+                    size='x-small')
+
+            ppt_ax.set_ylim(0, ppt_max)
+
+            ppt_ax.set_ylabel('Precipitation')
+
+            ppt_ax.legend()
+            ppt_ax.grid()
+
+            ppt_ax.set_xticklabels([])
+            ppt_ax.locator_params('y', nbins=4)
+
+            sq_diff = sq_diffs[hi_qerr_idx]
+            tot_pcnt = 100 * (sq_diff / sum_sq_diffs)
+
+            plt.suptitle(
+                f'Hi error discharge comparison at index: {hi_qerr_idx}\n'
+                f'Catchment: {self._cat}, Kf: {self._kf}, '
+                f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+                f'Squared difference: {sq_diff:0.2f}, {tot_pcnt:0.3f}% '
+                f'of the total ({sum_sq_diffs:0.2f})'
+                )
+
+            fig_name = (
+                f'hi_qerr_kf_{self._kf:02d}_{self._run_type}_'
+                f'cat_{self._cat}_idx_{hi_qerr_idx}.png')
+
+            plt.savefig(
+                os.path.join(out_dir, fig_name), bbox_inches='tight')
+
+            plt.close()
+        return
+
+    def _plot_hi_err_qevents_2d_ppt(
+            self,
+            hi_qerr_idxs,
+            ppt_max,
+            bef_steps,
+            aft_steps,
+            sq_diffs,
+            sum_sq_diffs):
+
+        out_dir = os.path.join(self._out_dir, 'hi_qerrs_ppt')
+        mkdir_hm(out_dir)
+
+        n_evt_steps = aft_steps + bef_steps
+
+        loc_rows = max(1, int(0.25 * n_evt_steps))
+        loc_cols = max(1, int(np.ceil(n_evt_steps / loc_rows)))
+
+        sca_fac = 3
+        loc_rows *= sca_fac
+        loc_cols *= sca_fac
+
+        legend_rows = 1
+        legend_cols = loc_cols
+
+        plot_shape = (loc_rows + legend_rows, loc_cols)
+
+        cen_crds = (0.5 * np.array(self._grid_shape)).astype(int)
+
+        for hi_qerr_idx in hi_qerr_idxs:
+            bef_idx = max(0, hi_qerr_idx - bef_steps)
+            aft_idx = min(hi_qerr_idx + aft_steps + 1, self._qobs_arr.shape[0])
+
+            curr_row = 0
+            curr_col = 0
+
+            sq_diff = sq_diffs[hi_qerr_idx]
+            tot_pcnt = 100 * (sq_diff / sum_sq_diffs)
+
+            plt.figure(figsize=(12, 14))
+
+            for step in range(bef_idx, aft_idx):
+                ax = plt.subplot2grid(
+                    plot_shape,
+                    loc=(curr_row, curr_col),
+                    rowspan=sca_fac,
+                    colspan=sca_fac)
+
+                plot_grid = np.full(self._grid_shape, np.nan)
+                plot_grid[self._grid_rows, self._grid_cols] = (
+                    self._ppt_dist_arr[:, step])
+
+                plot_grid = np.flipud(plot_grid)
+
+                ps = ax.imshow(
+                    plot_grid,
+                    origin='lower',
+                    cmap=plt.get_cmap('gist_rainbow'),
+                    zorder=1,
+                    vmin=0,
+                    vmax=ppt_max)
+
+                ax.text(
+                    *cen_crds,
+                    f'  {step}\n({self._ppt_ranks[step]:0.2f})',
+                    size='x-small')
+
+                ax.set_ylim(0, self._grid_shape[0])
+                ax.set_xlim(0, self._grid_shape[1])
+
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.set_xticklabels([])
+                ax.set_yticklabels([])
+                ax.set_axis_off()
+
+                curr_col += sca_fac
+                if curr_col >= loc_cols:
+                    curr_col = 0
+                    curr_row += sca_fac
+
+            cb_ax = plt.subplot2grid(
+                plot_shape,
+                loc=(plot_shape[0] - 1, 0),
+                rowspan=1,
+                colspan=legend_cols)
+
+            cb_ax.set_axis_off()
+            cb = plt.colorbar(
+                ps,
+                ax=cb_ax,
+                fraction=0.9,
+                aspect=20,
+                orientation='horizontal')
+
+            cb.set_label('Precipitation')
+
+            plt.suptitle(
+                f'Hi error discharge precipitation comparison at '
+                f'index: {hi_qerr_idx}\n'
+                f'Catchment: {self._cat}, Kf: {self._kf}, '
+                f'Run Type: {self._run_type.upper()}, '
+                f'Steps: {self._n_steps}\n'
+                f'Squared difference: {sq_diff:0.2f}, {tot_pcnt:0.3f}% '
+                f'of the total ({sum_sq_diffs:0.2f})'
+                )
+
+            fig_name = (
+                f'hi_qerr_ppt_kf_{self._kf:02d}_{self._run_type}_'
+                f'cat_{self._cat}_idx_{hi_qerr_idx}.png')
+
+            plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
+            plt.close()
         return
 
     def _get_mw_runoff_diff_ratio_arrs(self, ws):
@@ -635,6 +1034,7 @@ class PlotCatStats:
 
         diff_arr = (sim_mv_mean_arr - ref_mv_mean_arr)
         ratio_arr = (sim_mv_mean_arr / ref_mv_mean_arr)
+
         return ws_xcrds, ref_mv_mean_arr, sim_mv_mean_arr, diff_arr, ratio_arr
 
     def _get_peaks_mask(self, ws, steps_per_cycle, peaks_per_cycle):
@@ -728,7 +1128,7 @@ class PlotCatStats:
 
         return masks_dict
 
-    def _plot_fts_abs_diff(self, ft_obs, ft_sim, fts_dir):
+    def _plot_fts_abs_diff(self, ft_obs, ft_sim, out_dir):
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -757,15 +1157,15 @@ class PlotCatStats:
             f'{self._qsim_var:0.3f}'
             )
 
-        cntrb_fig_name = (
+        fig_name = (
             f'ft_abs_diff_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
-        plt.savefig(os.path.join(fts_dir, cntrb_fig_name), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
         plt.close()
         return
 
-    def _plot_fts_amps(self, ft_obs_amps, ft_sim_amps, fts_dir):
+    def _plot_fts_amps(self, ft_obs_amps, ft_sim_amps, out_dir):
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -803,15 +1203,15 @@ class PlotCatStats:
             f'{self._qsim_var:0.3f}'
             )
 
-        cntrb_fig_name = (
+        fig_name = (
             f'ft_amps_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
-        plt.savefig(os.path.join(fts_dir, cntrb_fig_name), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
         plt.close()
         return
 
-    def _plot_fts_phas_diff(self, ft_obs_phas, ft_sim_phas, fts_dir):
+    def _plot_fts_phas_diff(self, ft_obs_phas, ft_sim_phas, out_dir):
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -836,15 +1236,15 @@ class PlotCatStats:
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
             )
 
-        cntrb_fig_name = (
+        fig_name = (
             f'ft_phas_diff_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
-        plt.savefig(os.path.join(fts_dir, cntrb_fig_name), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
         plt.close()
         return
 
-    def _plot_fts_amps_diff(self, ft_obs_amps, ft_sim_amps, fts_dir):
+    def _plot_fts_amps_diff(self, ft_obs_amps, ft_sim_amps, out_dir):
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -873,15 +1273,15 @@ class PlotCatStats:
             f'{self._qsim_var:0.3f}'
             )
 
-        cntrb_fig_name = (
+        fig_name = (
             f'ft_amps_diff_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
-        plt.savefig(os.path.join(fts_dir, cntrb_fig_name), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
         plt.close()
         return
 
-    def _plot_fts_wvcbs(self, freq_cov_cntrb_obs, freq_cov_cntrb_sim, fts_dir):
+    def _plot_fts_wvcbs(self, freq_cov_cntrb_obs, freq_cov_cntrb_sim, out_dir):
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -920,11 +1320,11 @@ class PlotCatStats:
             f'{self._qsim_var:0.3f}'
             )
 
-        cntrb_fig_name = (
+        fig_name = (
             f'ft_full_wvcb_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
-        plt.savefig(os.path.join(fts_dir, cntrb_fig_name), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
         plt.close()
         return
 
@@ -932,7 +1332,7 @@ class PlotCatStats:
             self,
             freq_cov_cntrb_grad_obs,
             freq_cov_cntrb_grad_sim,
-            fts_dir):
+            out_dir):
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -971,10 +1371,10 @@ class PlotCatStats:
             f'{self._qsim_var:0.3f}'
             )
 
-        cntrb_fig_name = (
+        fig_name = (
             f'ft_full_wvcb_grad_kf_{self._kf:02d}_{self._run_type}_'
             f'cat_{self._cat}.png')
 
-        plt.savefig(os.path.join(fts_dir, cntrb_fig_name), bbox_inches='tight')
+        plt.savefig(os.path.join(out_dir, fig_name), bbox_inches='tight')
         plt.close()
         return

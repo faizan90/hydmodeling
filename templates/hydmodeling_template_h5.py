@@ -35,9 +35,9 @@ from hydmodeling import (
     plot_cats_vars_errors,
     plot_cats_qsims,
     plot_cats_discharge_errors,
-    plot_cats_stats)
+    plot_cats_diags)
 
-from hydmodeling.plotting.perfs import get_peaks_mask
+# from hydmodeling.plotting.perfs import get_peaks_mask
 
 
 def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
@@ -138,7 +138,7 @@ def main():
     plot_opt_evo_flag = False
     plot_var_errors_flag = False
     plot_hbv_vars_flag = False
-    plot_stats_flag = False
+    plot_diags_flag = False
     plot_qsims_flag = False
     plot_cats_discharge_errs_flag = False
 
@@ -156,7 +156,7 @@ def main():
 #     plot_opt_evo_flag = True
 #     plot_var_errors_flag = True
 #     plot_hbv_vars_flag = True
-    plot_stats_flag = True
+    plot_diags_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
 
@@ -775,16 +775,16 @@ def main():
         print('#' * 10)
 
     #==========================================================================
-    # Plot stats
+    # Plot diagnostics
     #==========================================================================
-    if plot_stats_flag:
+    if plot_diags_flag:
         print('\n\n')
         print('#' * 10)
-        print('Plotting stats...')
+        print('Plotting diagnostics...')
 
         _beg_t = timeit.default_timer()
 
-        plot_cats_stats(dbs_dir, n_cpus)
+        plot_cats_diags(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
