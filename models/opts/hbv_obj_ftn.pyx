@@ -8,7 +8,8 @@
 
 from ..hyds.routing cimport tfm_opt_to_route_prms
 from ..hyds.opt_to_hbv_prms cimport tfm_opt_to_hbv_prms
-from ..miscs.misc_ftns cimport get_ns, get_ln_ns, get_kge, cmpt_resampled_arr
+from ..miscs.misc_ftns cimport (
+    get_ns, get_ln_ns, get_kge, cmpt_resampled_arr, get_demr, get_mean)
 from ..miscs.misc_ftns_partial cimport (
     get_ns_prt, get_ln_ns_prt, get_kge_prt, cmpt_resampled_arr_prt)
 from ..ft.dfti cimport cmpt_real_fourtrans_1d, cmpt_cumm_freq_pcorrs
@@ -27,7 +28,8 @@ from ..miscs.dtypes cimport (
     demr_i,
     ln_demr_i,
     mean_ref_i,
-    act_std_dev_i)
+    act_std_dev_i,
+    min_q_thresh_i)
 
 
 cdef DT_D obj_ftn(
@@ -84,7 +86,7 @@ cdef DT_D obj_ftn(
 
         DT_UL n_recs = qsim_arr.shape[0], stm_idx
 
-        DT_D res, obj_ftn_wts_sum
+        DT_D res, obj_ftn_wts_sum, min_q_thresh
 
     tfm_opt_to_hbv_prms(
         prms_flags,
@@ -127,18 +129,28 @@ cdef DT_D obj_ftn(
 
     obj_ftn_wts_sum = 0.0
     if res != 0.0:
-        return obj_ftn_wts_sum - res
+        return 1e50
 
     if obj_longs[use_res_cat_runoff_flag_i] == 0:
-        pass
+        for i in range(n_recs):
+            qact_qres_arr[i] = qact_arr[i]
+            qsim_qres_arr[i] = qsim_arr[i]
 
     elif obj_longs[use_res_cat_runoff_flag_i] == 1:
         if (obj_longs[curr_us_stm_i] != -2):
             stm_idx = stm_to_idx_map[obj_longs[curr_us_stm_i]]
 
+            min_q_thresh = obj_doubles[min_q_thresh_i]
+
             for i in range(n_recs):
                 qact_qres_arr[i] = qact_arr[i] - stms_outflow_arr[i, stm_idx]
                 qsim_qres_arr[i] = qsim_arr[i] - stms_outflow_arr[i, stm_idx]
+
+#                 if qact_qres_arr[i] < min_q_thresh:
+#                     qact_qres_arr[i] = min_q_thresh
+# 
+#                 if qsim_qres_arr[i] < min_q_thresh:
+#                     qsim_qres_arr[i] = min_q_thresh
 
         else:
             for i in range(n_recs):
@@ -149,6 +161,11 @@ cdef DT_D obj_ftn(
         with gil: print(
             ('Incorrect use_res_cat_runoff_flag: %d' % 
              obj_longs[use_res_cat_runoff_flag_i]))
+
+#     with gil:
+#         print(obj_longs[use_res_cat_runoff_flag_i])
+#         for i in range(n_recs):
+#             print(i, qact_qres_arr[i], qsim_qres_arr[i])
 
     if obj_longs[resamp_obj_ftns_flag_i]:
         if obj_longs[use_step_flag_i]:
@@ -197,7 +214,7 @@ cdef DT_D obj_ftn(
                        get_ns(
                         qact_qres_arr,
                         qsim_qres_arr,
-                        obj_doubles[demr_i],
+                        get_demr(qact_qres_arr, get_mean(qact_qres_arr, obj_longs[off_idx_i]), obj_longs[off_idx_i]),
                         obj_longs[off_idx_i]))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[0]

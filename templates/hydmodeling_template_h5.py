@@ -147,18 +147,18 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-    create_stms_rels_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_opt_evo_flag = True
-    plot_var_errors_flag = True
+#     create_stms_rels_flag = True
+#     optimize_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
+#     plot_opt_evo_flag = True
+#     plot_var_errors_flag = True
     plot_hbv_vars_flag = True
-    plot_diags_flag = True
+#     plot_diags_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
 
@@ -786,24 +786,6 @@ def main():
         print(f'Took {_tot_t:0.4f} seconds!')
         print('#' * 10)
 
-    #==========================================================================
-    # Plot diagnostics
-    #==========================================================================
-    if plot_diags_flag:
-        print('\n\n')
-        print('#' * 10)
-        print('Plotting diagnostics...')
-
-        _beg_t = timeit.default_timer()
-
-        plot_cats_diags(dbs_dir, n_cpus)
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-
-        print(f'Took {_tot_t:0.4f} seconds!')
-        print('#' * 10)
-
     #=========================================================================
     # plot the hbv variables
     #=========================================================================
@@ -838,6 +820,24 @@ def main():
 
         else:
             print('Both flags False, not plotting!')
+
+        _end_t = timeit.default_timer()
+        _tot_t = _end_t - _beg_t
+
+        print(f'Took {_tot_t:0.4f} seconds!')
+        print('#' * 10)
+
+    #==========================================================================
+    # Plot diagnostics
+    #==========================================================================
+    if plot_diags_flag:
+        print('\n\n')
+        print('#' * 10)
+        print('Plotting diagnostics...')
+
+        _beg_t = timeit.default_timer()
+
+        plot_cats_diags(dbs_dir, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t

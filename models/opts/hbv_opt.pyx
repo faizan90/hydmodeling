@@ -552,6 +552,8 @@ cpdef dict hbv_opt(args):
     obj_doubles[err_val_i] = err_val
     obj_doubles[min_q_thresh_i] = min_q_thresh
 
+    print(f'use_res_cat_runoff_flag: {obj_longs[use_res_cat_runoff_flag_i]}')
+
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]
         bds_dfs[k, 1] = bounds[k, 1] - bounds[k, 0]

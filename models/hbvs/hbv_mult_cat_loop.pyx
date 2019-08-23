@@ -129,17 +129,22 @@ cdef DT_D hbv_mult_cat_loop(
                 qsim_arr[i] = min_q_thresh
 
         if (obj_longs[curr_us_stm_i] != -2):
+
             stm_idx = stm_to_idx_map[obj_longs[curr_us_stm_i]]
+
             for i in range(n_recs):
                 qsim_arr[i] = qsim_arr[i] + stms_outflow_arr[i, stm_idx]
 
         cat_idx = cat_to_idx_map[obj_longs[cat_no_i]]
+
         if obj_longs[use_obs_flow_flag_i] == 0:
             for i in range(n_recs):
                 cats_outflow_arr[i, cat_idx] = qsim_arr[i]
+
         elif obj_longs[use_obs_flow_flag_i] == 1:
             for i in range(n_recs):
                 cats_outflow_arr[i, cat_idx] = qact_arr[i]
+
         else:
             with gil: print(
                 ('Incorrect use_obs_flow_flag: %d' % 
