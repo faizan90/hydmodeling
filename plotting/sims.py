@@ -38,6 +38,8 @@ def plot_cat_hbv_sim(plot_args):
              wat_bal_flag,
              show_warm_up_steps_flag) = plot_args
 
+    extra_us_inflow_flag = False
+
     with h5py.File(cat_db, 'r') as db:
         out_dir = db['data'].attrs['main']
         kfolds = db['data'].attrs['kfolds']
@@ -68,6 +70,8 @@ def plot_cat_hbv_sim(plot_args):
             cd_db = db[f'calib/kf_{i:02d}']
             kf_dict = {key: cd_db[key][...] for key in cd_db}
             kf_dict['use_obs_flow_flag'] = use_obs_flow_flag
+
+            extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
 
             all_kfs_dict[i] = kf_dict
 
@@ -108,6 +112,9 @@ def plot_cat_hbv_sim(plot_args):
 
         if wat_bal_flag:
             sim.wat_bal_sim()
+
+        if (wat_bal_flag or full_sim_flag) and extra_us_inflow_flag:
+            sim.flows_cmp()
 
         if full_sim_flag:
             sim.full_sim()
@@ -152,6 +159,9 @@ def plot_cat_hbv_sim(plot_args):
 
         if wat_bal_flag:
             sim.wat_bal_sim()
+
+        if (wat_bal_flag or full_sim_flag) and extra_us_inflow_flag:
+            sim.flows_cmp()
 
         if full_sim_flag:
             sim.full_sim()
@@ -304,6 +314,12 @@ class PlotCatHBVSimKf:
 
         mkdir_hm(self.full_sims_dir)
 
+        if self.extra_us_inflow_flag:
+            self.flows_cmp_dir = os.path.join(
+                self.out_dir, '14_inflows_outflows')
+
+            mkdir_hm(self.flows_cmp_dir)
+
         sim_dict = {
             'temp': self.temp_arr,
             'prec': self.prec_arr,
@@ -361,41 +377,6 @@ class PlotCatHBVSimKf:
 
         out_fig_loc = os.path.join(
             wat_bals_dir, f'kf_{self.kf_str}_HBV_water_bal_{self.cat}.png')
-
-        wat_bal_text = np.asarray([
-            ('Max. actual Q = %0.4f' %
-             self.q_act_arr[self.off_idx:].max()).rstrip('0'),
-            ('Max. sim. Q = %0.4f' %
-             self.q_sim_arr[self.off_idx:].max()).rstrip('0'),
-            ('Min. actual Q = %0.4f' %
-             self.q_act_arr[self.off_idx:].min()).rstrip('0'),
-            ('Min. sim. Q = %0.4f' %
-             self.q_sim_arr[self.off_idx:].min()).rstrip('0'),
-            ('Mean actual Q = %0.4f' %
-             np.mean(self.q_act_arr[self.off_idx:])).rstrip('0'),
-            ('Mean sim. Q = %0.4f' %
-             np.mean(self.q_sim_arr[self.off_idx:])).rstrip('0'),
-            ('Max. input P = %0.4f' % self.prec_arr.max()).rstrip('0'),
-            ('Mean sim. ET = %0.4f' %
-             self.evap_arr[self.off_idx:].mean()).rstrip('0'),
-            'Warm up steps = %d' % self.off_idx,
-            'use_obs_flow_flag = %s' % self.use_obs_flow_flag,
-            ('NS = %0.4f' % self.ns).rstrip('0'),
-            ('Ln-NS = %0.4f' % self.ln_ns).rstrip('0'),
-            ('KG = %0.4f' % self.kge).rstrip('0'),
-            ('P_Corr = %0.4f' % self.q_correl).rstrip('0'),
-            ('TT = %0.4f' % self.tt).rstrip('0'),
-            ('CM = %0.4f' % self.cm).rstrip('0'),
-            ('P_CM = %0.4f' % self.p_cm).rstrip('0'),
-            ('FC = %0.4f' % self.fc).rstrip('0'),
-            (r'$\beta$ = %0.4f' % self.beta).rstrip('0'),
-            ('PWP = %0.4f' % self.pwp).rstrip('0'),
-            ('UR$_{thresh}$ = %0.4f' % self.ur_thresh).rstrip('0'),
-            ('$K_{uu}$ = %0.4f' % self.k_uu).rstrip('0'),
-            ('$K_{ul}$ = %0.4f' % self.k_ul).rstrip('0'),
-            ('$K_d$ = %0.4f' % self.k_d).rstrip('0'),
-            ('$K_{ll}$ = %0.4f' % self.k_ll).rstrip('0'),
-            'n_cells = %d' % self.n_cells, ''])
 
         act_bal_w_et_arr = []
         sim_bal_w_et_arr = []
@@ -502,7 +483,7 @@ class PlotCatHBVSimKf:
             np.concatenate(([np.nan, np.nan], et_ratio_arr), axis=0))
 
         font_size = 5
-        t_rows = 10
+        t_rows = 7
         t_cols = 1
 
         fig = plt.figure(figsize=(13, 6), dpi=150)
@@ -510,17 +491,10 @@ class PlotCatHBVSimKf:
         plt.suptitle('HBV Simulation - Water Balance')
 
         i = 0
-        params_ax = plt.subplot2grid(
-            (t_rows, t_cols), (i, 0), rowspan=1, colspan=t_cols)
-        i += 1
 
         vol_err_ax = plt.subplot2grid(
             (t_rows, t_cols), (i, 0), rowspan=1, colspan=t_cols)
         i += 1
-
-        res_discharge_ax = plt.subplot2grid(
-            (t_rows, t_cols), (i, 0), rowspan=2, colspan=t_cols)
-        i += 2
 
         discharge_ax = plt.subplot2grid(
             (t_rows, t_cols), (i, 0), rowspan=2, colspan=t_cols)
@@ -532,6 +506,7 @@ class PlotCatHBVSimKf:
 
         balance_sum_ax = plt.subplot2grid(
             (t_rows, t_cols), (i, 0), rowspan=2, colspan=t_cols)
+        i += 2
 
         vol_err_ax.axhline(1, color='k', lw=1)
         vol_err_ax.plot(
@@ -559,22 +534,6 @@ class PlotCatHBVSimKf:
             fontsize=font_size * 0.9)
 
         vol_err_ax.set_xticklabels([])
-
-        res_discharge_ax.plot(
-            self.q_act_arr_diff,
-            'r-',
-            label='Actual Residual Flow',
-            lw=0.5,
-            alpha=0.7)
-
-        res_discharge_ax.plot(
-            self.q_sim_arr_diff,
-            'b-',
-            label='Simulated Residual Flow',
-            lw=0.5,
-            alpha=0.5)
-
-        res_discharge_ax.set_xticklabels([])
 
         discharge_ax.plot(
             self.q_act_arr,
@@ -675,23 +634,10 @@ class PlotCatHBVSimKf:
 
         balance_sum_ax.set_ylim(0, balance_sum_ax.get_ylim()[1])
 
-        wat_bal_text = wat_bal_text.reshape(3, 9)
-
-        table = params_ax.table(
-            cellText=wat_bal_text,
-            loc='center',
-            bbox=(0, 0, 1, 1),
-            cellLoc='left')
-
-        table.auto_set_font_size(False)
-        table.set_fontsize(font_size)
-        params_ax.set_axis_off()
-
         leg_font = f_props()
         leg_font.set_size(font_size)
 
         plot_axes = [
-            res_discharge_ax,
             discharge_ax,
             vol_err_ax,
             balance_ratio_ax,
@@ -714,6 +660,188 @@ class PlotCatHBVSimKf:
             tlab.set_fontsize(font_size)
 
         fig.savefig(out_fig_loc, bbox_inches='tight')
+
+        plt.close('all')
+        return
+
+    def flows_cmp(self):
+
+        cum_q = np.cumsum(self.q_act_arr[self.off_idx:])
+        cum_q_sim = np.cumsum(self.q_sim_arr[self.off_idx:])
+
+        tot_vol_diff_arr = cum_q_sim / cum_q
+
+        tot_vol_diff_arr[
+            tot_vol_diff_arr < self.min_vol_diff_err + 0.05] = (
+            self.min_vol_diff_err + 0.05)
+
+        tot_vol_diff_arr[
+            tot_vol_diff_arr > self.max_vol_diff_err - 0.05] = (
+            self.max_vol_diff_err - 0.05)
+
+        tot_vol_diff_arr = np.concatenate((np.full(
+            shape=(self.off_idx - 1),
+            fill_value=np.nan),
+            tot_vol_diff_arr))
+
+        t_rows = 5
+        t_cols = 1
+        font_size = 6
+
+        out_fig_loc = os.path.join(
+            self.flows_cmp_dir,
+            f'kf_{self.kf_str}_cat_flows_cmp_{self.cat}.png')
+
+        fig = plt.figure(figsize=(13, 6), dpi=250)
+
+        plt.suptitle('HBV Simulation - Inflow/Outflow')
+
+        i = 0
+
+        discharge_ax = plt.subplot2grid(
+            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
+        i += 1
+
+        us_add_flow_ax = plt.subplot2grid(
+            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
+        i += 1
+
+        res_discharge_ax = plt.subplot2grid(
+            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
+        i += 1
+
+        vol_err_ax = plt.subplot2grid(
+            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
+        i += 1
+
+        tot_vol_err_ax = plt.subplot2grid(
+            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
+        i += 1
+
+        discharge_ax.plot(
+            self.q_act_arr,
+            'r-',
+            label='Actual Flow',
+            lw=0.5,
+            alpha=0.7)
+
+        discharge_ax.plot(
+            self.q_sim_arr,
+            'b-',
+            label='Simulated Flow',
+            lw=0.5,
+            alpha=0.5)
+
+        discharge_ax.set_xticklabels([])
+
+        us_add_flow_ax.plot(
+            self.extra_us_inflow,
+            'r-',
+            label='Upstream Inflow',
+            lw=0.5,
+            alpha=0.7)
+
+        us_add_flow_ax.plot(
+            self.q_sim_arr_diff,
+            'b-',
+            label='Simulated Residual outflow',
+            lw=0.5,
+            alpha=0.7)
+
+        us_add_flow_ax.set_xticklabels([])
+
+        res_discharge_ax.plot(
+            self.q_act_arr_diff,
+            'r-',
+            label='Actual Residual Outflow',
+            lw=0.5,
+            alpha=0.7)
+
+        res_discharge_ax.plot(
+            self.q_sim_arr_diff,
+            'b-',
+            label='Simulated Residual Outflow',
+            lw=0.5,
+            alpha=0.5)
+
+        vol_err_ax.axhline(1.0, color='k', lw=1)
+
+        vol_err_ax.plot(
+            self.vol_diff_arr,
+            lw=0.5,
+            label='Cumm. Residual Runoff Error',
+            alpha=0.95)
+
+        vol_err_ax.set_ylim(self.min_vol_diff_err, self.max_vol_diff_err)
+
+        vol_txt_x_crd = self.plt_strt_idx + (
+            (self.vol_diff_arr.shape[0] - self.plt_strt_idx) * 0.5)
+
+        vol_err_ax.text(
+            vol_txt_x_crd,
+            1.25,
+            'runoff over-estimation',
+            fontsize=font_size * 0.9)
+
+        vol_err_ax.text(
+            vol_txt_x_crd,
+            0.75,
+            'runoff under-estimation',
+            fontsize=font_size * 0.9)
+
+        tot_vol_err_ax.axhline(1.0, color='k', lw=1)
+
+        tot_vol_err_ax.plot(
+            tot_vol_diff_arr,
+            lw=0.5,
+            label='Cumm. Total Runoff Error',
+            alpha=0.95)
+
+        tot_vol_err_ax.set_ylim(self.min_vol_diff_err, self.max_vol_diff_err)
+
+        vol_txt_x_crd = self.plt_strt_idx + (
+            (tot_vol_diff_arr.shape[0] - self.plt_strt_idx) * 0.5)
+
+        tot_vol_err_ax.text(
+            vol_txt_x_crd,
+            1.25,
+            'runoff over-estimation',
+            fontsize=font_size * 0.9)
+
+        tot_vol_err_ax.text(
+            vol_txt_x_crd,
+            0.75,
+            'runoff under-estimation',
+            fontsize=font_size * 0.9)
+
+        leg_font = f_props()
+        leg_font.set_size(font_size - 1)
+
+        plot_axes = [
+            discharge_ax,
+            res_discharge_ax,
+            vol_err_ax,
+            us_add_flow_ax,
+            tot_vol_err_ax,
+            ]
+
+        for ax in plot_axes:
+            for tlab in ax.get_yticklabels():
+                tlab.set_fontsize(font_size - 1)
+
+            for tlab in ax.get_xticklabels():
+                tlab.set_fontsize(font_size - 1)
+
+            ax.grid()
+
+            ax.set_xlim(self.plt_strt_idx, discharge_ax.get_xlim()[1])
+
+            leg = ax.legend(framealpha=0.7, prop=leg_font, ncol=4, loc=0)
+            leg.get_frame().set_edgecolor('black')
+
+        fig.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
+
+        plt.savefig(out_fig_loc, bbox_inches='tight')
 
         plt.close('all')
         return
@@ -861,11 +989,11 @@ class PlotCatHBVSimKf:
 
         fig = plt.figure(figsize=(11, 27), dpi=250)
 
-        t_rows = 17
+        t_rows = 14
         t_cols = 1
         font_size = 6
 
-        plt.suptitle('HBV Simulation')
+        plt.suptitle('HBV Simulation - Variables')
 
         i = 0
 
@@ -873,19 +1001,7 @@ class PlotCatHBVSimKf:
             (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
         i += 1
 
-        vol_err_ax = plt.subplot2grid(
-            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
-        i += 1
-
-        res_discharge_ax = plt.subplot2grid(
-            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
-        i += 1
-
         discharge_ax = plt.subplot2grid(
-            (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
-        i += 1
-
-        balance_ax = plt.subplot2grid(
             (t_rows, t_cols), (i, 0), rowspan=1, colspan=1)
         i += 1
 
@@ -938,73 +1054,12 @@ class PlotCatHBVSimKf:
 
         bar_x = np.arange(0, self.n_recs, 1)
 
-        res_discharge_ax.plot(
-            self.q_act_arr_diff,
-            'r-',
-            label='Actual Residual Flow',
-            lw=0.5,
-            alpha=0.7)
-
-        res_discharge_ax.plot(
-            self.q_sim_arr_diff,
-            'b-',
-            label='Simulated Residual Flow',
-            lw=0.5,
-            alpha=0.5)
-
         discharge_ax.plot(self.q_act_arr, 'r-', label='Actual Flow', lw=0.5)
 
         discharge_ax.plot(
             self.q_sim_arr, 'b-', label='Simulated Flow', lw=0.5, alpha=0.5)
 
-        vol_err_ax.axhline(1.0, color='k', lw=1)
-
-        vol_err_ax.plot(
-            self.vol_diff_arr,
-            lw=0.5,
-            label='Cumm. Runoff Error',
-            alpha=0.95)
-
-        vol_err_ax.set_ylim(self.min_vol_diff_err, self.max_vol_diff_err)
-
-        vol_txt_x_crd = self.plt_strt_idx + (
-            (self.vol_diff_arr.shape[0] - self.plt_strt_idx) * 0.5)
-
-        vol_err_ax.text(
-            vol_txt_x_crd,
-            1.25,
-            'runoff over-estimation',
-            fontsize=font_size * 0.9)
-
-        vol_err_ax.text(
-            vol_txt_x_crd,
-            0.75,
-            'runoff under-estimation',
-            fontsize=font_size * 0.9)
-
         scatt_size = 5
-
-        balance_ax.axhline(1.0, color='k', lw=1)
-
-        balance_ax.scatter(
-            self.bal_idxs,
-            act_bal_arr,
-            c='r',
-            marker='o',
-            label='Actual Outflow (Q + ET)',
-            alpha=0.6,
-            s=scatt_size)
-
-        balance_ax.scatter(
-            self.bal_idxs,
-            sim_bal_arr,
-            c='b',
-            marker='+',
-            label='Simulated Outflow (Q + ET)',
-            alpha=0.6,
-            s=scatt_size)
-
-        balance_ax.set_ylim(min_vol_err_w_et, max_vol_err_w_et)
 
         prec_ax.plot(
             bar_x,
@@ -1128,7 +1183,6 @@ class PlotCatHBVSimKf:
 
         plot_axes = [
             prec_sums_ax,
-            res_discharge_ax,
             discharge_ax,
             prec_ax,
             temp_ax,
@@ -1142,8 +1196,6 @@ class PlotCatHBVSimKf:
             ur_run_ul_ax,
             ur_to_lr_run_ax,
             l_res_sto_ax,
-            vol_err_ax,
-            balance_ax,
             ]
 
         for ax in plot_axes:
@@ -1157,10 +1209,17 @@ class PlotCatHBVSimKf:
 
             ax.set_xlim(self.plt_strt_idx, discharge_ax.get_xlim()[1])
 
-            leg = ax.legend(framealpha=0.7, prop=leg_font, ncol=4, loc=0)
+            leg = ax.legend(framealpha=0.7, prop=leg_font, ncol=4, loc=1)
             leg.get_frame().set_edgecolor('black')
 
-        fig.tight_layout(rect=[0, 0.01, 1, 0.95], h_pad=0.0)
+        leg = prec_sums_ax.legend(
+            framealpha=0.7, prop=leg_font, ncol=4, loc=2)
+
+        leg.get_frame().set_edgecolor('black')
+
+        prec_sums_ax.grid(False)
+
+        fig.tight_layout(rect=[0, 0.01, 1, 0.97], h_pad=0.0)
 
         plt.savefig(out_fig_loc, bbox_inches='tight')
 

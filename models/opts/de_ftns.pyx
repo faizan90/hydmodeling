@@ -127,8 +127,6 @@ cdef void pre_de(
             else:
                 u_j_gs[t_i, k] = prm_vecs[t_i, k]
 
-            u_j_gs[t_i, k] = u_j_gs[t_i, k]
-
         # check if pwp is ge than fc and adjust
         for i in range(prms_span_idxs[fc_i, 1] - prms_span_idxs[fc_i, 0]):
             if (u_j_gs[t_i, prms_span_idxs[pwp_i, 0] + i] <

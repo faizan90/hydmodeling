@@ -10,6 +10,8 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
+from matplotlib.lines import Line2D
+import matplotlib.colors as mpl_clrs
 from scipy.interpolate import interp1d
 
 from ..models import (
@@ -71,6 +73,7 @@ def plot_cat_diags(plot_args):
                 plot_cat_diags_1d_cls.plot_peak_qevents()
                 plot_cat_diags_1d_cls.plot_mw_discharge_ratios()
                 plot_cat_diags_1d_cls.plot_hi_err_qevents()
+                plot_cat_diags_1d_cls.plot_quantile_stats()
     return
 
 
@@ -122,6 +125,11 @@ class PlotCatDiagnostics1D:
             'kge': get_kge_cy,
             }
 
+        self._stat_ftns_dict = {
+            'mean': np.mean,
+            'med': np.median
+            }
+
         mkdir_hm(self._out_dir)
 
         self._qobs_ranks = np.argsort(np.argsort(self._qobs_arr)) + 1
@@ -144,6 +152,116 @@ class PlotCatDiagnostics1D:
 #             self._grid_rows = None
 #             self._grid_cols = None
 #             self._grid_shape = None
+        return
+
+    def plot_quantile_stats(self):
+
+        clrs = list(mpl_clrs.TABLEAU_COLORS)
+
+        out_dir = os.path.join(self._out_dir, 'quant_stats')
+        mkdir_hm(out_dir)
+
+        line_alpha = 0.7
+
+        n_quants = 10
+
+        qobs_quants_masks_dict = self._get_quant_masks_dict(n_quants)
+
+        q_quant_stats_dict = self._get_q_quant_stats_dict(
+            qobs_quants_masks_dict)
+
+        bar_x_crds = (
+            np.arange(1., n_quants + 1) / n_quants) - (0.5 / n_quants)
+
+        plt.figure(figsize=(15, 7))
+
+        plt_texts = []
+        add_legend_items = []
+        sim_labs = ['obs', 'sim']
+
+        clr_idx = 0
+        for k, stat_ftn_lab in enumerate(self._stat_ftns_dict):
+            ratios_arr = (
+                q_quant_stats_dict[stat_ftn_lab][:, 1] /
+                q_quant_stats_dict[stat_ftn_lab][:, 0])
+
+            plt.plot(
+                bar_x_crds,
+                ratios_arr,
+                marker='o',
+                label=f'{stat_ftn_lab}-ratio',
+                color=clrs[
+                    (len(sim_labs) * len(q_quant_stats_dict)) + k],
+                alpha=line_alpha)
+
+            for j, sim_lab in enumerate(sim_labs):
+                for i in range(n_quants):
+                    txt_obj = plt.text(
+                        bar_x_crds[i],
+                        ratios_arr[i],
+                        f'  {q_quant_stats_dict[stat_ftn_lab][i, j]:0.2f}  ',
+                        va='top',
+                        ha='left',
+                        color=clrs[clr_idx],
+                        alpha=line_alpha,
+                        size='small')
+
+                    plt_texts.append(txt_obj)
+
+                legend_sym = Line2D(
+                    [0],
+                    [0],
+                    color='w',
+                    markerfacecolor=clrs[clr_idx],
+                    label=f'{stat_ftn_lab}-{sim_lab}',
+                    marker='o',
+                    alpha=line_alpha)
+
+                add_legend_items.append(legend_sym)
+
+                clr_idx += 1
+
+        plt.axhline(1, color='k')
+
+        adjust_text(plt_texts)
+
+        bar_x_crds_labs = [
+            f'{bar_x_crds[i]:0.3f} - '
+            f'({int(qobs_quants_masks_dict[i].sum())})'
+            for i in range(n_quants)]
+
+        plt.xticks(bar_x_crds, bar_x_crds_labs, rotation=90)
+
+        plt.xlabel('Mean interval prob. - (N)')
+        plt.ylabel('Ratio')
+
+        plt.grid()
+
+        legend_handles, legend_labels = plt.gca().get_legend_handles_labels()
+
+        legend_handles.extend(add_legend_items)
+
+        legend_labels.extend(
+            [l_item.get_label() for l_item in add_legend_items])
+
+        plt.legend(handles=legend_handles, labels=legend_labels, loc=0)
+
+        plt.title(
+            f'Statisitics for {n_quants} quantiles of discharges '
+            f'(sim. by obs.)\n'
+            f'Catchment: {self._cat}, Kf: {self._kf}, '
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+            f'Quantile indices using observed'
+            )
+
+        fig_name = (
+            f'quants_stat_kf_{self._kf:02d}_{self._run_type}_'
+            f'cat_{self._cat}.png')
+
+        plt.savefig(
+            os.path.join(out_dir, fig_name), bbox_inches='tight')
+
+        plt.close()
         return
 
     def plot_hi_err_qevents(self):
@@ -214,6 +332,8 @@ class PlotCatDiagnostics1D:
         (ws_x_crds,
          qobs_mw_mean_arr,
          qsim_mw_mean_arr,
+         qobs_mw_med_arr,
+         qsim_mw_med_arr,
          qmw_diff_arr,
          qmw_ratio_arr) = (
             self._get_mw_qdiff_ratio_arrs(ws))
@@ -228,7 +348,7 @@ class PlotCatDiagnostics1D:
             qobs_mw_mean_arr,
             alpha=line_alpha,
             color='red',
-            label='obs',
+            label='mean-obs',
             lw=line_lw)
 
         mwq_ax.plot(
@@ -236,14 +356,32 @@ class PlotCatDiagnostics1D:
             qsim_mw_mean_arr,
             alpha=line_alpha,
             color='blue',
-            label='sim',
+            label='mean-sim',
             lw=line_lw)
 
-        mwq_ax.set_ylabel('Moving window\nmean discharge')
+        mwq_ax.plot(
+            ws_x_crds,
+            qobs_mw_med_arr,
+            alpha=line_alpha,
+            color='red',
+            label='med-obs',
+            ls='-.',
+            lw=line_lw)
+
+        mwq_ax.plot(
+            ws_x_crds,
+            qsim_mw_med_arr,
+            alpha=line_alpha,
+            color='blue',
+            label='med-sim',
+            ls='-.',
+            lw=line_lw)
+
+        mwq_ax.set_ylabel('Moving window\ndischarge')
         mwq_ax.set_xticklabels([])
 
         mwq_ax.grid()
-        mwq_ax.legend()
+        mwq_ax.legend(framealpha=0.3)
 
         mwq_ax.locator_params('y', nbins=4)
 
@@ -272,7 +410,7 @@ class PlotCatDiagnostics1D:
         diff_ratio_ax.set_ylim(-max_abs_diff, +max_abs_diff)
 
         diff_ratio_ax.grid()
-        diff_ratio_ax.legend(loc=1)
+        diff_ratio_ax.legend(framealpha=0.3, loc=1)
 
         diff_ratio_ax.set_xlabel('Time')
         diff_ratio_ax.set_ylabel('Moving window discharge difference')
@@ -301,7 +439,7 @@ class PlotCatDiagnostics1D:
 
         ratio_ax.set_ylim(0, 2)
 
-        ratio_ax.legend(loc=4)
+        ratio_ax.legend(framealpha=0.3, loc=4)
 
         plt.suptitle(
             f'Moving window qsim by qobs ratio for window size: {ws} steps\n'
@@ -571,7 +709,8 @@ class PlotCatDiagnostics1D:
         plt.title(
             f'Efficiences for {n_quants} quantiles of discharges\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
-            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+            f'Quantile indices using observed'
             )
 
         fig_name = (
@@ -761,6 +900,27 @@ class PlotCatDiagnostics1D:
 
         plt.close()
         return
+
+    def _get_q_quant_stats_dict(self, qobs_quants_masks_dict):
+
+        n_q_quants = len(qobs_quants_masks_dict)
+
+        quant_stats_dict = {}
+        for stat_ftn_key, stat_ftn in self._stat_ftns_dict.items():
+
+            quant_stats = []
+            for i in range(n_q_quants):
+                mask = qobs_quants_masks_dict[i]
+
+                assert mask.sum() > 0
+
+                quant_stats.append([
+                    stat_ftn(self._qobs_arr[mask]),
+                    stat_ftn(self._qsim_arr[mask])])
+
+            quant_stats_dict[stat_ftn_key] = np.array(quant_stats)
+
+        return quant_stats_dict
 
     def _plot_hi_err_qevents(
             self,
@@ -1030,21 +1190,32 @@ class PlotCatDiagnostics1D:
         ref_mv_mean_arr = np.zeros(self._n_steps - ws)
         sim_mv_mean_arr = ref_mv_mean_arr.copy()
 
+        ref_mv_med_arr = ref_mv_mean_arr.copy()
+        sim_mv_med_arr = ref_mv_mean_arr.copy()
+
         ws_xcrds = []
         for i in range(self._n_steps - ws):
             ref_mv_mean_arr[i] = self._qobs_arr[i:i + ws].mean()
+            sim_mv_mean_arr[i] = self._qsim_arr[i:i + ws].mean()
+
+            ref_mv_med_arr[i] = np.median(self._qobs_arr[i:i + ws])
+            sim_mv_med_arr[i] = np.median(self._qsim_arr[i:i + ws])
 
             ws_xcrds.append(i + int(0.5 * ws))
 
         ws_xcrds = np.array(ws_xcrds)
 
-        for i in range(self._n_steps - ws):
-            sim_mv_mean_arr[i] = self._qsim_arr[i:i + ws].mean()
-
         diff_arr = (sim_mv_mean_arr - ref_mv_mean_arr)
         ratio_arr = (sim_mv_mean_arr / ref_mv_mean_arr)
 
-        return ws_xcrds, ref_mv_mean_arr, sim_mv_mean_arr, diff_arr, ratio_arr
+        return (
+            ws_xcrds,
+            ref_mv_mean_arr,
+            sim_mv_mean_arr,
+            ref_mv_med_arr,
+            sim_mv_med_arr,
+            diff_arr,
+            ratio_arr)
 
     def _get_peaks_mask(self, ws, steps_per_cycle, peaks_per_cycle):
 
