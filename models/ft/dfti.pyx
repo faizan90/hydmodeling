@@ -8,13 +8,15 @@
 
 from libc.math cimport cos
 
+# should come from a binary compiled on intel (for use on amd systems as well)
+from .intel_dft_mkl cimport mkl_real_dft
 
-cdef extern from "intel_dfti.h" nogil:
-    cdef:
-        void mkl_real_dft(
-                double *in_reals_arr,
-                DT_DC *out_comps_arr,
-                long n_pts)
+# cdef extern from "intel_dfti.h" nogil:
+#     cdef:
+#         void mkl_real_dft(
+#                 double *in_reals_arr,
+#                 DT_DC *out_comps_arr,
+#                 long n_pts)
 
 
 cdef extern from "complex.h" nogil:

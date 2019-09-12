@@ -7,27 +7,28 @@ mod_dir = os.path.dirname(__file__)
 
 def make_ext(modname, pyxfilename):
     from distutils.extension import Extension
-#     return Extension(name=modname,
-#                      sources=[pyxfilename],
-#                      language='c++',
-#                      extra_compile_args=["/openmp"],
-#                      extra_link_args=[],
-#                      libraries=[],
-#                      library_dirs=[],
-#                      include_dirs=[get_include(), mod_dir])
 
-    return Extension(
-        name=modname,
-        sources=[pyxfilename],
-        language='c++',
-        extra_compile_args=["/openmp"],
-        extra_link_args=[],
-        libraries=["mkl_intel_lp64", "mkl_core", "mkl_tbb_thread"],
-        library_dirs=[
-        r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\lib\intel64_win",
-        r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\redist\intel64_win\mkl"],
-        include_dirs=[
-        r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\include\fftw",
-        r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\include",
-        get_include(),
-        mod_dir])
+    return Extension(name=modname,
+                     sources=[pyxfilename],
+                     language='c++',
+                     extra_compile_args=["/openmp"],
+                     extra_link_args=[],
+                     libraries=[],
+                     library_dirs=[],
+                     include_dirs=[get_include(), mod_dir])
+
+#     return Extension(
+#         name=modname,
+#         sources=[pyxfilename],
+#         language='c++',
+#         extra_compile_args=["/openmp"],
+#         extra_link_args=[],
+#         libraries=["mkl_intel_lp64", "mkl_core", "mkl_tbb_thread"],
+#         library_dirs=[
+#         r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\lib\intel64_win",
+#         r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\redist\intel64_win\mkl"],
+#         include_dirs=[
+#         r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\include\fftw",
+#         r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\include",
+#         get_include(),
+#         mod_dir])
