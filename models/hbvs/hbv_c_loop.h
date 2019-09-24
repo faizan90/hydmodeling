@@ -60,6 +60,7 @@ DT_D hbv_c_loop(
 	DT_D temp, prec, petn, pre_snow, snow_melt, lppt, pre_somo;
 	DT_D pre_ur_sto, ur_uo_rnof, ur_lo_rnof, ur_lr_seep, lr_rnof;
 	DT_D rel_fc_beta, cell_area, pre_lr_sto, p_cm, avail_somo;
+	DT_D pet_scale;
 
 	// prm idxs
 	size_t tt_i, cm_i, pwp_i, fc_i, beta_i, k_uu_i;
@@ -176,23 +177,29 @@ DT_D hbv_c_loop(
             }
 
             pre_snow = outs_j_arr[cur_p + snow_i];
+
             lppt = outs_j_arr[cur_p + lppt_i];
 
             // Soil moisture and ET
 			// If rel_fc_beta goes above 1 i.e. pre_somo > fc, that is self-
 			// corrected in the next step by reducing the sm and giving that
 			// water to runoff.
-            rel_fc_beta = pow((pre_somo / fc), beta);
+			// Also, for pre_somo greater than fc, rel_fc_beta is more than one
+			// this is corrected with a min with one. This means that somo
+			// won't change for that step and all water will be runoff
+            rel_fc_beta = min(1.0, pow((pre_somo / fc), beta));
+
             avail_somo = pre_somo + (lppt * (1 - rel_fc_beta));
 
     		if (pre_somo > pwp) {
-    			outs_j_arr[cur_p + evtn_i] = min(avail_somo, petn);
+    			pet_scale = 1.0;
     		}
 
     		else {
-    			outs_j_arr[cur_p + evtn_i] = min(
-    					avail_somo, (pre_somo / fc) * petn);
+    			pet_scale = pre_somo / pwp;
     		}
+
+			outs_j_arr[cur_p + evtn_i] = min(avail_somo, pet_scale * petn);
 
 			// Sometimes somo goes slightly below 0 for certain parameters'
 			// combinations, also this will allow for drought modelling
@@ -244,8 +251,10 @@ DT_D hbv_c_loop(
             pre_lr_sto = outs_j_arr[cur_p + lr_i];
 
             // Upper and lower reservoirs combined discharge
-            qsim_arr[n] += (rnof_q_conv[0] * cell_area *
-							(ur_uo_rnof + ur_lo_rnof + lr_rnof));
+            qsim_arr[n] += (
+            		rnof_q_conv[0] *
+					cell_area *
+					(ur_uo_rnof + ur_lo_rnof + lr_rnof));
         }
 	}
 

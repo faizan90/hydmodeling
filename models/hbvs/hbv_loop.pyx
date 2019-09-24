@@ -9,6 +9,7 @@
 cdef DT_D min(const DT_D a, const DT_D b) nogil:
     if a <= b:
         return a
+
     else:
         return b
 
@@ -16,6 +17,7 @@ cdef DT_D min(const DT_D a, const DT_D b) nogil:
 cdef DT_D max(const DT_D a, const DT_D b) nogil:
     if a >= b:
         return a
+
     else:
         return b
 
@@ -50,6 +52,7 @@ cdef DT_D hbv_loop(
         DT_D temp, prec, petn, pre_snow, snow_melt, lppt, pre_somo
         DT_D pre_ur_sto, ur_uo_rnof, ur_lo_rnof, ur_lr_seep, lr_rnof
         DT_D rel_fc, rel_fc_beta, cell_area, pre_lr_sto, p_cm, avail_somo
+        DT_D pet_scale
 
         # prm idxs
         Py_ssize_t tt_i, cm_i, pwp_i, fc_i, beta_i, k_uu_i
@@ -123,6 +126,7 @@ cdef DT_D hbv_loop(
         for o_i in range(1, temp_arr.shape[1] + 1):
             if opt_flag[0]:
                 i = 0
+
             else:
                 i = o_i
 
@@ -134,26 +138,35 @@ cdef DT_D hbv_loop(
             if temp < tt:
                 outs_j_arr[i, snow_i] = pre_snow + prec
                 outs_j_arr[i, lppt_i] = 0.0
+
             else:
                 snow_melt = ((cm + (p_cm * prec)) * (temp - tt))
+
                 outs_j_arr[i, snow_i] = max(0.0,  pre_snow - snow_melt)
                 outs_j_arr[i, lppt_i] = prec + min(pre_snow, snow_melt)
 
             pre_snow = outs_j_arr[i, snow_i]
+
             lppt = outs_j_arr[i, lppt_i]
 
             # soil moisture and ET
             # if rel_fc_beta goes above 1 i.e. pre_somo > fc, that is self-
             # corrected in the next step by reducing the sm and giving that
             # water to runoff.
-            rel_fc_beta = (pre_somo / fc)**beta
+            # Also, for pre_somo greater than fc, rel_fc_beta is more than one
+            # this is corrected with a min with one. This means that somo
+            # won't change for that step and all water will be runoff
+            rel_fc_beta = min(1.0, (pre_somo / fc)**beta)
 
-            avail_somo = pre_somo + (lppt * (1 - rel_fc_beta))
+            avail_somo = pre_somo + max(0.0, (lppt * (1 - rel_fc_beta)))
 
             if pre_somo > pwp:
-                outs_j_arr[i, evtn_i] = min(avail_somo, petn)
+                pet_scale = 1.0
+
             else:
-                outs_j_arr[i, evtn_i] = min(avail_somo, (pre_somo / fc) * petn)
+                pet_scale = (pre_somo / pwp)
+
+            outs_j_arr[i, evtn_i] = min(avail_somo, pet_scale * petn)
 
             # sometimes somo goes slightly below 0 for certain parameters'
             # combinations, also this will allow for drought modelling
@@ -171,16 +184,19 @@ cdef DT_D hbv_loop(
             # runonff, upper reservoir, upper outlet
             outs_j_arr[i, ur_uo_i] = (
                 max(0.0, (pre_ur_sto - ur_thr) * k_uu))
+
             ur_uo_rnof = outs_j_arr[i, ur_uo_i]
 
             # runoff, upper reservoir, lower outlet 
             outs_j_arr[i, ur_lo_i] = (
                 max(0.0, (pre_ur_sto - ur_uo_rnof) * k_ul))
+
             ur_lo_rnof = outs_j_arr[i, ur_lo_i] 
 
             # seepage to groundwater
             outs_j_arr[i, ur_lr_i] = (
                 max(0.0, (pre_ur_sto - ur_uo_rnof - ur_lo_rnof) * k_d))
+
             ur_lr_seep = outs_j_arr[i, ur_lr_i]
 
             # upper reservoir storage
@@ -191,15 +207,20 @@ cdef DT_D hbv_loop(
                      ur_lo_rnof -
                      ur_lr_seep +
                      outs_j_arr[i, rnof_i])))
+
             pre_ur_sto = outs_j_arr[i, ur_i]
 
             # lower reservoir runoff and storage
             lr_rnof = pre_lr_sto * k_ll
+
             outs_j_arr[i, lr_i] = (pre_lr_sto + ur_lr_seep - lr_rnof)
+
             pre_lr_sto = outs_j_arr[i, lr_i]
 
             # upper and lower reservoirs combined discharge
-            qsim_arr[o_i - 1] += (rnof_q_conv[0] * cell_area * 
-                                  (ur_uo_rnof + ur_lo_rnof + lr_rnof))
+            qsim_arr[o_i - 1] += (
+                rnof_q_conv[0] *
+                cell_area *
+                (ur_uo_rnof + ur_lo_rnof + lr_rnof))
 
     return 0.0
