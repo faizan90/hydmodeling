@@ -1225,4 +1225,3 @@ class PlotCatHBVSimKf:
 
         plt.close('all')
         return
-

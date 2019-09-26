@@ -158,7 +158,7 @@ cdef DT_D hbv_loop(
             # won't change for that step and all water will be runoff
             rel_fc_beta = min(1.0, (pre_somo / fc)**beta)
 
-            avail_somo = pre_somo + max(0.0, (lppt * (1 - rel_fc_beta)))
+            avail_somo = pre_somo + (lppt * (1 - rel_fc_beta))
 
             if pre_somo > pwp:
                 pet_scale = 1.0
