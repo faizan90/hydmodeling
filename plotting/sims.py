@@ -744,7 +744,7 @@ class PlotCatHBVSimKf:
         us_add_flow_ax.plot(
             self.q_sim_arr_diff,
             'b-',
-            label='Simulated Residual outflow',
+            label='Simulated Residual Outflow',
             lw=0.5,
             alpha=0.7)
 

@@ -1194,13 +1194,13 @@ def solve_cat(
                 out_db_dict['hbv_prms'], out_db_dict['route_prms'])
 
             opt_end_time = timeit.default_timer()
-            mean_time = (
-                out_db_dict['n_calls'].mean() *
-                n_cells /
+            mean_steps = (
+                (q_arr.shape[0] *
+                 out_db_dict['n_calls'].mean() *
+                 n_cells) /
                 (opt_end_time - opt_strt_time))
 
-            print(f'{mean_time:0.4f} hbv loops per second per cell per '
-                  'thread!')
+            print(f'{mean_steps:0.1f} steps per second per cell per thread!')
 
             print('Opt time was: %0.3f seconds' %
                   (opt_end_time - opt_strt_time))

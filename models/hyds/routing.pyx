@@ -17,6 +17,7 @@ cdef void tfm_opt_to_route_prms(
     
     for i in range(opt_prms.shape[0]):
         route_prms[i] = bds_dfs[i, 0] + (bds_dfs[i, 1] * opt_prms[i])
+
     return
 
 
@@ -35,7 +36,11 @@ cdef void musk_route(
 
     cdef:
         Py_ssize_t i
+
         DT_D C0, C1, C2, C3
+
+    # C1 + C2 + C3 should be almost 1
+    # lag should be greater than del_t
 
     C0 = (2 * lag[0] * (1 - wt[0])) + del_t[0]
 
@@ -45,12 +50,18 @@ cdef void musk_route(
 
     C3 = ((2 * lag[0] * (1 - wt[0])) - del_t[0]) / C0
 
+#     with gil:
+#         print('lag:', lag[0], 'wt:', wt[0])
+#         print('Cs:', C0, C1, C2, C3, C1 + C2 + C3)
+
     outflow_arr[0, stm_idx[0]] = inflow_arr[0]
     for i in range(1, n_recs[0]):
         outflow_arr[i, stm_idx[0]] = (
             (inflow_arr[i] * C1) +
             (inflow_arr[i - 1] * C2) +
             (outflow_arr[i - 1, stm_idx[0]] * C3))
+#         with gil:
+#             print(inflow_arr[i], outflow_arr[i, stm_idx[0]])
     return
 
 
