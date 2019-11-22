@@ -12,6 +12,7 @@ from ..miscs.misc_ftns cimport (
     get_ns, get_ln_ns, get_kge, cmpt_resampled_arr, get_demr, get_mean)
 from ..miscs.misc_ftns_partial cimport (
     get_ns_prt, get_ln_ns_prt, get_kge_prt, cmpt_resampled_arr_prt)
+from ..miscs.sec_miscs cimport update_obj_doubles
 from ..ft.dfti cimport cmpt_real_fourtrans_1d, cmpt_cumm_freq_pcorrs
 from ..ft.effs cimport get_ft_eff
 
@@ -50,16 +51,16 @@ cdef DT_D obj_ftn(
         const DT_D[::1] obj_ftn_wts,
               DT_D[::1] opt_prms,
         const DT_D[::1] qact_arr,
-        const DT_D[::1] qact_resamp_arr,
+              DT_D[::1] qact_resamp_arr,
               DT_D[::1] qsim_resamp_arr,
         const DT_D[::1] area_arr,
               DT_D[::1] qsim_arr,
               DT_D[::1] inflow_arr,
         const DT_D[::1] f_vars,
-        const DT_D[::1] obj_doubles,
               DT_D[::1] route_prms,
               DT_D[::1] qact_qres_arr,
               DT_D[::1] qsim_qres_arr,
+              DT_D[::1] obj_res_doubles,
 
         const DT_D[:, ::1] inis_arr,
               DT_D[:, ::1] temp_arr,
@@ -110,7 +111,7 @@ cdef DT_D obj_ftn(
         area_arr,
         qsim_arr,
         inflow_arr,
-        obj_doubles,
+        obj_res_doubles,
         route_prms,
         inis_arr,
         temp_arr,
@@ -131,41 +132,40 @@ cdef DT_D obj_ftn(
     if res != 0.0:
         return 1e50
 
-    if obj_longs[use_res_cat_runoff_flag_i] == 0:
+    if ((not obj_longs[use_res_cat_runoff_flag_i]) or 
+        (obj_longs[curr_us_stm_i] == -2)):
+
         for i in range(n_recs):
             qact_qres_arr[i] = qact_arr[i]
             qsim_qres_arr[i] = qsim_arr[i]
 
-    elif obj_longs[use_res_cat_runoff_flag_i] == 1:
+    else:
         if (obj_longs[curr_us_stm_i] != -2):
             stm_idx = stm_to_idx_map[obj_longs[curr_us_stm_i]]
 
-            min_q_thresh = obj_doubles[min_q_thresh_i]
+            min_q_thresh = obj_res_doubles[min_q_thresh_i]
 
             for i in range(n_recs):
                 qact_qres_arr[i] = qact_arr[i] - stms_outflow_arr[i, stm_idx]
                 qsim_qres_arr[i] = qsim_arr[i] - stms_outflow_arr[i, stm_idx]
 
-#                 if qact_qres_arr[i] < min_q_thresh:
-#                     qact_qres_arr[i] = min_q_thresh
-# 
-#                 if qsim_qres_arr[i] < min_q_thresh:
-#                     qsim_qres_arr[i] = min_q_thresh
+                if qact_qres_arr[i] < min_q_thresh:
+                    qact_qres_arr[i] = min_q_thresh
 
-        else:
-            for i in range(n_recs):
-                qact_qres_arr[i] = qact_arr[i]
-                qsim_qres_arr[i] = qsim_arr[i]
+                if qsim_qres_arr[i] < min_q_thresh:
+                    qsim_qres_arr[i] = min_q_thresh
 
-    else:
-        with gil: print(
-            ('Incorrect use_res_cat_runoff_flag: %d' % 
-             obj_longs[use_res_cat_runoff_flag_i]))
+            if obj_longs[resamp_obj_ftns_flag_i]:
+                with gil: raise NotImplementedError('Cant\'t be done!')
 
-#     with gil:
-#         print(obj_longs[use_res_cat_runoff_flag_i])
-#         for i in range(n_recs):
-#             print(i, qact_qres_arr[i], qsim_qres_arr[i])
+            update_obj_doubles(
+                obj_longs, 
+                use_step_arr, 
+                obj_ftn_resamp_tags_arr,
+                obj_ftn_wts,
+                obj_res_doubles,
+                qact_qres_arr,
+                qact_resamp_arr)
 
     if obj_longs[resamp_obj_ftns_flag_i]:
         if obj_longs[use_step_flag_i]:
@@ -189,14 +189,14 @@ cdef DT_D obj_ftn(
                         qact_resamp_arr,
                         qsim_resamp_arr,
                         use_step_arr,
-                        obj_doubles[demr_i],
+                        obj_res_doubles[demr_i],
                         obj_longs[a_zero_i]))
 
             else:
                 res = obj_ftn_wts[0] * get_ns(
                         qact_resamp_arr,
                         qsim_resamp_arr,
-                        obj_doubles[demr_i],
+                        obj_res_doubles[demr_i],
                         obj_longs[a_zero_i])
 
         else:
@@ -206,7 +206,7 @@ cdef DT_D obj_ftn(
                         qact_qres_arr,
                         qsim_qres_arr,
                         use_step_arr,
-                        obj_doubles[demr_i],
+                        obj_res_doubles[demr_i],
                         obj_longs[off_idx_i]))
 
             else:
@@ -214,7 +214,7 @@ cdef DT_D obj_ftn(
                        get_ns(
                         qact_qres_arr,
                         qsim_qres_arr,
-                        get_demr(qact_qres_arr, get_mean(qact_qres_arr, obj_longs[off_idx_i]), obj_longs[off_idx_i]),
+                        obj_res_doubles[demr_i],
                         obj_longs[off_idx_i]))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[0]
@@ -227,7 +227,7 @@ cdef DT_D obj_ftn(
                         qact_resamp_arr,
                         qsim_resamp_arr,
                         use_step_arr,
-                        obj_doubles[ln_demr_i],
+                        obj_res_doubles[ln_demr_i],
                         obj_longs[a_zero_i]))
 
             else:
@@ -235,7 +235,7 @@ cdef DT_D obj_ftn(
                     obj_ftn_wts[1] * get_ln_ns(
                         qact_resamp_arr,
                         qsim_resamp_arr,
-                        obj_doubles[ln_demr_i],
+                        obj_res_doubles[ln_demr_i],
                         obj_longs[a_zero_i]))
 
         else:
@@ -245,7 +245,7 @@ cdef DT_D obj_ftn(
                         qact_qres_arr,
                         qsim_qres_arr,
                         use_step_arr,
-                        obj_doubles[ln_demr_i],
+                        obj_res_doubles[ln_demr_i],
                         obj_longs[off_idx_i]))
 
             else:
@@ -253,7 +253,7 @@ cdef DT_D obj_ftn(
                     obj_ftn_wts[1] * get_ln_ns(
                         qact_qres_arr,
                         qsim_qres_arr,
-                        obj_doubles[ln_demr_i],
+                        obj_res_doubles[ln_demr_i],
                         obj_longs[off_idx_i]))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[1]
@@ -266,8 +266,8 @@ cdef DT_D obj_ftn(
                         qact_resamp_arr,
                         qsim_resamp_arr,
                         use_step_arr,
-                        obj_doubles[mean_ref_i],
-                        obj_doubles[act_std_dev_i],
+                        obj_res_doubles[mean_ref_i],
+                        obj_res_doubles[act_std_dev_i],
                         obj_longs[a_zero_i]))
 
             else:
@@ -275,8 +275,8 @@ cdef DT_D obj_ftn(
                     obj_ftn_wts[2] * get_kge(
                         qact_resamp_arr,
                         qsim_resamp_arr,
-                        obj_doubles[mean_ref_i],
-                        obj_doubles[act_std_dev_i],
+                        obj_res_doubles[mean_ref_i],
+                        obj_res_doubles[act_std_dev_i],
                         obj_longs[a_zero_i]))
 
         else:
@@ -286,8 +286,8 @@ cdef DT_D obj_ftn(
                         qact_qres_arr,
                         qsim_qres_arr,
                         use_step_arr,
-                        obj_doubles[mean_ref_i],
-                        obj_doubles[act_std_dev_i],
+                        obj_res_doubles[mean_ref_i],
+                        obj_res_doubles[act_std_dev_i],
                         obj_longs[off_idx_i]))
 
             else:
@@ -295,20 +295,21 @@ cdef DT_D obj_ftn(
                     obj_ftn_wts[2] * get_kge(
                         qact_qres_arr,
                         qsim_qres_arr,
-                        obj_doubles[mean_ref_i],
-                        obj_doubles[act_std_dev_i],
+                        obj_res_doubles[mean_ref_i],
+                        obj_res_doubles[act_std_dev_i],
                         obj_longs[off_idx_i]))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[2]
 
     if obj_ftn_wts[3]:
+        # TODO: implement fft of qact
         for i in range(q_ft_tfms[0].n_pts):
             q_ft_tfms[tid[0] + 1].orig[i] = qsim_arr[obj_longs[off_idx_i] + i]
 
         res = res + (
             obj_ftn_wts[3] * get_ft_eff(
                 obj_longs,
-                obj_doubles,
+                obj_res_doubles,
                 q_ft_tfms[0],
                 q_ft_tfms[tid[0] + 1]))
 

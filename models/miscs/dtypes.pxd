@@ -8,9 +8,6 @@
 
 from libcpp.vector cimport vector
 
-import numpy as np
-cimport numpy as np
-
 ctypedef double DT_D
 ctypedef long DT_UL  # unfortunately, this has to stay signed
 ctypedef unsigned long long DT_ULL
@@ -41,3 +38,5 @@ cdef DT_UL n_hbv_cols, n_hbv_prms, obj_longs_ct, obj_doubles_ct
 cdef DT_D err_val
 
 cdef DT_UL max_bds_adj_atpts
+
+cdef DT_D NAN

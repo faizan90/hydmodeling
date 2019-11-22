@@ -6,6 +6,9 @@
 # cython: infer_types=False
 # cython: embedsignature=True
 
+import numpy as np
+cimport numpy as np
+
 # Indicies of some variables in the bounds arr
 cdef fc_i = 3, pwp_i = 5
 
@@ -31,6 +34,7 @@ cdef err_val = 1e9
 
 cdef max_bds_adj_atpts = 1000
 
+cdef NAN = np.nan
 
 def get_fc_pwp_is():
     return (<long> fc_i, <long> pwp_i)

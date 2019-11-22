@@ -1,4 +1,3 @@
-
 # cython: nonecheck=False
 # cython: boundscheck=False
 # cython: wraparound=False
