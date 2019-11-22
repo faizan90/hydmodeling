@@ -7,14 +7,13 @@
 
 from ..miscs.dtypes cimport DT_D, DT_UL, DT_ULL
 
+
 cdef void update_obj_doubles(
         const DT_UL[::1] obj_longs,
         const DT_UL[::1] use_step_arr,
 
-        const DT_ULL[::1] obj_ftn_resamp_tags_arr,
-
         const DT_D[::1] obj_ftn_wts,
               DT_D[::1] obj_doubles,
         const DT_D[::1] q_arr,
-              DT_D[::1] q_resamp_arr,
+        const DT_D[::1] q_resamp_arr,
         ) nogil except +

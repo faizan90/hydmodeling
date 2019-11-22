@@ -30,7 +30,8 @@ from ..miscs.dtypes cimport (
     ln_demr_i,
     mean_ref_i,
     act_std_dev_i,
-    min_q_thresh_i)
+    min_q_thresh_i,
+    NAN)
 
 
 cdef DT_D obj_ftn(
@@ -51,7 +52,7 @@ cdef DT_D obj_ftn(
         const DT_D[::1] obj_ftn_wts,
               DT_D[::1] opt_prms,
         const DT_D[::1] qact_arr,
-              DT_D[::1] qact_resamp_arr,
+        const DT_D[::1] qact_resamp_arr,
               DT_D[::1] qsim_resamp_arr,
         const DT_D[::1] area_arr,
               DT_D[::1] qsim_arr,
@@ -88,6 +89,9 @@ cdef DT_D obj_ftn(
         DT_UL n_recs = qsim_arr.shape[0], stm_idx
 
         DT_D res, obj_ftn_wts_sum, min_q_thresh
+
+    if obj_ftn_wts.shape[0] > 4:
+        with gil: raise NotImplementedError
 
     tfm_opt_to_hbv_prms(
         prms_flags,
@@ -130,7 +134,7 @@ cdef DT_D obj_ftn(
 
     obj_ftn_wts_sum = 0.0
     if res != 0.0:
-        return 1e50
+        return NAN
 
     if ((not obj_longs[use_res_cat_runoff_flag_i]) or 
         (obj_longs[curr_us_stm_i] == -2)):
@@ -161,7 +165,6 @@ cdef DT_D obj_ftn(
             update_obj_doubles(
                 obj_longs, 
                 use_step_arr, 
-                obj_ftn_resamp_tags_arr,
                 obj_ftn_wts,
                 obj_res_doubles,
                 qact_qres_arr,

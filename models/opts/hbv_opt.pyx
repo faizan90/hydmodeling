@@ -23,7 +23,7 @@ from .rope_ftns cimport get_new_chull_vecs, pre_rope, post_rope
 from .brute_ftns cimport pre_brute, post_brute
 from ..ft.dfti cimport cmpt_real_fourtrans_1d
 from ..miscs.misc_ftns cimport (
-    get_demr, 
+    get_demr,
     get_ln_demr,
     get_mean,
     get_ln_mean,
@@ -32,7 +32,7 @@ from ..miscs.misc_ftns cimport (
     cmpt_resampled_arr)
 from ..miscs.sec_miscs cimport update_obj_doubles
 from ..miscs.misc_ftns_partial cimport (
-    get_demr_prt, 
+    get_demr_prt,
     get_ln_demr_prt,
     get_mean_prt,
     get_ln_mean_prt,
@@ -45,11 +45,11 @@ from ..miscs.dtypes cimport (
     DT_DC,
     ForFourTrans1DReal,
     ForFourTrans1DRealVec,
-    fc_i, 
-    pwp_i, 
-    n_hbv_cols, 
-    n_hbv_prms, 
-    obj_longs_ct, 
+    fc_i,
+    pwp_i,
+    n_hbv_cols,
+    n_hbv_prms,
+    obj_longs_ct,
     obj_doubles_ct,
     err_val,
     off_idx_i,
@@ -87,12 +87,14 @@ cdef extern from "complex.h" nogil:
     cdef:
         DT_D cabs(DT_DC)
 
+
 cdef extern from "../miscs/rand_gen_mp.h" nogil:
     cdef:
         DT_D rand_c()
         void warm_up()  # call this everytime
         DT_D rand_c_mp(DT_ULL *rnd_j)
         void warm_up_mp(DT_ULL *seeds_arr, DT_UL n_seeds)  # call this everytime
+
 
 warm_up()
 
@@ -497,16 +499,30 @@ cpdef dict hbv_opt(args):
     obj_doubles[min_q_thresh_i] = min_q_thresh
 
     # this assigns some more values to the obj_doubles
+    if obj_longs[use_step_flag_i]:
+        cmpt_resampled_arr_prt(
+            qact_arr,
+            qact_resamp_arr,
+            obj_ftn_resamp_tags_arr,
+            use_step_arr)
+
+    else:
+        cmpt_resampled_arr(
+            qact_arr,
+            qact_resamp_arr,
+            obj_ftn_resamp_tags_arr)
+
     update_obj_doubles(
-        obj_longs, 
-        use_step_arr, 
-        obj_ftn_resamp_tags_arr,
+        obj_longs,
+        use_step_arr,
         obj_ftn_wts,
         obj_doubles,
         qact_arr,
         qact_resamp_arr)
 
-    obj_res_mult_doubles = np.full((n_cpus, obj_doubles_ct), np.nan, dtype=DT_D_NP)
+    obj_res_mult_doubles = np.full(
+        (n_cpus, obj_doubles_ct), np.nan, dtype=DT_D_NP)
+
     for i in range(n_cpus):
         obj_res_mult_doubles[i, rnof_q_conv_i] = rnof_q_conv
         obj_res_mult_doubles[i, err_val_i] = err_val
