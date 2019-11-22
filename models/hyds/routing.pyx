@@ -14,7 +14,7 @@ cdef void tfm_opt_to_route_prms(
 
     cdef:
         Py_ssize_t i
-    
+
     for i in range(opt_prms.shape[0]):
         route_prms[i] = bds_dfs[i, 0] + (bds_dfs[i, 1] * opt_prms[i])
 

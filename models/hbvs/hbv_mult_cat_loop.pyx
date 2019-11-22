@@ -110,6 +110,7 @@ cdef DT_D hbv_mult_cat_loop(
             &obj_longs[n_hbv_cols_i],
             &obj_doubles[rnof_q_conv_i],
             &obj_longs[opt_flag_i])
+
     else:
         res = hbv_loop(
             temp_arr,
@@ -137,17 +138,13 @@ cdef DT_D hbv_mult_cat_loop(
 
         cat_idx = cat_to_idx_map[obj_longs[cat_no_i]]
 
-        if obj_longs[use_obs_flow_flag_i] == 0:
-            for i in range(n_recs):
-                cats_outflow_arr[i, cat_idx] = qsim_arr[i]
-
-        elif obj_longs[use_obs_flow_flag_i] == 1:
+        # used for routing later on
+        if obj_longs[use_obs_flow_flag_i]:
             for i in range(n_recs):
                 cats_outflow_arr[i, cat_idx] = qact_arr[i]
 
         else:
-            with gil: print(
-                ('Incorrect use_obs_flow_flag: %d' % 
-                 obj_longs[use_obs_flow_flag_i]))
+            for i in range(n_recs):
+                cats_outflow_arr[i, cat_idx] = qsim_arr[i]
 
     return res

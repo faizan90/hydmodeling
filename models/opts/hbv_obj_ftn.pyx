@@ -102,7 +102,7 @@ cdef DT_D obj_ftn(
         bds_dfs,
         hbv_prms)
 
-    if (obj_longs[n_stms_i] > 0):
+    if obj_longs[route_type_i] and (obj_longs[n_stms_i] > 0):
         tfm_opt_to_route_prms(
             opt_prms[obj_longs[n_hm_prms_i]:], 
             route_prms, 
@@ -146,13 +146,16 @@ cdef DT_D obj_ftn(
     else:
         if (obj_longs[curr_us_stm_i] != -2):
             stm_idx = stm_to_idx_map[obj_longs[curr_us_stm_i]]
-
             min_q_thresh = obj_res_doubles[min_q_thresh_i]
 
             for i in range(n_recs):
                 qact_qres_arr[i] = qact_arr[i] - stms_outflow_arr[i, stm_idx]
                 qsim_qres_arr[i] = qsim_arr[i] - stms_outflow_arr[i, stm_idx]
 
+                # the limiting is needed only for discharges to be higher than
+                # zero in case of ln_NS but it is done for all obj_ftns,
+                # to have them comparable. Theoretically, doing so produces
+                # mass balance problems.
                 if qact_qres_arr[i] < min_q_thresh:
                     qact_qres_arr[i] = min_q_thresh
 
@@ -306,6 +309,12 @@ cdef DT_D obj_ftn(
 
     if obj_ftn_wts[3]:
         # TODO: implement fft of qact
+        if obj_longs[resamp_obj_ftns_flag_i]:
+            with gil: raise NotImplementedError
+
+        if obj_longs[use_res_cat_runoff_flag_i]:
+            with gil: raise NotImplementedError
+
         for i in range(q_ft_tfms[0].n_pts):
             q_ft_tfms[tid[0] + 1].orig[i] = qsim_arr[obj_longs[off_idx_i] + i]
 

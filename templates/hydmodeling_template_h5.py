@@ -357,6 +357,11 @@ def main():
     if use_res_cat_runoff_flag and use_resampled_obj_ftns_flag:
         raise NotImplementedError
 
+    if obj_ftn_wts[3] and (
+        use_resampled_obj_ftns_flag or use_res_cat_runoff_flag):
+
+        raise NotImplementedError
+
     in_opt_schm_vars_dict = cfp['OPT_SCHM_VARS']
 
     opt_schm_vars_dict = {}
