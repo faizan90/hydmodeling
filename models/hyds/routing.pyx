@@ -50,18 +50,13 @@ cdef void musk_route(
 
     C3 = ((2 * lag[0] * (1 - wt[0])) - del_t[0]) / C0
 
-#     with gil:
-#         print('lag:', lag[0], 'wt:', wt[0])
-#         print('Cs:', C0, C1, C2, C3, C1 + C2 + C3)
-
     outflow_arr[0, stm_idx[0]] = inflow_arr[0]
     for i in range(1, n_recs[0]):
         outflow_arr[i, stm_idx[0]] = (
             (inflow_arr[i] * C1) +
             (inflow_arr[i - 1] * C2) +
             (outflow_arr[i - 1, stm_idx[0]] * C3))
-#         with gil:
-#             print(inflow_arr[i], outflow_arr[i, stm_idx[0]])
+
     return
 
 

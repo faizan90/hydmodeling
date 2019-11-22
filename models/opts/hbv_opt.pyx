@@ -1059,4 +1059,7 @@ cpdef dict hbv_opt(args):
         out_dict['prm_vecs'] = np.asarray(prm_vecs)
         out_dict['curr_obj_vals'] = np.asarray(curr_obj_vals)
 
+    else:
+        with gil: raise NotImplementedError
+
     return out_dict

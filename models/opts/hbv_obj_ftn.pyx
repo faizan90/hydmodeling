@@ -31,6 +31,7 @@ from ..miscs.dtypes cimport (
     mean_ref_i,
     act_std_dev_i,
     min_q_thresh_i,
+    route_type_i,
     NAN)
 
 
@@ -156,11 +157,11 @@ cdef DT_D obj_ftn(
                 # zero in case of ln_NS but it is done for all obj_ftns,
                 # to have them comparable. Theoretically, doing so produces
                 # mass balance problems.
-                if qact_qres_arr[i] < min_q_thresh:
-                    qact_qres_arr[i] = min_q_thresh
-
-                if qsim_qres_arr[i] < min_q_thresh:
-                    qsim_qres_arr[i] = min_q_thresh
+#                 if qact_qres_arr[i] < min_q_thresh:
+#                     qact_qres_arr[i] = min_q_thresh
+# 
+#                 if qsim_qres_arr[i] < min_q_thresh:
+#                     qsim_qres_arr[i] = min_q_thresh
 
             if obj_longs[resamp_obj_ftns_flag_i]:
                 with gil: raise NotImplementedError('Cant\'t be done!')
