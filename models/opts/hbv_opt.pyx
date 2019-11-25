@@ -1060,6 +1060,6 @@ cpdef dict hbv_opt(args):
         out_dict['curr_obj_vals'] = np.asarray(curr_obj_vals)
 
     else:
-        with gil: raise NotImplementedError
+        raise NotImplementedError
 
     return out_dict
