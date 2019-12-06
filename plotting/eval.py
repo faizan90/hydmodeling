@@ -528,7 +528,7 @@ class PlotCatQSims:
         plt.grid()
         plt.legend()
 
-        title_str = f'Distributed HBV parameters for cat: {self.cat}'
+        title_str = f'HBV parameters for cat: {self.cat}'
 
         plt.suptitle(title_str, size=tick_font_size + 10)
         plt.subplots_adjust(hspace=0.15)

@@ -16,6 +16,7 @@ from parse import search
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import ProcessPool
+from pandas.plotting import register_matplotlib_converters
 
 from ..misc import get_fdc, LC_CLRS, mkdir_hm, traceback_wrapper, text_sep
 from ..models import (
@@ -34,6 +35,8 @@ from ..models import (
 
 plt.ioff()
 plt.rc('axes', axisbelow=True)
+
+register_matplotlib_converters()
 
 
 def cnvt_fig_path_to_csv_path(fig_path):
@@ -85,24 +88,28 @@ def plot_cat_discharge_errors(plot_args):
         err_dirs_dict['ensemble'] = os.path.join(
             qsims_dir , 'errors_ensemble')
 
-#     plot_types = []
     plot_types = [
-        'qe',
-        'dt',
-        'lc',
-        'pe',
-        'mp',
-        'ps',
-        'dm',
-        're',
-        'en',
-        'sq',
-        'pc',
-        'pk',
-        'ed',
-        'vc',
-        'vd',
+        'ac',
+        'mq',
         ]
+#     plot_types = [
+#         'qe',
+#         'dt',
+#         'lc',
+#         'pe',
+#         'mp',
+#         'ps',
+#         'dm',
+#         're',
+#         'en',
+#         'sq',
+#         'pc',
+#         'pk',
+#         'ed',
+#         'vc',
+#         'vd',
+#         'ac',
+#         ]
 
     mkdir_hm(qsims_dir)
 
@@ -126,7 +133,7 @@ def plot_cat_discharge_errors(plot_args):
     parse_patt = 'cat_%d_{}_{:d}_freq_{}_opt_qsims.csv' % cat
 
     n_q_quants = 10
-    mw_runoff_ws = 60
+    mw_runoff_ws = 365
 
     n_ensembles = 3
     ensemble_lc_idxs = list(range(n_ensembles))
@@ -170,6 +177,35 @@ def plot_cat_discharge_errors(plot_args):
         qobs_driest = get_driest_period(qobs_arr)
         qobs_dry_mask = get_driest_mask(qobs_arr)
 
+        if 'mq' in plot_types:
+            qobs_mw_arr = get_mw_discharge_arr(qobs_arr, mw_runoff_ws)
+
+        if 'ac' in plot_types:
+            # For this specific case only!
+            if calib_valid_lab == 'calib':
+                dummy_index = pd.date_range(
+                    '1990-06-01', periods=qsims_df_orig.shape[0] + off_idx,
+                    freq='1D')[off_idx:]
+
+            elif calib_valid_lab == 'valid':
+                dummy_index = pd.date_range(
+                    '1961-06-01', periods=qsims_df_orig.shape[0] + off_idx,
+                    freq='1D')[off_idx:]
+
+            else:
+                raise NotImplementedError
+
+            assert dummy_index.shape[0] == qsims_df_orig.shape[0]
+
+            print(
+                f'Using dummy index dates for annual cycle starting '
+                f'from: {dummy_index[0]}')
+
+            qsims_df_orig.index = dummy_index
+
+            qobs_ann_cyc_ser = get_daily_annual_cycle(
+                qsims_df_orig.iloc[:, 0])
+
         for sim_type in sim_types:
             out_dirs_dict = {
                 'dm': os.path.join(err_dirs_dict[sim_type], 'driest_month'),
@@ -182,6 +218,8 @@ def plot_cat_discharge_errors(plot_args):
                 're': os.path.join(
                     err_dirs_dict[sim_type], 'rel_mw_runoff_errs'),
                 'pk': os.path.join(err_dirs_dict[sim_type], 'peak_events'),
+                'ac': os.path.join(err_dirs_dict[sim_type], 'annual_cycle'),
+                'mq': os.path.join(err_dirs_dict[sim_type], 'mw_discharge'),
                 }
 
             if sim_type == 'ensemble':
@@ -238,8 +276,13 @@ def plot_cat_discharge_errors(plot_args):
                         sep=text_sep,
                         index_col=0)
 
+#                     ensemble_avg_sims_df = pd.DataFrame(
+#                         index=np.arange(0, qsims_df_orig.shape[0]),
+#                         columns=ensemble_lc_labs,
+#                         dtype=float)
+
                     ensemble_avg_sims_df = pd.DataFrame(
-                        index=np.arange(0, qsims_df_orig.shape[0]),
+                        index=qsims_df_orig.index,
                         columns=ensemble_lc_labs,
                         dtype=float)
 
@@ -347,12 +390,31 @@ def plot_cat_discharge_errors(plot_args):
                 qsim_arrs = []
                 driest_periods = []
                 rel_cumm_errs = []
+                mw_dis_vals = []
 
                 if sim_type == 'ensemble':
                     peak_cntmnt_cts = []
                     event_probs = []
                     value_cntmnt_cts = []
                     value_probs = []
+
+                if 'ac' in plot_types:
+                    ann_cycs_df = get_daily_annual_cycles(qsims_df.iloc[:, lc_idxs])
+                    ann_cycs_df.columns = lc_labs
+                    ann_cycs_df['obs'] = qobs_ann_cyc_ser
+
+                    ann_cycs_df = ann_cycs_df.iloc[:366, :]
+
+                    ann_cyc_df_name = (
+                        f'ann_cyc_{sim_type}_q_df_cat_{cat}_'
+                        f'{calib_valid_lab}_'
+                        f'{opt_iter}_kf_{kf}_freq_{freq}.csv')
+
+                    ann_cycs_df.to_csv(
+                        os.path.join(qsims_dir, ann_cyc_df_name),
+                        sep=';',
+                        index=False,
+                        float_format='%0.3f')
 
                 for lc_idx in lc_idxs:
                     if sim_type == 'lo_hi':
@@ -395,6 +457,9 @@ def plot_cat_discharge_errors(plot_args):
 
                     rel_cumm_errs.append(get_mv_mean_runoff_err_arr(
                         qobs_arr, qsim_arr, mw_runoff_ws))
+
+                    mw_dis_vals.append(get_mw_discharge_arr(
+                        qsim_arr, mw_runoff_ws))
 
                     if sim_type == 'ensemble':
                         peak_cntmnt_cts.append(
@@ -699,6 +764,36 @@ def plot_cat_discharge_errors(plot_args):
                         ens_prob_ftn_cts,
                         out_ensemble_vd_ct_path)
 
+                if 'ac' in plot_types:
+                    out_ann_cyc_cmp_name = (
+                        f'ann_cyc_cat_{cat}_{calib_valid_lab}_'
+                        f'{opt_iter}_kf_{kf}.png')
+
+                    out_ann_cyc_cmp_path = os.path.join(
+                        out_dirs_dict['ac'], out_ann_cyc_cmp_name)
+
+                    plot_ann_cycs(
+                        cat,
+                        lc_labs,
+                        ann_cycs_df['obs'],
+                        ann_cycs_df,
+                        out_ann_cyc_cmp_path)
+
+                if 'mq' in plot_types:
+                    out_mw_q_name = (
+                        f'mw_q_cat_{cat}_{calib_valid_lab}_'
+                        f'{opt_iter}_kf_{kf}.png')
+                    out_mw_q_path = os.path.join(
+                        out_dirs_dict['mq'], out_mw_q_name)
+
+                    plot_mw_discharge(
+                        qobs_mw_arr,
+                        mw_dis_vals,
+                        lc_labs,
+                        cat,
+                        mw_runoff_ws,
+                        out_mw_q_path)
+
     if 'ensemble' in sim_types:
         plot_calib_valid_wvcb(
             qsim_files,
@@ -707,6 +802,90 @@ def plot_cat_discharge_errors(plot_args):
             qsims_dir,
             kfolds,
             eff_ftns_dict)
+    return
+
+
+def plot_ann_cycs(
+        cat,
+        sim_labs,
+        qobs_ser,
+        qsims_df,
+        out_path):
+
+    plt.figure(figsize=(20, 7))
+
+    x_arr = qobs_ser.index
+
+    for i, sim_lab in enumerate(sim_labs):
+        plt.plot(
+            x_arr,
+            qsims_df[sim_lab].values,
+            alpha=0.5,
+            color=LC_CLRS[i],
+            label=sim_lab)
+
+    plt.plot(
+        x_arr,
+        qobs_ser.values,
+        label='Obs.',
+        color='red',
+        alpha=0.8)
+
+    title_str = (
+        f'Observed vs. Simulation comparison of annual cycles '
+        f'for catchment: {cat}\n')
+
+    plt.title(title_str)
+
+    plt.xlabel('Day of year')
+    plt.ylabel('Discharge ($m^3/s$)')
+
+    plt.legend()
+    plt.grid()
+
+    plt.savefig(out_path, bbox_inches='tight')
+
+    plt.close()
+    return
+
+
+def plot_mw_discharge(
+        obs_arr,
+        sim_arrs,
+        lc_labs,
+        cat,
+        mw_runoff_ws,
+        out_path):
+
+    plt.figure(figsize=(20, 10))
+
+    n_sims = len(lc_labs)
+
+    for i in range(n_sims):
+        plt.plot(
+            sim_arrs[i],
+            label=lc_labs[i],
+            color=LC_CLRS[i],
+            alpha=0.4)
+
+    plt.plot(
+        obs_arr,
+        label='obs',
+        color='red',
+        alpha=0.8)
+
+    plt.xlabel('Time')
+    plt.ylabel('Discharge  ($m^3/s$)')
+
+    plt.grid()
+    plt.legend(framealpha=0.7)
+
+    plt.title(
+        f'Moving window discharge of simulations for '
+        f'cat: {cat}, Window size: {mw_runoff_ws} steps')
+
+    plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
     return
 
 
@@ -1796,6 +1975,29 @@ def plot_driest_timing_effs(
         text_path = cnvt_fig_path_to_csv_path(out_path)
         text_df.to_csv(text_path, float_format='%0.4f', sep=text_sep)
     return
+
+
+def get_mw_discharge_arr(orig_arr, ws):
+
+    n_steps = orig_arr.shape[0]
+
+    mw_arr = np.zeros(n_steps - ws)
+
+    for i in range(n_steps - ws):
+        mw_arr[i] = np.mean(orig_arr[i:i + ws])
+
+    return mw_arr
+
+# def get_mw_median_discharge_arr(orig_arr, ws):
+#
+#     n_steps = orig_arr.shape[0]
+#
+#     mw_arr = np.zeros(n_steps - ws)
+#
+#     for i in range(n_steps - ws):
+#         mw_arr[i] = np.median(orig_arr[i:i + ws])
+#
+#     return mw_arr
 
 
 def get_obs_probs_in_ensemble(
