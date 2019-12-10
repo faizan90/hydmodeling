@@ -872,7 +872,7 @@ def main():
         print('\n\n')
         print('#' * 10)
         print(
-            'Plotting discharge simulations errors for various quantiles...')
+            'Plotting discharge simulation errors for various quantiles...')
 
         _beg_t = timeit.default_timer()
 

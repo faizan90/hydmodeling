@@ -88,28 +88,29 @@ def plot_cat_discharge_errors(plot_args):
         err_dirs_dict['ensemble'] = os.path.join(
             qsims_dir , 'errors_ensemble')
 
+#     plot_types = [
+#         'ac',
+#         'pk',
+#         ]
     plot_types = [
+        'qe',
+        'dt',
+        'lc',
+        'pe',
+        'mp',
+        'ps',
+        'dm',
+        're',
+        'en',
+        'sq',
+        'pc',
+        'pk',
+        'ed',
+        'vc',
+        'vd',
         'ac',
         'mq',
         ]
-#     plot_types = [
-#         'qe',
-#         'dt',
-#         'lc',
-#         'pe',
-#         'mp',
-#         'ps',
-#         'dm',
-#         're',
-#         'en',
-#         'sq',
-#         'pc',
-#         'pk',
-#         'ed',
-#         'vc',
-#         'vd',
-#         'ac',
-#         ]
 
     mkdir_hm(qsims_dir)
 
@@ -117,7 +118,7 @@ def plot_cat_discharge_errors(plot_args):
     qsim_files = glob(os.path.join(qsims_dir, qsim_files_patt))
 
     if not qsim_files:
-        print('Simulating discharges...')
+        print('Simulating discharges first...')
 
         from .eval import plot_cat_qsims
 
@@ -159,7 +160,7 @@ def plot_cat_discharge_errors(plot_args):
         qobs_quants_masks_dict = get_quant_masks_dict(
             qsims_df_orig.iloc[:, 0], n_q_quants)
 
-        qobs_arr = qsims_df_orig.iloc[:, 0].values
+        qobs_arr = qsims_df_orig.iloc[:, 0].values.copy()
 
         peaks_mask = get_peaks_mask(qobs_arr)
 
@@ -185,12 +186,12 @@ def plot_cat_discharge_errors(plot_args):
             if calib_valid_lab == 'calib':
                 dummy_index = pd.date_range(
                     '1990-06-01', periods=qsims_df_orig.shape[0] + off_idx,
-                    freq='1D')[off_idx:]
+                    freq='D')[off_idx:]
 
             elif calib_valid_lab == 'valid':
                 dummy_index = pd.date_range(
                     '1961-06-01', periods=qsims_df_orig.shape[0] + off_idx,
-                    freq='1D')[off_idx:]
+                    freq='D')[off_idx:]
 
             else:
                 raise NotImplementedError
@@ -203,8 +204,8 @@ def plot_cat_discharge_errors(plot_args):
 
             qsims_df_orig.index = dummy_index
 
-            qobs_ann_cyc_ser = get_daily_annual_cycle(
-                qsims_df_orig.iloc[:, 0])
+            qobs_ann_cyc_ser = get_daily_annual_cycles(
+                pd.DataFrame(qsims_df_orig.iloc[:, 0]))
 
         for sim_type in sim_types:
             out_dirs_dict = {
@@ -399,7 +400,10 @@ def plot_cat_discharge_errors(plot_args):
                     value_probs = []
 
                 if 'ac' in plot_types:
-                    ann_cycs_df = get_daily_annual_cycles(qsims_df.iloc[:, lc_idxs])
+
+                    ann_cycs_df = get_daily_annual_cycles(
+                        qsims_df.iloc[:, lc_idxs])
+
                     ann_cycs_df.columns = lc_labs
                     ann_cycs_df['obs'] = qobs_ann_cyc_ser
 
@@ -2664,7 +2668,8 @@ def plot_cat_kfold_effs(args):
         try:
             assert np.all(np.abs((date_idx[1:] - date_idx[:-1]).days) == 1)
             q_cyc_ser = pd.Series(index=date_idx, data=qact_arr)
-            q_cyc_arr = get_daily_annual_cycle(q_cyc_ser).values
+            q_cyc_arr = get_daily_annual_cycles(
+                pd.DataFrame(q_cyc_ser)).iloc[:, 0].values
 
         except AssertionError:
             print('Annual cycle comparision available only for daily series!')
@@ -2964,7 +2969,7 @@ def get_daily_annual_cycles(in_data_df, n_cpus=1):
         mp_pool.restart(True)
         try:
             ann_cycs = list(mp_pool.uimap(
-                get_daily_annual_cycle, cat_ser_gen))
+                _get_daily_annual_cycle, cat_ser_gen))
 
             for col_ser in ann_cycs:
                 annual_cycle_df.update(col_ser)
@@ -2978,14 +2983,16 @@ def get_daily_annual_cycles(in_data_df, n_cpus=1):
 
     else:
         for col_ser in cat_ser_gen:
-            annual_cycle_df.update(get_daily_annual_cycle(col_ser))
+            annual_cycle_df.update(_get_daily_annual_cycle(col_ser))
 
     return annual_cycle_df
 
 
-def get_daily_annual_cycle(col_ser):
+def _get_daily_annual_cycle(col_ser):
 
-    '''Given full time series series, get daily annual cycle series.
+    '''Given a full time series, get daily annual cycle series.
+
+    col_ser is modified inplace!
     '''
 
     assert isinstance(col_ser, pd.Series), 'Expected a pd.Series object!'
@@ -2996,6 +3003,7 @@ def get_daily_annual_cycle(col_ser):
     # all years
     for month in range(1, 13):
         month_idxs = col_ser.index.month == month
+
         for dom in range(1, 32):
             dom_idxs = col_ser.index.day == dom
             idxs_intersect = np.logical_and(month_idxs, dom_idxs)
@@ -3067,7 +3075,7 @@ def plot_cats_ann_cycs_fdcs_comp_kf(
             f'''
             {title_lab} time series annual cycle
             comparision for actual and simulated flows for the
-            catchemnt {cat} using parameters of kfold: {i}
+            catchment {cat} using parameters of kfold: {i}
             ''')
 
         plt.xlabel('Time (day of year)')
