@@ -163,7 +163,7 @@ class PlotCatDiagnostics1D:
 
     def plot_theoretical_error_reduction(self,):
 
-        out_dir = os.path.join(self._out_dir, 'err_red_abs')
+        out_dir = os.path.join(self._out_dir, 'err_red')
         mkdir_hm(out_dir)
 
         line_alpha = 0.8
@@ -173,16 +173,16 @@ class PlotCatDiagnostics1D:
 
         qobs_sort_idxs_arr = np.argsort(self._qobs_arr)[::-1]
 
-        qobs_ranks_arr = np.argsort(np.argsort(self._qobs_arr))[::-1]
-        qsim_ranks_arr = np.argsort(np.argsort(self._qsim_arr))[::-1]
+        qobs_ranks_arr = np.argsort(np.argsort(self._qobs_arr))[::-1] + 1
+        qsim_ranks_arr = np.argsort(np.argsort(self._qsim_arr))[::-1] + 1
 
         qobs_sort_arr = self._qobs_arr[qobs_sort_idxs_arr]
         qsim_sort_arr = self._qsim_arr[qobs_sort_idxs_arr]
 
         err_red_abs_arrs = self._get_err_red_arrs(qobs_sort_arr, qsim_sort_arr)
         err_red_rnk_arrs = self._get_err_red_arrs(
-            qobs_ranks_arr.astype(float, order='c') + 1.0,
-            qsim_ranks_arr.astype(float, order='c') + 1.0)
+            qobs_ranks_arr.astype(float, order='c'),
+            qsim_ranks_arr.astype(float, order='c'))
 
         qobs_pcnt_idx_vals = np.arange(
             0, self._n_steps + 1, dtype=float) / self._n_steps
