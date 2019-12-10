@@ -71,15 +71,15 @@ def plot_cat_diags(plot_args):
                     os.path.join(out_dir, '13_diagnostics_1D'),
                     )
 
-#                 plot_cat_diags_1d_cls.plot_emp_cops()
-#                 plot_cat_diags_1d_cls.plot_fts()
-#                 plot_cat_diags_1d_cls.plot_lorenz_curves()
-#                 plot_cat_diags_1d_cls.plot_quantile_effs()
-#                 plot_cat_diags_1d_cls.plot_sorted_sq_diffs()
-#                 plot_cat_diags_1d_cls.plot_peak_qevents()
-#                 plot_cat_diags_1d_cls.plot_mw_discharge_ratios()
-#                 plot_cat_diags_1d_cls.plot_hi_err_qevents()
-#                 plot_cat_diags_1d_cls.plot_quantile_stats()
+                plot_cat_diags_1d_cls.plot_emp_cops()
+                plot_cat_diags_1d_cls.plot_fts()
+                plot_cat_diags_1d_cls.plot_lorenz_curves()
+                plot_cat_diags_1d_cls.plot_quantile_effs()
+                plot_cat_diags_1d_cls.plot_sorted_sq_diffs()
+                plot_cat_diags_1d_cls.plot_peak_qevents()
+                plot_cat_diags_1d_cls.plot_mw_discharge_ratios()
+                plot_cat_diags_1d_cls.plot_hi_err_qevents()
+                plot_cat_diags_1d_cls.plot_quantile_stats()
                 plot_cat_diags_1d_cls.plot_theoretical_error_reduction()
     return
 
@@ -173,6 +173,7 @@ class PlotCatDiagnostics1D:
 
         qobs_sort_idxs_arr = np.argsort(self._qobs_arr)[::-1]
 
+        qobs_ranks_arr = np.argsort(np.argsort(self._qobs_arr))[::-1]
         qsim_ranks_arr = np.argsort(np.argsort(self._qsim_arr))[::-1]
 
         qobs_sort_arr = self._qobs_arr[qobs_sort_idxs_arr]
@@ -180,7 +181,7 @@ class PlotCatDiagnostics1D:
 
         err_red_abs_arrs = self._get_err_red_arrs(qobs_sort_arr, qsim_sort_arr)
         err_red_rnk_arrs = self._get_err_red_arrs(
-            qobs_sort_idxs_arr.astype(float, order='c') + 1.0,
+            qobs_ranks_arr.astype(float, order='c') + 1.0,
             qsim_ranks_arr.astype(float, order='c') + 1.0)
 
         qobs_pcnt_idx_vals = np.arange(
@@ -205,7 +206,7 @@ class PlotCatDiagnostics1D:
                 err_red_rnk_arrs[eff_ftn],
                 lw=line_lw,
                 alpha=line_alpha,
-                label='rnk_' + eff_ftn,
+                label='rank_' + eff_ftn,
                 c=clrs[clrs_ctr])
 
             clrs_ctr += 1
@@ -220,7 +221,7 @@ class PlotCatDiagnostics1D:
 
         plt.title(
             f'Error reduction by rectifying successive simulated values\n'
-            f'Catchment: {self._cat}, Kf: {self._kf}'
+            f'Catchment: {self._cat}, Kf: {self._kf}, '
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
             )
 
