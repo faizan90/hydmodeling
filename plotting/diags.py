@@ -18,7 +18,13 @@ from ..models import (
     get_asymms_sample,
     get_ns_cy,
     get_ln_ns_cy,
-    get_kge_cy)
+    get_kge_cy,
+    get_mean,
+    get_demr,
+    get_ln_mean,
+    get_ln_demr,
+    )
+
 from ..misc import mkdir_hm, traceback_wrapper
 
 plt.ioff()
@@ -65,15 +71,16 @@ def plot_cat_diags(plot_args):
                     os.path.join(out_dir, '13_diagnostics_1D'),
                     )
 
-                plot_cat_diags_1d_cls.plot_emp_cops()
-                plot_cat_diags_1d_cls.plot_fts()
-                plot_cat_diags_1d_cls.plot_lorenz_curves()
-                plot_cat_diags_1d_cls.plot_quantile_effs()
-                plot_cat_diags_1d_cls.plot_sorted_sq_diffs()
-                plot_cat_diags_1d_cls.plot_peak_qevents()
-                plot_cat_diags_1d_cls.plot_mw_discharge_ratios()
-                plot_cat_diags_1d_cls.plot_hi_err_qevents()
-                plot_cat_diags_1d_cls.plot_quantile_stats()
+#                 plot_cat_diags_1d_cls.plot_emp_cops()
+#                 plot_cat_diags_1d_cls.plot_fts()
+#                 plot_cat_diags_1d_cls.plot_lorenz_curves()
+#                 plot_cat_diags_1d_cls.plot_quantile_effs()
+#                 plot_cat_diags_1d_cls.plot_sorted_sq_diffs()
+#                 plot_cat_diags_1d_cls.plot_peak_qevents()
+#                 plot_cat_diags_1d_cls.plot_mw_discharge_ratios()
+#                 plot_cat_diags_1d_cls.plot_hi_err_qevents()
+#                 plot_cat_diags_1d_cls.plot_quantile_stats()
+                plot_cat_diags_1d_cls.plot_theoretical_error_reduction()
     return
 
 
@@ -152,6 +159,79 @@ class PlotCatDiagnostics1D:
 #             self._grid_rows = None
 #             self._grid_cols = None
 #             self._grid_shape = None
+        return
+
+    def plot_theoretical_error_reduction(self,):
+
+        out_dir = os.path.join(self._out_dir, 'err_red_abs')
+        mkdir_hm(out_dir)
+
+        line_alpha = 0.8
+        line_lw = 2.0
+
+        clrs = list(mpl_clrs.TABLEAU_COLORS)
+
+        qobs_sort_idxs_arr = np.argsort(self._qobs_arr)[::-1]
+
+        qsim_ranks_arr = np.argsort(np.argsort(self._qsim_arr))[::-1]
+
+        qobs_sort_arr = self._qobs_arr[qobs_sort_idxs_arr]
+        qsim_sort_arr = self._qsim_arr[qobs_sort_idxs_arr]
+
+        err_red_abs_arrs = self._get_err_red_arrs(qobs_sort_arr, qsim_sort_arr)
+        err_red_rnk_arrs = self._get_err_red_arrs(
+            qobs_sort_idxs_arr.astype(float, order='c') + 1.0,
+            qsim_ranks_arr.astype(float, order='c') + 1.0)
+
+        qobs_pcnt_idx_vals = np.arange(
+            0, self._n_steps + 1, dtype=float) / self._n_steps
+
+        clrs_ctr = 0
+        plt.figure(figsize=(15, 7))
+        for eff_ftn in err_red_abs_arrs:
+            plt.plot(
+                qobs_pcnt_idx_vals,
+                err_red_abs_arrs[eff_ftn],
+                lw=line_lw,
+                alpha=line_alpha,
+                label='abs_' + eff_ftn,
+                c=clrs[clrs_ctr])
+
+            clrs_ctr += 1
+
+        for eff_ftn in err_red_rnk_arrs:
+            plt.plot(
+                qobs_pcnt_idx_vals,
+                err_red_rnk_arrs[eff_ftn],
+                lw=line_lw,
+                alpha=line_alpha,
+                label='rnk_' + eff_ftn,
+                c=clrs[clrs_ctr])
+
+            clrs_ctr += 1
+
+        plt.xlabel('Percentage discharge value (descending) index')
+        plt.ylabel('Objective function value')
+
+        plt.ylim(0, 1)
+
+        plt.grid()
+        plt.legend()
+
+        plt.title(
+            f'Error reduction by rectifying successive simulated values\n'
+            f'Catchment: {self._cat}, Kf: {self._kf}'
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
+            )
+
+        fig_name = (
+            f'err_red_abs_kf_{self._kf:02d}_{self._run_type}_'
+            f'cat_{self._cat}.png')
+
+        plt.savefig(
+            os.path.join(out_dir, fig_name), bbox_inches='tight')
+
+        plt.close()
         return
 
     def plot_quantile_stats(self):
@@ -900,6 +980,56 @@ class PlotCatDiagnostics1D:
 
         plt.close()
         return
+
+    def _get_err_red_arrs(self, qobs_sort_arr, qsim_sort_arr):
+
+        # first value is objective function without rectifying
+        err_red_arrs = {}
+        for eff_ftn in self._eff_ftns_dict:
+            err_red_arr = np.full(
+                self._n_steps + 1, np.nan)
+
+            if eff_ftn == 'ns':
+                mean = get_mean(qobs_sort_arr, 0)
+                demr = get_demr(qobs_sort_arr, mean, 0)
+
+                sq_diffs_arr = (qobs_sort_arr - qsim_sort_arr) ** 2
+
+                sq_diffs_sum = sq_diffs_arr.sum()
+
+                err_red_arr[0] = 1.0 - (sq_diffs_sum / demr)
+
+                for i in range(self._n_steps):
+                    sq_diffs_sum -= sq_diffs_arr[i]
+                    err_red_arr[i + 1] = 1.0 - (sq_diffs_sum / demr)
+
+                assert np.isclose(sq_diffs_sum, 0.0)
+
+            elif eff_ftn == 'ln_ns':
+                mean = get_ln_mean(qobs_sort_arr, 0)
+                demr = get_ln_demr(qobs_sort_arr, mean, 0)
+
+                sq_diffs_arr = np.log((qobs_sort_arr / qsim_sort_arr)) ** 2
+
+                sq_diffs_sum = sq_diffs_arr.sum()
+
+                err_red_arr[0] = 1.0 - (sq_diffs_sum / demr)
+
+                for i in range(self._n_steps):
+                    sq_diffs_sum -= sq_diffs_arr[i]
+                    err_red_arr[i + 1] = 1.0 - (sq_diffs_sum / demr)
+
+                assert np.isclose(sq_diffs_sum, 0.0)
+
+            elif eff_ftn == 'kge':
+                continue
+
+            else:
+                raise NotImplementedError
+
+            err_red_arrs[eff_ftn] = err_red_arr
+
+        return err_red_arrs
 
     def _get_q_quant_stats_dict(self, qobs_quants_masks_dict):
 

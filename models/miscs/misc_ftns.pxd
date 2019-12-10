@@ -8,26 +8,26 @@
 from ..miscs.dtypes cimport DT_D, DT_UL, DT_ULL
 
 
-cdef DT_D get_mean(
+cpdef DT_D get_mean(
         const DT_D[::1] in_arr,
         const DT_UL off_idx,
         ) nogil
 
 
-cdef DT_D get_ln_mean(
+cpdef DT_D get_ln_mean(
         const DT_D[::1] in_arr,
         const DT_UL off_idx,
         ) nogil
 
 
-cdef DT_D get_demr(
+cpdef DT_D get_demr(
         const DT_D[::1] x_arr,
         const DT_D mean_ref,
         const DT_UL off_idx,
         ) nogil
 
 
-cdef DT_D get_ln_demr(
+cpdef DT_D get_ln_demr(
         const DT_D[::1] x_arr,
         const DT_D ln_mean_ref,
         const DT_UL off_idx,

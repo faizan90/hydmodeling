@@ -15,7 +15,13 @@ from .miscs.misc_ftns import (
     get_ns_var_res_cy,
     get_ln_ns_var_res_cy,
 
-    get_asymms_sample)
+    get_asymms_sample,
+
+    get_mean,
+    get_demr,
+    get_ln_mean,
+    get_ln_demr,
+    )
 
 from .miscs.misc_ftns_partial import (
     get_ns_prt_cy,

@@ -20,7 +20,7 @@ cdef extern from "math.h" nogil:
         DT_D sin(DT_D x)
 
 
-cdef DT_D get_mean(
+cpdef DT_D get_mean(
         const DT_D[::1] in_arr,
         const DT_UL off_idx,
         ) nogil:
@@ -28,14 +28,14 @@ cdef DT_D get_mean(
     cdef:
         Py_ssize_t i
         DT_D _sum = 0.0
-        
+
     for i in range(off_idx, in_arr.shape[0]):
         _sum += in_arr[i]
 
     return _sum / (in_arr.shape[0] - off_idx)
 
 
-cdef DT_D get_ln_mean(
+cpdef DT_D get_ln_mean(
         const DT_D[::1] in_arr,
         const DT_UL off_idx,
         ) nogil:
@@ -43,14 +43,14 @@ cdef DT_D get_ln_mean(
     cdef:
         Py_ssize_t i
         DT_D _sum = 0.0
-        
+
     for i in range(off_idx, in_arr.shape[0]):
         _sum += log(in_arr[i])
 
     return _sum / (in_arr.shape[0] - off_idx)
 
 
-cdef DT_D get_demr(
+cpdef DT_D get_demr(
         const DT_D[::1] x_arr,
         const DT_D mean_ref,
         const DT_UL off_idx,
@@ -66,7 +66,7 @@ cdef DT_D get_demr(
     return demr
 
 
-cdef DT_D get_ln_demr(
+cpdef DT_D get_ln_demr(
         const DT_D[::1] x_arr,
         const DT_D ln_mean_ref,
         const DT_UL off_idx,
