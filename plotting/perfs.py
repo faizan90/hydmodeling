@@ -1467,7 +1467,7 @@ def plot_ensemble_mean_sim_sq_diffs(
     plt.close()
 
     if save_text_flag:
-        text_ser = pd.Series(
+        text_ser = pd.DataFrame(
             data={
                 'obs': sort_qobs_arr,
                 sim_labs[0]: sort_qsim_hi_sq_diff_arr,
