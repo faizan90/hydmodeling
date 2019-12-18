@@ -138,7 +138,7 @@ def plot_cat_discharge_errors(plot_args):
 
     n_ensembles = 3
     ensemble_lc_idxs = list(range(n_ensembles))
-    ensemble_lc_labs = ['Hi. long.', 'Med. long.', 'Lo. Long.']
+    ensemble_lc_labs = ['Hi. Long', 'Med. Long', 'Lo. Long']
     ensemble_div_vals = np.linspace(
         0.0, 1.0, n_ensembles + 1, dtype=float, endpoint=True)
 
