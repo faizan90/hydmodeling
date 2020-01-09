@@ -536,8 +536,6 @@ cpdef dict hbv_opt(args):
             obj_res_mult_doubles[i, mean_ref_i] = obj_doubles[mean_ref_i]
             obj_res_mult_doubles[i, act_std_dev_i] = obj_doubles[act_std_dev_i]
 
-    print(f'use_res_cat_runoff_flag: {obj_longs[use_res_cat_runoff_flag_i]}')
-
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]
         bds_dfs[k, 1] = bounds[k, 1] - bounds[k, 0]
