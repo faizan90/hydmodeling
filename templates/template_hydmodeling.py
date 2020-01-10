@@ -37,9 +37,7 @@ from hydmodeling import (
     plot_cats_discharge_errors,
     plot_cats_diags)
 
-# from hydmodeling.plotting.perfs import get_peaks_mask
-
-# raise Exception
+from hydmodeling.plotting.perfs import get_peaks_mask
 
 
 def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
@@ -149,21 +147,21 @@ def main():
 #     create_cumm_cats_flag = True
     create_stms_rels_flag = True
     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-#     plot_hbv_vars_flag = True
-#     plot_diags_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_var_errors_flag = True
+    plot_hbv_vars_flag = True
+    plot_diags_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-#     use_cv_time_flag = True
+    use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing
@@ -524,16 +522,17 @@ def main():
             data=np.ones((in_q_df.shape[0], len(in_ppt_dfs_dict.keys())),
                 dtype=np.int32))
 
-#         for col in in_use_step_df.columns:
-#             if use_cv_time_flag:
-#                 in_use_step_df.loc[start_cdate:end_cdate, col
-#                     ] = get_peaks_mask(
-#                         in_q_df.loc[start_cdate:end_cdate, str(col)].values).astype(int)
-#
-#             else:
-#                 in_use_step_df.loc[start_cdate:end_cdate, col
-#                     ] = get_peaks_mask(
-#                         in_q_df.loc[start_date:end_date, str(col)].values).astype(int)
+        if obj_ftn_wts[4] or obj_ftn_wts[5]:
+            for col in in_use_step_df.columns:
+                if use_cv_time_flag:
+                    in_use_step_df.loc[start_cdate:end_cdate, col
+                        ] = get_peaks_mask(
+                            in_q_df.loc[start_cdate:end_cdate, str(col)].values).astype(int)
+
+                else:
+                    in_use_step_df.loc[start_cdate:end_cdate, col
+                        ] = get_peaks_mask(
+                            in_q_df.loc[start_date:end_date, str(col)].values).astype(int)
 
         aux_cell_vars_dict = {}
         aux_cell_vars_dict['area_ratios'] = in_cell_vars_dict['area_ratios']

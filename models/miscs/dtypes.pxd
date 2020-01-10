@@ -33,6 +33,7 @@ cdef Py_ssize_t use_res_cat_runoff_flag_i
 
 cdef Py_ssize_t rnof_q_conv_i, demr_i, ln_demr_i, mean_ref_i, act_std_dev_i
 cdef Py_ssize_t err_val_i, min_q_thresh_i, ft_demr_1_i, ft_demr_2_i
+cdef Py_ssize_t demr_peak_i, ln_demr_peak_i
 
 cdef DT_UL n_hbv_cols, n_hbv_prms, obj_longs_ct, obj_doubles_ct
 cdef DT_D err_val

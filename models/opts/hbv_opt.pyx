@@ -77,7 +77,9 @@ from ..miscs.dtypes cimport (
     err_val_i,
     min_q_thresh_i,
     ft_demr_1_i,
-    ft_demr_2_i)
+    ft_demr_2_i,
+    demr_peak_i,
+    ln_demr_peak_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -535,6 +537,11 @@ cpdef dict hbv_opt(args):
             obj_res_mult_doubles[i, ln_demr_i] = obj_doubles[ln_demr_i]
             obj_res_mult_doubles[i, mean_ref_i] = obj_doubles[mean_ref_i]
             obj_res_mult_doubles[i, act_std_dev_i] = obj_doubles[act_std_dev_i]
+
+            obj_res_mult_doubles[i, demr_peak_i] = obj_doubles[demr_peak_i]
+ 
+            obj_res_mult_doubles[i, ln_demr_peak_i] = (
+                obj_doubles[ln_demr_peak_i])
 
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]

@@ -15,7 +15,9 @@ from .dtypes cimport (
     ln_demr_i,
     mean_ref_i,
     act_std_dev_i,
-    NAN)
+    NAN,
+    demr_peak_i,
+    ln_demr_peak_i)
 from .misc_ftns cimport (
     get_demr, 
     get_ln_demr,
@@ -46,8 +48,12 @@ cdef void update_obj_doubles(
         DT_D demr = NAN
         DT_D ln_demr = NAN
         DT_D act_std_dev = NAN
+        DT_D demr_peak = NAN
+        DT_D ln_demr_peak = NAN 
+        DT_D mean_peak_ref = NAN
+        DT_D mean_ln_peak_ref = NAN
 
-    if obj_ftn_wts.shape[0] > 4:
+    if obj_ftn_wts.shape[0] > 6:
         with gil: raise NotImplementedError
 
     if obj_longs[resamp_obj_ftns_flag_i]:
@@ -136,8 +142,25 @@ cdef void update_obj_doubles(
                 act_std_dev = get_variance(
                     mean_ref, q_arr, obj_longs[off_idx_i])**0.5
 
+    if obj_ftn_wts[4]:
+        mean_peak_ref = get_mean_prt(
+            q_arr, use_step_arr, obj_longs[off_idx_i])
+
+        demr_peak = get_demr_prt(
+            q_arr, use_step_arr, mean_peak_ref, obj_longs[off_idx_i])
+
+    if obj_ftn_wts[5]:
+        mean_ln_peak_ref = get_ln_mean_prt(
+            q_arr, use_step_arr, obj_longs[off_idx_i])
+
+        ln_demr_peak = get_ln_demr_prt(
+            q_arr, use_step_arr, mean_ln_peak_ref, obj_longs[off_idx_i])
+
     obj_doubles[demr_i] = demr
     obj_doubles[ln_demr_i] = ln_demr
     obj_doubles[mean_ref_i] = mean_ref
     obj_doubles[act_std_dev_i] = act_std_dev
+
+    obj_doubles[demr_peak_i] = demr_peak
+    obj_doubles[ln_demr_peak_i] = ln_demr_peak
     return

@@ -25,10 +25,12 @@ cdef use_res_cat_runoff_flag_i = 16
 cdef rnof_q_conv_i = 0, demr_i = 1, ln_demr_i = 2, mean_ref_i = 3
 cdef act_std_dev_i = 4, err_val_i = 5, min_q_thresh_i = 6
 cdef ft_demr_1_i = 7, ft_demr_2_i = 8
+cdef demr_peak_i = 9, ln_demr_peak_i = 10
 
+# other variables
 cdef n_hbv_cols = 10, n_hbv_prms = 11
 
-cdef obj_longs_ct = 17, obj_doubles_ct = 9
+cdef obj_longs_ct = 17, obj_doubles_ct = 11
 
 cdef err_val = 1e9
 

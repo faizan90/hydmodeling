@@ -32,7 +32,9 @@ from ..miscs.dtypes cimport (
     act_std_dev_i,
     min_q_thresh_i,
     route_type_i,
-    NAN)
+    NAN,
+    demr_peak_i,
+    ln_demr_peak_i)
 
 
 cdef DT_D obj_ftn(
@@ -91,7 +93,7 @@ cdef DT_D obj_ftn(
 
         DT_D res, obj_ftn_wts_sum, min_q_thresh
 
-    if obj_ftn_wts.shape[0] > 4:
+    if obj_ftn_wts.shape[0] > 6:
         with gil: raise NotImplementedError
 
     tfm_opt_to_hbv_prms(
@@ -131,11 +133,12 @@ cdef DT_D obj_ftn(
         cat_to_idx_map,
         stm_to_idx_map)
 
+    if res != 0.0:
+        return NAN
+
     n_calls[tid[0]] = n_calls[tid[0]] + 1
 
     obj_ftn_wts_sum = 0.0
-    if res != 0.0:
-        return NAN
 
     if ((not obj_longs[use_res_cat_runoff_flag_i]) or 
         (obj_longs[curr_us_stm_i] == -2)):
@@ -309,7 +312,6 @@ cdef DT_D obj_ftn(
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[2]
 
     if obj_ftn_wts[3]:
-        # TODO: implement fft of qact
         if obj_longs[resamp_obj_ftns_flag_i]:
             with gil: raise NotImplementedError
 
@@ -327,5 +329,27 @@ cdef DT_D obj_ftn(
                 q_ft_tfms[tid[0] + 1]))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[3]
+
+    if obj_ftn_wts[4]:
+        res = res + obj_ftn_wts[4] * (
+            get_ns_prt(
+                qact_qres_arr,
+                qsim_qres_arr,
+                use_step_arr,
+                obj_res_doubles[demr_peak_i],
+                obj_longs[off_idx_i]))
+
+        obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[4]
+
+    if obj_ftn_wts[5]:
+        res = res + obj_ftn_wts[5] * (
+            get_ns_prt(
+                qact_qres_arr,
+                qsim_qres_arr,
+                use_step_arr,
+                obj_res_doubles[ln_demr_peak_i],
+                obj_longs[off_idx_i]))
+
+        obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[5]
 
     return obj_ftn_wts_sum - res
