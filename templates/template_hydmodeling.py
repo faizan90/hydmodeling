@@ -107,7 +107,7 @@ def get_cell_vars_dict_from_h5(path_to_h5):
 
 
 def main():
-    in_ini_file = r'config_hydmodeling_template_h5.ini'
+    in_ini_file = r'template_hydmodeling_config.ini'
 
     cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
     cfp.read(in_ini_file)
