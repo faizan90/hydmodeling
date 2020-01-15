@@ -522,27 +522,6 @@ cpdef dict hbv_opt(args):
         qact_arr,
         qact_resamp_arr)
 
-    obj_res_mult_doubles = np.full(
-        (n_cpus, obj_doubles_ct), np.nan, dtype=DT_D_NP)
-
-    for i in range(n_cpus):
-        obj_res_mult_doubles[i, rnof_q_conv_i] = rnof_q_conv
-        obj_res_mult_doubles[i, err_val_i] = err_val
-        obj_res_mult_doubles[i, min_q_thresh_i] = min_q_thresh
-
-        if ((not obj_longs[use_res_cat_runoff_flag_i]) or 
-            (obj_longs[curr_us_stm_i] == -2)):
-
-            obj_res_mult_doubles[i, demr_i] = obj_doubles[demr_i]
-            obj_res_mult_doubles[i, ln_demr_i] = obj_doubles[ln_demr_i]
-            obj_res_mult_doubles[i, mean_ref_i] = obj_doubles[mean_ref_i]
-            obj_res_mult_doubles[i, act_std_dev_i] = obj_doubles[act_std_dev_i]
-
-            obj_res_mult_doubles[i, demr_peak_i] = obj_doubles[demr_peak_i]
- 
-            obj_res_mult_doubles[i, ln_demr_peak_i] = (
-                obj_doubles[ln_demr_peak_i])
-
     for k in range(n_prms):
         bds_dfs[k, 0] = bounds[k, 0]
         bds_dfs[k, 1] = bounds[k, 1] - bounds[k, 0]
@@ -649,6 +628,29 @@ cpdef dict hbv_opt(args):
 
         obj_doubles[ft_demr_1_i] = ft_demr_1
         obj_doubles[ft_demr_2_i] = ft_demr_2
+
+        obj_res_mult_doubles = np.full(
+            (n_cpus, obj_doubles_ct), np.nan, dtype=DT_D_NP)
+    
+        for i in range(n_cpus):
+            obj_res_mult_doubles[i, rnof_q_conv_i] = rnof_q_conv
+            obj_res_mult_doubles[i, err_val_i] = err_val
+            obj_res_mult_doubles[i, min_q_thresh_i] = min_q_thresh
+            obj_res_mult_doubles[i, ft_demr_1_i] = obj_doubles[ft_demr_1_i]
+            obj_res_mult_doubles[i, ft_demr_2_i] = obj_doubles[ft_demr_2_i]
+
+            if ((not obj_longs[use_res_cat_runoff_flag_i]) or 
+                (obj_longs[curr_us_stm_i] == -2)):
+
+                obj_res_mult_doubles[i, demr_i] = obj_doubles[demr_i]
+                obj_res_mult_doubles[i, ln_demr_i] = obj_doubles[ln_demr_i]
+                obj_res_mult_doubles[i, mean_ref_i] = obj_doubles[mean_ref_i]
+                obj_res_mult_doubles[i, act_std_dev_i] = obj_doubles[act_std_dev_i]
+
+                obj_res_mult_doubles[i, demr_peak_i] = obj_doubles[demr_peak_i]
+
+                obj_res_mult_doubles[i, ln_demr_peak_i] = (
+                    obj_doubles[ln_demr_peak_i])
 
     # for the selected parameters, get obj vals
     for i in prange(

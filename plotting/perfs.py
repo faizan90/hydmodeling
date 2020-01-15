@@ -135,6 +135,7 @@ def plot_cat_discharge_errors(plot_args):
 
     n_q_quants = 10
     mw_runoff_ws = 365
+    peaks_per_cycle = 5
 
     n_ensembles = 3
     ensemble_lc_idxs = list(range(n_ensembles))
@@ -162,7 +163,7 @@ def plot_cat_discharge_errors(plot_args):
 
         qobs_arr = qsims_df_orig.iloc[:, 0].values.copy()
 
-        peaks_mask = get_peaks_mask(qobs_arr)
+        peaks_mask = get_peaks_mask(qobs_arr, peaks_per_cycle)
 
         n_vals = qobs_arr.shape[0]
         lorenz_x_vals = np.linspace(1., n_vals, n_vals) / (n_vals + 1.)
@@ -2152,7 +2153,7 @@ def get_driest_period(in_arr):
     return (runn_mean_arr[min_mean_idx], min_mean_idx + int(0.5 * ws))
 
 
-def get_peaks_mask(in_arr):
+def get_peaks_mask(in_arr, peaks_per_cycle):
 
     rising = in_arr[1:] - in_arr[:-1] > 0
     recing = in_arr[1:-1] - in_arr[2:] > 0
@@ -2161,7 +2162,6 @@ def get_peaks_mask(in_arr):
 
     ws = 30
     steps_per_cycle = 365  # should be enough to have peaks_per_cycle peaks
-    peaks_per_cycle = 5
     n_steps = in_arr.shape[0]
 
     assert steps_per_cycle > peaks_per_cycle

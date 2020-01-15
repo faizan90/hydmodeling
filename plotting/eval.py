@@ -903,6 +903,8 @@ class PlotCatQSims:
             for k in range(1, self.kfolds + 1):
                 lc_idxs, *_ = self.kf_corr_args_dict[k]
 
+                lc_idxs = [lc_idx + 1 for lc_idx in lc_idxs]
+
                 idxs_str = f'kf_{k:02d}_idxs;' + (
                     ';'.join(map(str, lc_idxs))) + '\n'
 

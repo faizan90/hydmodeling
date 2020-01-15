@@ -352,6 +352,8 @@ def main():
     use_res_cat_runoff_flag = cfp['OPT_HYD_MODEL'].getboolean(
         'use_res_cat_runoff_flag')
 
+    peaks_per_cycle = cfp['OPT_HYD_MODEL'].getint('peaks_per_cycle')
+
     if use_res_cat_runoff_flag and use_resampled_obj_ftns_flag:
         raise NotImplementedError
 
@@ -527,12 +529,14 @@ def main():
                 if use_cv_time_flag:
                     in_use_step_df.loc[start_cdate:end_cdate, col
                         ] = get_peaks_mask(
-                            in_q_df.loc[start_cdate:end_cdate, str(col)].values).astype(int)
+                            in_q_df.loc[start_cdate:end_cdate, str(col)].values,
+                            peaks_per_cycle).astype(int)
 
                 else:
-                    in_use_step_df.loc[start_cdate:end_cdate, col
+                    in_use_step_df.loc[start_date:end_date, col
                         ] = get_peaks_mask(
-                            in_q_df.loc[start_date:end_date, str(col)].values).astype(int)
+                            in_q_df.loc[start_date:end_date, str(col)].values,
+                            peaks_per_cycle).astype(int)
 
         aux_cell_vars_dict = {}
         aux_cell_vars_dict['area_ratios'] = in_cell_vars_dict['area_ratios']
