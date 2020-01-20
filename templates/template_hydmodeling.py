@@ -145,20 +145,20 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-    create_stms_rels_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_opt_evo_flag = True
-    plot_var_errors_flag = True
-    plot_hbv_vars_flag = True
-    plot_diags_flag = True
+#     create_stms_rels_flag = True
+#     optimize_flag = True
+#     plot_kfold_perfs_flag = True
+#     plot_best_kfold_prms_flag = True
+#     plot_prm_vecs_flag = True
+#     plot_2d_kfold_prms_flag = True
+#     plot_ann_cys_fdcs_flag = True
+#     plot_prm_trans_comp_flag = True
+#     plot_opt_evo_flag = True
+#     plot_var_errors_flag = True
+#     plot_hbv_vars_flag = True
+#     plot_diags_flag = True
 #     plot_qsims_flag = True
-#     plot_cats_discharge_errs_flag = True
+    plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
     use_cv_time_flag = True
@@ -719,7 +719,7 @@ def main():
         print('#' * 10)
 
     #=========================================================================
-    # Plot catchment parameter transfer comparison
+    # Plot objective function and parameter space evolution
     #=========================================================================
     if plot_opt_evo_flag:
 
