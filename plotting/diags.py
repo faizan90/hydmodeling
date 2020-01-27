@@ -81,6 +81,7 @@ def plot_cat_diags(plot_args):
                 plot_cat_diags_1d_cls.plot_hi_err_qevents()
                 plot_cat_diags_1d_cls.plot_quantile_stats()
                 plot_cat_diags_1d_cls.plot_theoretical_error_reduction()
+                plot_cat_diags_1d_cls.plot_mw_discharge_stds()
     return
 
 
@@ -159,6 +160,127 @@ class PlotCatDiagnostics1D:
 #             self._grid_rows = None
 #             self._grid_cols = None
 #             self._grid_shape = None
+        return
+
+    def plot_mw_discharge_stds(self):
+
+        out_dir = os.path.join(self._out_dir, 'mw_stds')
+        mkdir_hm(out_dir)
+
+        line_alpha = 0.7
+        line_lw = 0.9
+
+        ws = 365
+
+        (ws_x_crds,
+         qobs_mw_std_arr,
+         qsim_mw_std_arr,
+         qmw_diff_arr,
+         qmw_ratio_arr) = (
+            self._get_mw_stds_arrs(ws))
+
+        fig = plt.figure(figsize=(15, 7))
+
+        mwq_ax = plt.subplot2grid(
+            (4, 1), (0, 0), rowspan=1, colspan=1, fig=fig)
+
+        mwq_ax.plot(
+            ws_x_crds,
+            qobs_mw_std_arr,
+            alpha=line_alpha,
+            color='red',
+            label='std-obs',
+            lw=line_lw)
+
+        mwq_ax.plot(
+            ws_x_crds,
+            qsim_mw_std_arr,
+            alpha=line_alpha,
+            color='blue',
+            label='std-sim',
+            lw=line_lw)
+
+        mwq_ax.set_ylabel('Moving window\ndischarge std')
+        mwq_ax.set_xticklabels([])
+
+        mwq_ax.grid()
+        mwq_ax.legend(framealpha=0.3)
+
+        mwq_ax.locator_params('y', nbins=4)
+
+        diff_ratio_ax = plt.subplot2grid(
+            (4, 1), (1, 0), rowspan=3, colspan=1, fig=fig)
+
+        diff_ratio_ax.plot(
+            ws_x_crds,
+            qmw_diff_arr,
+            alpha=line_alpha,
+            color='blue',
+            lw=line_lw,
+            label='window diff.')
+
+        diff_ratio_ax.axhline(
+            qmw_diff_arr.mean(),
+            alpha=line_alpha,
+            color='blue',
+            lw=line_lw + 0.5,
+            ls='-.',
+            label='mean diff.')
+
+        max_abs_diff = max(abs(qmw_diff_arr.min()), abs(qmw_diff_arr.max()))
+        diff_ratio_ax.set_ylim(-max_abs_diff, +max_abs_diff)
+
+        diff_ratio_ax.grid()
+        diff_ratio_ax.legend(framealpha=0.3, loc=1)
+
+        diff_ratio_ax.set_xlabel('Time')
+        diff_ratio_ax.set_ylabel('Moving window discharge std difference')
+
+        ratio_ax = diff_ratio_ax.twinx()
+
+        ratio_ax.plot(
+            ws_x_crds,
+            qmw_ratio_arr,
+            alpha=line_alpha,
+            color='green',
+            lw=line_lw,
+            label='window ratio')
+
+        ratio_ax.axhline(
+            qmw_ratio_arr.mean(),
+            alpha=line_alpha,
+            color='green',
+            lw=line_lw + 0.5,
+            ls='-.',
+            label='mean ratio')
+
+        ratio_ax.set_ylabel('Moving window discharge std ratio')
+
+        ratio_ax.set_ylim(0, 2)
+
+        ratio_ax.legend(framealpha=0.3, loc=4)
+
+        plt.suptitle(
+            f'Moving window qsim by qobs std ratio for window size: '
+            f'{ws} steps\n'
+            f'Catchment: {self._cat}, Kf: {self._kf}, '
+            f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
+            f'Min. ratio: {qmw_ratio_arr.min():0.3f}, '
+            f'Mean ratio: {qmw_ratio_arr.mean():0.3f}, '
+            f'Max. ratio: {qmw_ratio_arr.max():0.3f}\n'
+            f'Min. diff: {qmw_diff_arr.min():0.3f}, '
+            f'Mean diff: {qmw_diff_arr.mean():0.3f}, '
+            f'Max. diff: {qmw_diff_arr.max():0.3f}'
+            )
+
+        fig_name = (
+            f'mwq_std_ratio_ws_{ws}_kf_{self._kf:02d}_{self._run_type}_'
+            f'cat_{self._cat}.png')
+
+        plt.savefig(
+            os.path.join(out_dir, fig_name), bbox_inches='tight')
+
+        plt.close()
         return
 
     def plot_theoretical_error_reduction(self,):
@@ -347,7 +469,7 @@ class PlotCatDiagnostics1D:
 
     def plot_hi_err_qevents(self):
 
-        n_evts = 10
+        n_evts = 2
         bef_steps = 10
         aft_steps = 10
 
@@ -479,8 +601,6 @@ class PlotCatDiagnostics1D:
 
         diff_ratio_ax.axhline(
             qmw_diff_arr.mean(),
-            ws_x_crds[0],
-            ws_x_crds[-1],
             alpha=line_alpha,
             color='blue',
             lw=line_lw + 0.5,
@@ -508,8 +628,6 @@ class PlotCatDiagnostics1D:
 
         ratio_ax.axhline(
             qmw_ratio_arr.mean(),
-            ws_x_crds[0],
-            ws_x_crds[1],
             alpha=line_alpha,
             color='green',
             lw=line_lw + 0.5,
@@ -556,7 +674,7 @@ class PlotCatDiagnostics1D:
         aft_steps = 10
         ws = 30
         steps_per_cycle = 365  # should be enough to have peaks_per_cycle peaks
-        peaks_per_cycle = 2
+        peaks_per_cycle = 1
 
         peaks_mask = self._get_peaks_mask(
             ws, steps_per_cycle, peaks_per_cycle)
@@ -981,6 +1099,30 @@ class PlotCatDiagnostics1D:
 
         plt.close()
         return
+
+    def _get_mw_stds_arrs(self, ws):
+
+        ref_mv_std_arr = np.zeros(self._n_steps - ws)
+        sim_mv_std_arr = ref_mv_std_arr.copy()
+
+        ws_xcrds = []
+        for i in range(self._n_steps - ws):
+            ref_mv_std_arr[i] = self._qobs_arr[i:i + ws].std()
+            sim_mv_std_arr[i] = self._qsim_arr[i:i + ws].std()
+
+            ws_xcrds.append(i + int(0.5 * ws))
+
+        ws_xcrds = np.array(ws_xcrds)
+
+        diff_arr = (sim_mv_std_arr - ref_mv_std_arr)
+        ratio_arr = (sim_mv_std_arr / ref_mv_std_arr)
+
+        return (
+            ws_xcrds,
+            ref_mv_std_arr,
+            sim_mv_std_arr,
+            diff_arr,
+            ratio_arr)
 
     def _get_err_red_arrs(self, qobs_sort_arr, qsim_sort_arr):
 

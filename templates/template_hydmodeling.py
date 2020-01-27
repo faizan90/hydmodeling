@@ -39,6 +39,8 @@ from hydmodeling import (
 
 from hydmodeling.plotting.perfs import get_peaks_mask
 
+# raise Exception
+
 
 def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
 
@@ -72,12 +74,17 @@ def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
     return out_data_dict
 
 
-def get_cell_vars_dict_from_h5(path_to_h5):
+def get_cell_vars_dict_from_h5(path_to_h5, extra_ds=None):
 
     cat_intersect_rows_dict = {}
     cat_intersect_cols_dict = {}
     cat_area_ratios_dict = {}
     extent_shape = [-np.inf, -np.inf]
+
+    if extra_ds is not None:
+        assert isinstance(extra_ds, str), 'Only string dataset label allowed!'
+
+        cat_extra_dss_dict = {}
 
     with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
         keys = [int(key) for key in h5_hdl['rows'].keys()]
@@ -97,11 +104,19 @@ def get_cell_vars_dict_from_h5(path_to_h5):
             if cols.max() > extent_shape[0]:
                 extent_shape[1] = cols.max()
 
-    return {
+            if extra_ds is not None:
+                cat_extra_dss_dict[key] = h5_hdl[f'{extra_ds}/{key}'][...]
+
+    out_dict = {
         'rows': cat_intersect_rows_dict,
         'cols': cat_intersect_cols_dict,
         'shape': extent_shape,
         'area_ratios': cat_area_ratios_dict}
+
+    if extra_ds is not None:
+        out_dict.update({extra_ds:cat_extra_dss_dict})
+
+    return out_dict
 
 
 def main():
@@ -147,21 +162,21 @@ def main():
 #     create_cumm_cats_flag = True
 #     create_stms_rels_flag = True
 #     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-#     plot_hbv_vars_flag = True
-#     plot_diags_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_var_errors_flag = True
+    plot_hbv_vars_flag = True
+    plot_diags_flag = True
 #     plot_qsims_flag = True
-    plot_cats_discharge_errs_flag = True
+#     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-    use_cv_time_flag = True
+#     use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing
@@ -510,6 +525,18 @@ def main():
         pet_file = cfp['OPT_HYD_MODEL']['pet_file']
         pet_ds_grp = cfp['OPT_HYD_MODEL']['pet_ds_grp']
 
+        lulc_file = cfp['OPT_HYD_MODEL']['lulc_file']
+        lulc_ds_grp = cfp['OPT_HYD_MODEL']['lulc_ds_grp']
+
+        soil_file = cfp['OPT_HYD_MODEL']['soil_file']
+        soil_ds_grp = cfp['OPT_HYD_MODEL']['soil_ds_grp']
+
+        aspect_file = cfp['OPT_HYD_MODEL']['aspect_file']
+        aspect_ds_grp = cfp['OPT_HYD_MODEL']['aspect_ds_grp']
+
+        slope_file = cfp['OPT_HYD_MODEL']['slope_file']
+        slope_ds_grp = cfp['OPT_HYD_MODEL']['slope_ds_grp']
+
         in_q_df = pd.read_csv(obs_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=time_fmt)
 
@@ -545,18 +572,20 @@ def main():
         aux_cell_vars_dict['cols'] = in_cell_vars_dict['cols']
 
         if np.any(all_prms_flags[:, 1]):
-            aux_cell_vars_dict['lulc_ratios'] = in_cell_vars_dict[
-                'lulc_ratios']
+            aux_cell_vars_dict['lulc_ratios'] = get_cell_vars_dict_from_h5(
+                lulc_file, lulc_ds_grp)[lulc_ds_grp]
 
         if np.any(all_prms_flags[:, 2]):
-            aux_cell_vars_dict['soil_ratios'] = in_cell_vars_dict[
-                'soil_ratios']
+            aux_cell_vars_dict['soil_ratios'] = get_cell_vars_dict_from_h5(
+                soil_file, soil_ds_grp)[soil_ds_grp]
 
         if np.any(all_prms_flags[:, 3]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['aspect'] = in_cell_vars_dict['aspect']
+            aux_cell_vars_dict['aspect'] = get_cell_vars_dict_from_h5(
+                aspect_file, aspect_ds_grp)[aspect_ds_grp]
 
         if np.any(all_prms_flags[:, 4]) or np.any(all_prms_flags[:, 5]):
-            aux_cell_vars_dict['slope'] = in_cell_vars_dict['slope']
+            aux_cell_vars_dict['slope'] = get_cell_vars_dict_from_h5(
+                slope_file, slope_ds_grp)[slope_ds_grp]
 
         _beg_t = timeit.default_timer()
 

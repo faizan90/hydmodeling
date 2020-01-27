@@ -750,7 +750,7 @@ def solve_cat(
             if np.any(all_prms_flags[:, 1]):
                 assert 'lulc_ratios' in in_aux_vars_dict
 
-                lulc_arr = in_aux_vars_dict['lulc_ratios'][cat]
+                lulc_arr = in_aux_vars_dict['lulc_ratios'][cat].T
                 _1 = lulc_arr.shape[1]
                 lulc_drop_idxs = (lulc_arr.max(axis=0) == 0)
 
@@ -776,7 +776,7 @@ def solve_cat(
             if np.any(all_prms_flags[:, 2]):
                 assert 'soil_ratios' in in_aux_vars_dict
 
-                soil_arr = in_aux_vars_dict['soil_ratios'][cat]
+                soil_arr = in_aux_vars_dict['soil_ratios'][cat].T
                 _1 = soil_arr.shape[1]
                 soil_drop_idxs = (soil_arr.max(axis=0) == 0)
 
@@ -808,14 +808,14 @@ def solve_cat(
             if np.any(all_prms_flags[:, 3] | all_prms_flags[:, 5]):
                 assert 'aspect' in in_aux_vars_dict
 
-                aspect_arr = in_aux_vars_dict['aspect'][cat]
+                aspect_arr = in_aux_vars_dict['aspect'][cat].ravel()
                 assert aspect_arr.ndim == 1
                 assert aspect_arr.shape[0] == n_cells
 
             if np.any(all_prms_flags[:, 4] | all_prms_flags[:, 5]):
                 assert 'slope' in in_aux_vars_dict
 
-                slope_arr = in_aux_vars_dict['slope'][cat]
+                slope_arr = in_aux_vars_dict['slope'][cat].ravel()
                 assert slope_arr.ndim == 1
                 assert slope_arr.shape[0] == n_cells
 
