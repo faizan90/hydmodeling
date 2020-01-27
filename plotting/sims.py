@@ -6,6 +6,7 @@ Created on %(date)s
 """
 
 import os
+import pickle
 
 import h5py
 import numpy as np
@@ -238,6 +239,14 @@ class PlotCatHBVSimKf:
 
         all_output = all_outputs_dict['outs_arr']
         all_output = (rrarea_arr * all_output).sum(axis=0)
+
+#         if True:
+#             out_data_loc = os.path.join(
+#                 self.full_sims_dir,
+#                 f'kf_{self.kf_str}_HBV_snow_{self.cat}.png')
+#
+#             with open(out_data_loc, 'wb') as pkl_hdl:
+#                 pickle.dump(all_output[:, 0], pkl_hdl)
 
         self.q_sim_arr = all_outputs_dict['qsim_arr']
 

@@ -184,11 +184,9 @@ def plot_aux_vars_2d(
     plot_shape = (loc_rows + legend_rows, loc_cols)
 
     for prm in aux_prms_labs:
-        curr_row = 0
-        curr_col = 0
         ax = plt.subplot2grid(
             plot_shape,
-            loc=(curr_row, curr_col),
+            loc=(0, 0),
             rowspan=sca_fac,
             colspan=sca_fac)
 
@@ -217,25 +215,19 @@ def plot_aux_vars_2d(
                     va='center',
                     ha='center', zorder=2)
 
-            ps = ax.imshow(
-                plot_grid,
-                origin='lower',
-                cmap=plt.get_cmap('gist_rainbow'),
-                zorder=1)
+        ps = ax.imshow(
+            plot_grid,
+            cmap=plt.get_cmap('gist_rainbow'),
+            zorder=1)
 
-            ax.set_ylim(plot_min_max_lims[0], plot_min_max_lims[1])
-            ax.set_xlim(plot_min_max_lims[2], plot_min_max_lims[3])
+        ax.set_ylim(plot_min_max_lims[1], plot_min_max_lims[0])  # grid flipud
+        ax.set_xlim(plot_min_max_lims[2], plot_min_max_lims[3])
 
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            ax.set_axis_off()
-
-            curr_col += sca_fac
-            if curr_col >= loc_cols:
-                curr_col = 0
-                curr_row += sca_fac
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_axis_off()
 
         cb_ax = plt.subplot2grid(
             plot_shape,
@@ -244,11 +236,11 @@ def plot_aux_vars_2d(
             colspan=legend_cols)
 
         cb_ax.set_axis_off()
+
         cb = plt.colorbar(
             ps, ax=cb_ax, fraction=0.4, aspect=20, orientation='horizontal')
 
         cb.set_label(prm)
-        cb.ax.set_xticklabels(cb.ax.get_xticklabels(), rotation=90)
 
         fig = plt.gcf()
 
@@ -323,13 +315,12 @@ def plot_cats_best_prms_2d_kf(
 
             ps = ax.imshow(
                 plot_grid,
-                origin='lower',
                 cmap=plt.get_cmap('gist_rainbow'),
                 vmin=min_bd,
                 vmax=max_bd,
                 zorder=1)
 
-            ax.set_ylim(plot_min_max_lims[0], plot_min_max_lims[1])
+            ax.set_ylim(plot_min_max_lims[1], plot_min_max_lims[0])  # grid flipud
             ax.set_xlim(plot_min_max_lims[2], plot_min_max_lims[3])
 
             ax.set_xticks([])
@@ -835,6 +826,9 @@ def plot_cat_obj_evo_kf(
 
     min_obj_lim = max(0, np.nanmin(gobj_vals))
     max_obj_lim = min(2, np.nanmax(gobj_vals))
+
+    if np.isclose(max_obj_lim, min_obj_lim):
+        max_obj_lim += 0.01
 
     plot_lim_pad = 0.025 * (max_obj_lim - min_obj_lim)
 

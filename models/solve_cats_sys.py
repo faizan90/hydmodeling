@@ -268,6 +268,11 @@ def solve_cats_sys(
         all_prms_flags,
         run_as_lump_flag)
 
+    for key in aux_cell_vars_dict:
+        aux_cell_vars_dict[key] = None
+
+    drop_null_aux_classes(k_aux_cell_vars_dict)
+
     if not in_stms_prcssed_df.shape[0]:
         print('\n')
         print('INFO: A dummy stream (9999) inserted in in_stms_prcssed_df!')
@@ -290,10 +295,16 @@ def solve_cats_sys(
         in_ppt_dfs_dict,
         in_tem_dfs_dict,
         in_pet_dfs_dict,
-        aux_cell_vars_dict['area_ratios'],
+        k_aux_cell_vars_dict['area_ratios'],
         sel_cats,
         date_range,
         run_as_lump_flag)
+
+    # release memory
+    for key in in_ppt_dfs_dict:
+        in_ppt_dfs_dict[key] = None
+        in_tem_dfs_dict[key] = None
+        in_pet_dfs_dict[key] = None
 
 #     from pathlib import Path
 #     _outdir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\hydmod\input_hyd_data')
@@ -751,13 +762,6 @@ def solve_cat(
                 assert 'lulc_ratios' in in_aux_vars_dict
 
                 lulc_arr = in_aux_vars_dict['lulc_ratios'][cat].T
-                _1 = lulc_arr.shape[1]
-                lulc_drop_idxs = (lulc_arr.max(axis=0) == 0)
-
-                if lulc_drop_idxs.sum():
-                    lulc_arr = lulc_arr[:, ~lulc_drop_idxs].copy(order='c')
-                    _2 = lulc_arr.shape[1]
-                    print(f'Land use classes reduced from {_1} to {_2}')
 
                 n_lulc = lulc_arr.shape[1]
                 assert lulc_arr.shape[0] == n_cells
@@ -777,13 +781,6 @@ def solve_cat(
                 assert 'soil_ratios' in in_aux_vars_dict
 
                 soil_arr = in_aux_vars_dict['soil_ratios'][cat].T
-                _1 = soil_arr.shape[1]
-                soil_drop_idxs = (soil_arr.max(axis=0) == 0)
-
-                if soil_drop_idxs.sum():
-                    soil_arr = soil_arr[:, ~soil_drop_idxs].copy(order='c')
-                    _2 = soil_arr.shape[1]
-                    print(f'Soil classes reduced from {_1} to {_2}')
 
                 n_soil = soil_arr.shape[1]
                 assert soil_arr.shape[0] == n_cells
@@ -1759,3 +1756,49 @@ def get_fts_freq_idxs(
 
     return ft_beg_idx, ft_end_idx
 
+
+def drop_null_aux_classes(aux_cell_vars_dict):
+
+    if 'lulc_ratios' in aux_cell_vars_dict:
+        drop_null_aux_class(
+            aux_cell_vars_dict['lulc_ratios'], 'Land use classes')
+
+    if 'soil_ratios' in aux_cell_vars_dict:
+        drop_null_aux_class(
+            aux_cell_vars_dict['soil_ratios'], 'Soil classes')
+
+    return
+
+
+def drop_null_aux_class(aux_cell_var_dict, label):
+
+    n_clss = None
+    nul_cts = []
+    for cat in aux_cell_var_dict:
+        aux_var_arr = aux_cell_var_dict[cat]
+
+        if n_clss is None:
+            n_clss = aux_var_arr.shape[0]
+
+        else:
+            assert n_clss == aux_var_arr.shape[0]
+
+        aux_var_drop_idxs = (aux_var_arr.max(axis=1) == 0)
+
+        nul_cts.append(aux_var_drop_idxs)
+
+    nul_cts_sums = (np.array(nul_cts).sum(axis=0) == len(nul_cts))
+
+    if np.any(nul_cts_sums):
+        for cat in aux_cell_var_dict:
+            aux_var_arr = aux_cell_var_dict[cat]
+
+            new_aux_var_arr = aux_var_arr[~nul_cts_sums, :].copy(order='c')
+
+            aux_cell_var_dict[cat] = new_aux_var_arr
+
+        print(
+            f'{label} reduced from {nul_cts_sums.size} to '
+            f'{(~nul_cts_sums).sum()}')
+
+    return
