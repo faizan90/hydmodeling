@@ -6,7 +6,6 @@ Created on %(date)s
 """
 
 import os
-import pickle
 
 import h5py
 import numpy as np
@@ -194,6 +193,7 @@ class PlotCatHBVSimKf:
         self.out_dir = out_dir
         self.wat_bal_stps = wat_bal_stps
         self.show_warm_up_steps_flag = show_warm_up_steps_flag
+        self.extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
 
         if self.show_warm_up_steps_flag:
             self.plt_strt_idx = 0
@@ -238,17 +238,28 @@ class PlotCatHBVSimKf:
         del temp_dist_arr, prec_dist_arr, pet_dist_arr, prms_dist_arr
 
         all_output = all_outputs_dict['outs_arr']
-        all_output = (rrarea_arr * all_output).sum(axis=0)
+
+        self.full_sims_dir = os.path.join(self.out_dir, '03_hbv_figs')
+
+        mkdir_hm(self.full_sims_dir)
+
+        if self.extra_us_inflow_flag:
+            self.flows_cmp_dir = os.path.join(
+                self.out_dir, '14_inflows_outflows')
+
+            mkdir_hm(self.flows_cmp_dir)
 
 #         if True:
+#             print('Saving snow array...')
 #             out_data_loc = os.path.join(
 #                 self.full_sims_dir,
-#                 f'kf_{self.kf_str}_HBV_snow_{self.cat}.png')
+#                 f'kf_{self.kf_str}_HBV_snow_{self.cat}.npy')
 #
-#             with open(out_data_loc, 'wb') as pkl_hdl:
-#                 pickle.dump(all_output[:, 0], pkl_hdl)
+#             np.save(out_data_loc, all_output[:, :, 0])
 
         self.q_sim_arr = all_outputs_dict['qsim_arr']
+
+        all_output = (rrarea_arr * all_output).sum(axis=0)
 
         del all_outputs_dict
 
@@ -264,8 +275,6 @@ class PlotCatHBVSimKf:
         self.lr_sto_arr = all_output[:, 9]
         self.lr_run_arr = self.lr_sto_arr * self.prms_arr[10]
         self.comb_run_arr = self.ur_run_uu + self.ur_run_ul + self.lr_run_arr
-
-        self.extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
 
         self.q_sim_arr = (self.q_sim_arr).copy(order='C')
         self.q_act_arr = kf_dict['qact_arr']
@@ -318,16 +327,6 @@ class PlotCatHBVSimKf:
 
         self.bal_idxs = [0]
         self.bal_idxs.extend(list(range(off_idx, self.n_recs, wat_bal_stps)))
-
-        self.full_sims_dir = os.path.join(self.out_dir, '03_hbv_figs')
-
-        mkdir_hm(self.full_sims_dir)
-
-        if self.extra_us_inflow_flag:
-            self.flows_cmp_dir = os.path.join(
-                self.out_dir, '14_inflows_outflows')
-
-            mkdir_hm(self.flows_cmp_dir)
 
         sim_dict = {
             'temp': self.temp_arr,
