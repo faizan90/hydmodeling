@@ -268,9 +268,6 @@ def solve_cats_sys(
         all_prms_flags,
         run_as_lump_flag)
 
-    for key in aux_cell_vars_dict:
-        aux_cell_vars_dict[key] = None
-
     drop_null_aux_classes(k_aux_cell_vars_dict)
 
     if not in_stms_prcssed_df.shape[0]:
@@ -295,7 +292,7 @@ def solve_cats_sys(
         in_ppt_dfs_dict,
         in_tem_dfs_dict,
         in_pet_dfs_dict,
-        k_aux_cell_vars_dict['area_ratios'],
+        aux_cell_vars_dict['area_ratios'],
         sel_cats,
         date_range,
         run_as_lump_flag)
@@ -305,6 +302,9 @@ def solve_cats_sys(
         in_ppt_dfs_dict[key] = None
         in_tem_dfs_dict[key] = None
         in_pet_dfs_dict[key] = None
+
+    for key in aux_cell_vars_dict:
+        aux_cell_vars_dict[key] = None
 
 #     from pathlib import Path
 #     _outdir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\hydmod\input_hyd_data')

@@ -32,7 +32,6 @@ from hydmodeling import (
     plot_cats_ann_cycs_fdcs_comp,
     plot_cats_prms_transfer_perfs,
     plot_cats_prm_vecs_evo,
-    plot_cats_vars_errors,
     plot_cats_qsims,
     plot_cats_discharge_errors,
     plot_cats_diags)
@@ -151,7 +150,6 @@ def main():
     plot_ann_cys_fdcs_flag = False
     plot_prm_trans_comp_flag = False
     plot_opt_evo_flag = False
-    plot_var_errors_flag = False
     plot_hbv_vars_flag = False
     plot_diags_flag = False
     plot_qsims_flag = False
@@ -160,23 +158,22 @@ def main():
 #     hyd_analysis_flag = True
 #     get_stms_flag = True
 #     create_cumm_cats_flag = True
-#     create_stms_rels_flag = True
-#     optimize_flag = True
-#     plot_kfold_perfs_flag = True
-#     plot_best_kfold_prms_flag = True
-#     plot_prm_vecs_flag = True
-#     plot_2d_kfold_prms_flag = True
-#     plot_ann_cys_fdcs_flag = True
-#     plot_prm_trans_comp_flag = True
-#     plot_opt_evo_flag = True
-#     plot_var_errors_flag = True
-#     plot_hbv_vars_flag = True
-#     plot_diags_flag = True
+    create_stms_rels_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_hbv_vars_flag = True
+    plot_diags_flag = True
 #     plot_qsims_flag = True
 #     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-#     use_cv_time_flag = True
+    use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing
@@ -435,47 +432,91 @@ def main():
 
     bounds_dict = OrderedDict()
 
-    bounds_dict['tt_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['tt'].split(sep)]
+    if True:
 
-    bounds_dict['cm_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['cm'].split(sep)]
+        bounds_dict['tt_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['tt'].split(sep)]
 
-    bounds_dict['pcm_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['pcm'].split(sep)]
+        bounds_dict['cm_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['cm'].split(sep)]
 
-    bounds_dict['fc_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['fc_pwp'].split(sep)]
+        bounds_dict['pcm_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['pcm'].split(sep)]
 
-    bounds_dict['beta_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['beta'].split(sep)]
+        bounds_dict['fc_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['fc_pwp'].split(sep)]
 
-    bounds_dict['pwp_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['fc_pwp'].split(sep)]
+        bounds_dict['beta_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['beta'].split(sep)]
 
-    bounds_dict['ur_thr_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['ur_thr'].split(sep)]
+        bounds_dict['pwp_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['fc_pwp'].split(sep)]
 
-    bounds_dict['k_uu_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['k_uu'].split(sep)]
+        bounds_dict['ur_thr_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['ur_thr'].split(sep)]
 
-    bounds_dict['k_ul_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['k_ul'].split(sep)]
+        bounds_dict['k_uu_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['k_uu'].split(sep)]
 
-    bounds_dict['k_d_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['k_d'].split(sep)]
+        bounds_dict['k_ul_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['k_ul'].split(sep)]
 
-    bounds_dict['k_ll_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['k_ll'].split(sep)]
+        bounds_dict['k_d_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['k_d'].split(sep)]
 
-    bounds_dict['exp_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['exp'].split(sep)]
+        bounds_dict['k_ll_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['k_ll'].split(sep)]
 
-    bounds_dict['musk_lag_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['musk_lag'].split(sep)]
+        bounds_dict['exp_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['exp'].split(sep)]
 
-    bounds_dict['musk_wt_bds'] = [
-        float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(sep)]
+        bounds_dict['musk_lag_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['musk_lag'].split(sep)]
+
+        bounds_dict['musk_wt_bds'] = [
+            float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(sep)]
+
+    else:
+        prm_cols = [
+            'tt',
+            'cm',
+            'pcm',
+            'fc',
+            'beta',
+            'pwp',
+            'ur_thr',
+            'k_uu',
+            'k_ul',
+            'k_d',
+            'k_ll',
+            ]
+
+        prms_df = pd.read_csv(
+            cfp['TEST_MODEL']['test_params_loc'],
+            sep=sep,
+            index_col=0).loc[prm_cols]
+
+        bounds_dict['tt_bds'] = [prms_df.loc['tt']] * 2
+
+        bounds_dict['cm_bds'] = [prms_df.loc['cm']] * 2
+
+        bounds_dict['pcm_bds'] = [prms_df.loc['pcm']] * 2
+
+        bounds_dict['fc_bds'] = [prms_df.loc['fc']] * 2
+
+        bounds_dict['beta_bds'] = [prms_df.loc['beta']] * 2
+
+        bounds_dict['pwp_bds'] = [prms_df.loc['pwp']] * 2
+
+        bounds_dict['ur_thr_bds'] = [prms_df.loc['ur_thr']] * 2
+
+        bounds_dict['k_uu_bds'] = [prms_df.loc['k_uu']] * 2
+
+        bounds_dict['k_ul_bds'] = [prms_df.loc['k_ul']] * 2
+
+        bounds_dict['k_d_bds'] = [prms_df.loc['k_d']] * 2
+
+        bounds_dict['k_ll_bds'] = [prms_df.loc['k_ll']] * 2
 
     tt_flags = [int(_) for _ in cfp['PRM_FLAGS']['tt'].split(sep)]
     cm_flags = [int(_) for _ in cfp['PRM_FLAGS']['cm'].split(sep)]
@@ -790,29 +831,6 @@ def main():
 
         else:
             print('All flags False, not plotting!')
-
-        _end_t = timeit.default_timer()
-        _tot_t = _end_t - _beg_t
-
-        print(f'Took {_tot_t:0.4f} seconds!')
-        print('#' * 10)
-
-    #=========================================================================
-    # Plot sorted errors w.r.t given variables
-    #=========================================================================
-    if plot_var_errors_flag:
-        err_var_labs = cfp['PLOT_OPT_RES']['err_var_labs'].split(sep)
-        assert err_var_labs, err_var_labs
-
-        _beg_t = timeit.default_timer()
-
-        print('\n\n')
-        print('#' * 10)
-        print('Plotting discharge errors against simulated variables...')
-
-        print(f'err_var_labs: {err_var_labs}')
-
-        plot_cats_vars_errors(dbs_dir, err_var_labs, n_cpus)
 
         _end_t = timeit.default_timer()
         _tot_t = _end_t - _beg_t
