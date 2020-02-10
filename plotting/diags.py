@@ -469,9 +469,22 @@ class PlotCatDiagnostics1D:
 
     def plot_hi_err_qevents(self):
 
-        n_evts = 2
-        bef_steps = 10
-        aft_steps = 10
+        time_freq = 'H'
+
+        if time_freq == 'D':
+            # Day
+            n_evts = 2
+            bef_steps = 10
+            aft_steps = 10
+
+        elif time_freq == 'H':
+            # 1H
+            n_evts = 2 * 4
+            bef_steps = 10 * 24
+            aft_steps = 10 * 24
+
+        else:
+            raise NotImplementedError
 
         assert 0 < n_evts < self._n_steps
 
@@ -510,7 +523,8 @@ class PlotCatDiagnostics1D:
             bef_steps,
             aft_steps,
             sq_diffs,
-            sum_sq_diffs)
+            sum_sq_diffs,
+            time_freq)
 #
 #         if self._ppt_dist_arr is not None:
 #             self._plot_hi_err_qevents_2d_ppt(
@@ -667,14 +681,29 @@ class PlotCatDiagnostics1D:
         out_dir = os.path.join(self._out_dir, 'peaks_cmp')
         mkdir_hm(out_dir)
 
+        time_freq = 'H'
+
         line_alpha = 0.7
         line_lw = 1.3
 
-        bef_steps = 10
-        aft_steps = 10
-        ws = 30
-        steps_per_cycle = 365  # should be enough to have peaks_per_cycle peaks
-        peaks_per_cycle = 1
+        if time_freq == 'D':
+            # 1D
+            bef_steps = 10
+            aft_steps = 10
+            ws = 30
+            steps_per_cycle = 365  # should be enough to have peaks_per_cycle peaks
+            peaks_per_cycle = 1
+
+        elif time_freq == 'H':
+            # 1H
+            bef_steps = 10 * 24
+            aft_steps = 10 * 24
+            ws = 30 * 24
+            steps_per_cycle = 365 * 24  # should be enough to have peaks_per_cycle peaks
+            peaks_per_cycle = 2
+
+        else:
+            raise NotImplementedError
 
         peaks_mask = self._get_peaks_mask(
             ws, steps_per_cycle, peaks_per_cycle)
@@ -722,26 +751,33 @@ class PlotCatDiagnostics1D:
                 label='event_step',
                 lw=line_lw)
 
-            for x, y in zip(x_arr, self._qsim_arr[bef_idx:aft_idx]):
+            if time_freq == 'H':
+                pass
 
-                text = f'{self._qobs_ranks[x]}, {self._qsim_ranks[x]}'
+            elif time_freq == 'D':
+                for x, y in zip(x_arr, self._qsim_arr[bef_idx:aft_idx]):
 
-                if y < (0.5 * qmax):
-                    va = 'bottom'
-                    text = '  ' + text
+                    text = f'{self._qobs_ranks[x]}, {self._qsim_ranks[x]}'
 
-                else:
-                    va = 'top'
-                    text = text + '  '
+                    if y < (0.5 * qmax):
+                        va = 'bottom'
+                        text = '  ' + text
 
-                dis_ax.text(
-                    x,
-                    y,
-                    text,
-                    rotation=90,
-                    alpha=0.8,
-                    va=va,
-                    size='x-small')
+                    else:
+                        va = 'top'
+                        text = text + '  '
+
+                    dis_ax.text(
+                        x,
+                        y,
+                        text,
+                        rotation=90,
+                        alpha=0.8,
+                        va=va,
+                        size='x-small')
+
+            else:
+                raise NotImplementedError
 
             dis_ax.set_xlabel('Time')
             dis_ax.set_ylabel('Discharge')
@@ -765,26 +801,33 @@ class PlotCatDiagnostics1D:
                 color='orange',
                 lw=line_lw)
 
-            for x, y in zip(x_arr, self._ppt_arr[bef_idx:aft_idx]):
+            if time_freq == 'H':
+                pass
 
-                text = f'{self._ppt_ranks[x]}'
+            elif time_freq == 'D':
+                for x, y in zip(x_arr, self._ppt_arr[bef_idx:aft_idx]):
 
-                if y < (0.5 * ppt_max):
-                    va = 'bottom'
-                    text = '  ' + text
+                    text = f'{self._ppt_ranks[x]}'
 
-                else:
-                    va = 'top'
-                    text = text + '  '
+                    if y < (0.5 * ppt_max):
+                        va = 'bottom'
+                        text = '  ' + text
 
-                ppt_ax.text(
-                    x,
-                    y,
-                    text,
-                    rotation=90,
-                    alpha=0.8,
-                    va=va,
-                    size='x-small')
+                    else:
+                        va = 'top'
+                        text = text + '  '
+
+                    ppt_ax.text(
+                        x,
+                        y,
+                        text,
+                        rotation=90,
+                        alpha=0.8,
+                        va=va,
+                        size='x-small')
+
+            else:
+                raise NotImplementedError
 
             ppt_ax.set_ylim(0, ppt_max)
 
@@ -825,17 +868,38 @@ class PlotCatDiagnostics1D:
 
         sorted_sq_diffs = (sorted_qobs - sorted_qsim) ** 2
 
+        signs = (sorted_qobs - sorted_qsim)
+        sorted_sq_diffs *= signs
+
         plt.figure(figsize=(20, 7))
 
         plt.plot(sorted_qobs, sorted_sq_diffs, alpha=line_alpha)
 
+        ylim_max = np.abs(plt.ylim()).max()
+
+        plt.text(
+            +0.5,
+            +0.5 * ylim_max,
+            'Observed discharge higher',
+            horizontalalignment='center',
+            verticalalignment='center')
+
+        plt.text(
+            +0.5,
+            -0.5 * ylim_max,
+            'Observed discharge lower',
+            horizontalalignment='center',
+            verticalalignment='center')
+
+        plt.ylim(-ylim_max, +ylim_max)
+
         plt.xlabel('Observed discharge')
-        plt.ylabel('Squared difference')
+        plt.ylabel('Signed squared difference')
 
         plt.grid()
 
         plt.title(
-            f'Sorted squared difference of discharges\n'
+            f'Sorted signed squared differences of discharge\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}'
             )
@@ -999,17 +1063,12 @@ class PlotCatDiagnostics1D:
         ft_obs_phas = np.angle(ft_obs)
         ft_obs_amps = np.abs(ft_obs)
 
-        freq_cov_cntrb_obs = np.cumsum(ft_obs_amps ** 2)
+        freq_cov_cntrb_obs_obs = np.cumsum(ft_obs_amps ** 2)
 
-        max_cov_obs = freq_cov_cntrb_obs[-1]
-        freq_cov_cntrb_obs /= max_cov_obs
+        max_cov_obs = freq_cov_cntrb_obs_obs[-1]
+        freq_cov_cntrb_obs_obs /= max_cov_obs
 
-#         freq_cov_cntrb_grad_obs = (
-#             freq_cov_cntrb_obs[1:] - freq_cov_cntrb_obs[:-1]) / (
-#                 freq_cov_cntrb_obs[1:])
-
-        _obs_indiv_cntrb = (
-            (ft_obs_amps * ft_obs_amps) * np.cos(ft_obs_phas - ft_obs_phas))
+        _obs_indiv_cntrb = ft_obs_amps * ft_obs_amps
         _obs_indiv_cntrb /= max_cov_obs
 
         freq_cov_cntrb_grad_obs = (
@@ -1025,9 +1084,9 @@ class PlotCatDiagnostics1D:
         max_cov_sim = (
             (ft_obs_amps ** 2).sum() * (ft_sim_amps ** 2).sum()) ** 0.5
 
-        freq_cov_cntrb_sim = np.cumsum(
+        freq_cov_cntrb_sim_obs = np.cumsum(
             (ft_obs_amps * ft_sim_amps) * np.cos(ft_obs_phas - ft_sim_phas))
-        freq_cov_cntrb_sim /= max_cov_sim
+        freq_cov_cntrb_sim_obs /= max_cov_sim
 
         _sim_indiv_cntrb = (
             (ft_obs_amps * ft_sim_amps) * np.cos(ft_obs_phas - ft_sim_phas))
@@ -1039,9 +1098,15 @@ class PlotCatDiagnostics1D:
 
         freq_cov_cntrb_grad_sim[np.abs(freq_cov_cntrb_grad_sim) > 20] = 20
 
+        freq_cov_cntrb_sim_sim = np.cumsum(ft_sim_amps ** 2)
+
+        max_cov_sim_sim = freq_cov_cntrb_sim_sim[-1]
+        freq_cov_cntrb_sim_sim /= max_cov_sim_sim
+
         self._plot_fts_wvcbs(
-            freq_cov_cntrb_obs,
-            freq_cov_cntrb_sim,
+            freq_cov_cntrb_obs_obs,
+            freq_cov_cntrb_sim_obs,
+            freq_cov_cntrb_sim_sim,
             out_dir)
 
         self._plot_fts_wvcbs_grad(
@@ -1203,7 +1268,8 @@ class PlotCatDiagnostics1D:
             bef_steps,
             aft_steps,
             sq_diffs,
-            sum_sq_diffs):
+            sum_sq_diffs,
+            time_freq):
 
         out_dir = os.path.join(self._out_dir, 'hi_qerrs')
         mkdir_hm(out_dir)
@@ -1248,28 +1314,35 @@ class PlotCatDiagnostics1D:
                 label='event_step',
                 lw=line_lw)
 
-            for x, y in zip(x_arr, self._qsim_arr[bef_idx:aft_idx]):
+            if time_freq == 'D':
+                for x, y in zip(x_arr, self._qsim_arr[bef_idx:aft_idx]):
 
-                text = (
-                    f'{100 * (sq_diffs[x] / sum_sq_diffs):0.3f}%, '
-                    f'{self._qobs_ranks[x]}, {self._qsim_ranks[x]}')
+                    text = (
+                        f'{100 * (sq_diffs[x] / sum_sq_diffs):0.3f}%, '
+                        f'{self._qobs_ranks[x]}, {self._qsim_ranks[x]}')
 
-                if y < (0.5 * qmax):
-                    va = 'bottom'
-                    text = '  ' + text
+                    if y < (0.5 * qmax):
+                        va = 'bottom'
+                        text = '  ' + text
 
-                else:
-                    va = 'top'
-                    text = text + '  '
+                    else:
+                        va = 'top'
+                        text = text + '  '
 
-                dis_ax.text(
-                    x,
-                    y,
-                    text,
-                    rotation=90,
-                    alpha=0.8,
-                    va=va,
-                    size='x-small')
+                    dis_ax.text(
+                        x,
+                        y,
+                        text,
+                        rotation=90,
+                        alpha=0.8,
+                        va=va,
+                        size='x-small')
+
+            elif time_freq == 'H':
+                pass
+
+            else:
+                raise NotImplementedError
 
             dis_ax.set_xlabel('Time')
             dis_ax.set_ylabel('Discharge')
@@ -1293,25 +1366,32 @@ class PlotCatDiagnostics1D:
                 color='orange',
                 lw=line_lw)
 
-            for x, y in zip(x_arr, self._ppt_arr[bef_idx:aft_idx]):
+            if time_freq == 'D':
+                for x, y in zip(x_arr, self._ppt_arr[bef_idx:aft_idx]):
 
-                text = f'{self._ppt_ranks[x]}'
+                    text = f'{self._ppt_ranks[x]}'
 
-                if y < (0.5 * ppt_max):
-                    va = 'bottom'
-                    text = '  ' + text
-                else:
-                    va = 'top'
-                    text = text + '  '
+                    if y < (0.5 * ppt_max):
+                        va = 'bottom'
+                        text = '  ' + text
+                    else:
+                        va = 'top'
+                        text = text + '  '
 
-                ppt_ax.text(
-                    x,
-                    y,
-                    text,
-                    rotation=90,
-                    alpha=0.8,
-                    va=va,
-                    size='x-small')
+                    ppt_ax.text(
+                        x,
+                        y,
+                        text,
+                        rotation=90,
+                        alpha=0.8,
+                        va=va,
+                        size='x-small')
+
+            elif time_freq == 'H':
+                pass
+
+            else:
+                raise NotImplementedError
 
             ppt_ax.set_ylim(0, ppt_max)
 
@@ -1496,6 +1576,8 @@ class PlotCatDiagnostics1D:
         recing = self._qobs_arr[1:-1] - self._qobs_arr[2:] > 0
 
         peaks_mask = np.concatenate(([False], rising[:-1] & recing, [False]))
+
+        assert peaks_mask.sum(), 'No peaks?'
 
         n_steps = self._qobs_arr.shape[0]
 
@@ -1734,7 +1816,12 @@ class PlotCatDiagnostics1D:
         plt.close()
         return
 
-    def _plot_fts_wvcbs(self, freq_cov_cntrb_obs, freq_cov_cntrb_sim, out_dir):
+    def _plot_fts_wvcbs(
+            self,
+            freq_cov_cntrb_obs_obs,
+            freq_cov_cntrb_sim_obs,
+            freq_cov_cntrb_sim_sim,
+            out_dir):
 
         line_alpha = 0.7
         line_lw = 0.9
@@ -1743,17 +1830,24 @@ class PlotCatDiagnostics1D:
         plt.figure(figsize=(15, 7))
 
         plt.semilogx(
-            freq_cov_cntrb_obs,
-            label='obs',
+            freq_cov_cntrb_obs_obs,
+            label='obs_obs',
             alpha=line_alpha + 0.2,
             color='red',
             lw=line_lw)
 
         plt.semilogx(
-            freq_cov_cntrb_sim,
-            label='sim',
+            freq_cov_cntrb_sim_obs,
+            label='sim_obs',
             alpha=line_alpha,
             color='blue',
+            lw=line_lw)
+
+        plt.semilogx(
+            freq_cov_cntrb_sim_sim,
+            label='sim_sim',
+            alpha=line_alpha,
+            color='green',
             lw=line_lw)
 
         plt.xlabel('Frequency')
@@ -1766,7 +1860,8 @@ class PlotCatDiagnostics1D:
             f'Discharge Fourier frequency correlation contribution\n'
             f'Catchment: {self._cat}, Kf: {self._kf}, '
             f'Run Type: {self._run_type.upper()}, Steps: {self._n_steps}\n'
-            f'Sim-to-Obs fourier correlation: {freq_cov_cntrb_sim[-1]:0.4f}\n'
+            f'Sim-to-Obs fourier correlation: '
+            f'{freq_cov_cntrb_sim_obs[-1]:0.4f}\n'
             f'Obs. and Sim. mean: {self._qobs_mean:0.3f}, '
             f'{self._qsim_mean:0.3f}, '
             f'Obs. and Sim. variance: {self._qobs_var:0.3f}, '

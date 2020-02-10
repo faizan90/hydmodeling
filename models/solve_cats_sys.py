@@ -238,7 +238,9 @@ def solve_cats_sys(
 
     n_steps = date_range.shape[0]
 
-    if time_freq not in ['D', '24H', '12H', '8H', '6H', '3H', '2H', 'H']:
+    if time_freq not in (
+        ['D', '24H', '12H', '8H', '6H', '3H', '2H', 'H', '15min']):
+
         raise NotImplementedError(f'Invalid time-freq: {time_freq}')
 
     assert date_range.intersection(in_q_df.index).shape[0] == n_steps
@@ -1114,6 +1116,9 @@ def solve_cat(
         elif time_freq == 'H':
             conv_ratio /= 3600
 
+        elif time_freq == '15min':
+            conv_ratio /= (3600 / 4)
+
         else:
             raise ValueError(f'Incorrect time_freq: {time_freq}')
 
@@ -1624,7 +1629,10 @@ def get_ft_freq_scale_and_mult(ft_freq):
 
 def get_step_scalar(time_freq):
 
-    if time_freq == 'H':
+    if time_freq == '15min':
+        step_scalar = 1.0 / (24.0 * 4)
+
+    elif time_freq == 'H':
         step_scalar = 1.0 / 24.0
 
     elif time_freq == 'D':
@@ -1640,7 +1648,7 @@ def get_step_scalar(time_freq):
         step_scalar = 365.0
 
     else:
-        raise NotImplementedError
+        raise NotImplementedError(time_freq)
     return step_scalar
 
 
@@ -1659,6 +1667,12 @@ def get_freq_scalar(ft_freq_scale):
 
     elif ft_freq_scale == 'D':
         freq_scalar = 1.0
+
+    elif ft_freq_scale == 'H':
+        freq_scalar = 1.0 / 24.0
+
+    elif ft_freq_scale == '15min':
+        freq_scalar = 1.0 / (24.0 * 4.0)
 
     else:
         raise ValueError(f'ft_freq not defined for: {ft_freq_scale}!')

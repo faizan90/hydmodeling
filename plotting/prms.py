@@ -776,7 +776,7 @@ def plot_cat_prm_vecs_evo(plot_args):
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
 
-        calib_db = db['calib']
+        calib_db = db['']
 
         prm_syms = db['cdata/use_prms_labs'][...]
 
@@ -799,7 +799,7 @@ def plot_cat_prm_vecs_evo(plot_args):
                     iobj_vals)
 
             if save_png_flag or save_gif_flag:
-                iter_prm_vecs = calib_db[kf_str + '/iter_prm_vecs'][...]  #
+                iter_prm_vecs = calib_db[kf_str + '/iter_prm_vecs'][...]
 
                 plot_cat_prm_vecs_evo_kf(
                     iter_prm_vecs,
