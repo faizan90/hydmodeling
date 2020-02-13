@@ -73,6 +73,50 @@ def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
     return out_data_dict
 
 
+def get_data_dict_from_h5_with_time(
+        path_to_h5, ds_grp, beg_times, end_times, set_na_to_zero_flag=False):
+
+    # beg_times and end_times have corresponding beg and end times
+    # for the selection period
+
+    out_data_dict = {}
+    with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
+        h5_times = pd.to_datetime(
+            h5_hdl['time/time_strs'][...], format='%Y%m%dT%H%M%S')
+
+        select_idxs = np.zeros(h5_times.size, dtype=bool)
+
+        for beg_time, end_time in zip(beg_times, end_times):
+            sub_sel_idxs = ((h5_times >= beg_time) & (h5_times <= end_time))
+
+            select_idxs |= sub_sel_idxs
+
+        data_ds = h5_hdl[ds_grp]
+
+        keys = [int(key) for key in data_ds.keys()]
+
+        for key in keys:
+            out_data_dict[key] = pd.DataFrame(
+                index=h5_times[select_idxs],
+                data=data_ds[str(key)][select_idxs, :])
+
+            if set_na_to_zero_flag:
+                nan_ct = np.isnan(out_data_dict[key].values).sum()
+
+                if nan_ct:
+                    print('\n')
+                    print('#' * 30)
+                    print(
+                        f'WARNING: Set {nan_ct} values to zero in dataset '
+                        f'{key} in file: {os.path.basename(path_to_h5)}!')
+                    print('#' * 30)
+                    print('\n')
+
+                    out_data_dict[key].replace(np.nan, 0.0, inplace=True)
+
+    return out_data_dict
+
+
 def get_cell_vars_dict_from_h5(path_to_h5, extra_ds=None):
 
     cat_intersect_rows_dict = {}
@@ -322,6 +366,9 @@ def main():
 
         cv_list = [start_cdate, end_cdate, start_vdate, end_vdate]
 
+        h5_beg_times = [start_cdate, start_vdate]
+        h5_end_times = [end_cdate, end_vdate]
+
     else:
         kfolds = cfp['OPT_HYD_MODEL'].getint('kfolds')
 
@@ -331,6 +378,9 @@ def main():
             [start_date, end_date], format=time_fmt)
 
         cv_list = [start_date, end_date]
+
+        h5_beg_times = [start_date, ]
+        h5_end_times = [end_date, ]
 
     time_freq = cfp['OPT_HYD_MODEL']['time_freq']
 
@@ -581,9 +631,19 @@ def main():
         in_q_df = pd.read_csv(obs_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=time_fmt)
 
-        in_ppt_dfs_dict = get_data_dict_from_h5(ppt_file, ppt_ds_grp, True)
-        in_temp_dfs_dict = get_data_dict_from_h5(temp_file, temp_ds_grp)
-        in_pet_dfs_dict = get_data_dict_from_h5(pet_file, pet_ds_grp)
+#         in_ppt_dfs_dict = get_data_dict_from_h5(ppt_file, ppt_ds_grp, True)
+#         in_temp_dfs_dict = get_data_dict_from_h5(temp_file, temp_ds_grp)
+#         in_pet_dfs_dict = get_data_dict_from_h5(pet_file, pet_ds_grp)
+
+        in_ppt_dfs_dict = get_data_dict_from_h5_with_time(
+            ppt_file, ppt_ds_grp, h5_beg_times, h5_end_times, True)
+
+        in_temp_dfs_dict = get_data_dict_from_h5_with_time(
+            temp_file, temp_ds_grp, h5_beg_times, h5_end_times,)
+
+        in_pet_dfs_dict = get_data_dict_from_h5_with_time(
+            pet_file, pet_ds_grp, h5_beg_times, h5_end_times,)
+
         in_cell_vars_dict = get_cell_vars_dict_from_h5(ppt_file)
 
         in_use_step_df = pd.DataFrame(

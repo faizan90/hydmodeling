@@ -776,7 +776,7 @@ def plot_cat_prm_vecs_evo(plot_args):
         kfolds = db['data'].attrs['kfolds']
         cat = db.attrs['cat']
 
-        calib_db = db['']
+        calib_db = db['calib']
 
         prm_syms = db['cdata/use_prms_labs'][...]
 

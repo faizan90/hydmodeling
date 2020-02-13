@@ -469,7 +469,7 @@ class PlotCatDiagnostics1D:
 
     def plot_hi_err_qevents(self):
 
-        time_freq = 'H'
+        time_freq = 'D'
 
         if time_freq == 'D':
             # Day
@@ -681,7 +681,7 @@ class PlotCatDiagnostics1D:
         out_dir = os.path.join(self._out_dir, 'peaks_cmp')
         mkdir_hm(out_dir)
 
-        time_freq = 'H'
+        time_freq = 'D'
 
         line_alpha = 0.7
         line_lw = 1.3
@@ -878,14 +878,14 @@ class PlotCatDiagnostics1D:
         ylim_max = np.abs(plt.ylim()).max()
 
         plt.text(
-            +0.5,
+            +0.5 * sorted_qobs[-1],
             +0.5 * ylim_max,
             'Observed discharge higher',
             horizontalalignment='center',
             verticalalignment='center')
 
         plt.text(
-            +0.5,
+            +0.5 * sorted_qobs[-1],
             -0.5 * ylim_max,
             'Observed discharge lower',
             horizontalalignment='center',

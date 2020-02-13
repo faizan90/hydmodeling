@@ -1564,6 +1564,8 @@ def get_var_dict(in_df_dict, cats, area_dict, date_range, lf):
 
         out_dict[cat] = df_1
 
+        in_df_dict[cat] = None
+
     for cat in cats:
         assert not np.any(np.isnan(out_dict[cat]))
         assert out_dict[cat].ndim == 2
