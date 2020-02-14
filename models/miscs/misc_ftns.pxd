@@ -172,3 +172,11 @@ cdef void cmpt_resampled_arr(
               DT_D[::1] resamp_arr, 
         const DT_ULL[::1] tags_arr,
         ) nogil
+
+cpdef DT_D get_hargreaves_pet(
+        DT_UL d_o_y, 
+        DT_D lat, 
+        DT_D t_min, 
+        DT_D t_max, 
+        DT_D t_avg, 
+        DT_UL leap) nogil

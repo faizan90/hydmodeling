@@ -18,6 +18,9 @@ cdef extern from "math.h" nogil:
         DT_D log(DT_D x)
         DT_D cos(DT_D x)
         DT_D sin(DT_D x)
+        DT_D M_PI
+        DT_D acos(DT_D x)
+        DT_D tan(DT_D x)
 
 
 cpdef DT_D get_mean(
@@ -587,3 +590,58 @@ cpdef tuple get_asymms_sample(DT_D[:] u, DT_D[:] v):
     asymm_2 = asymm_2 / n_vals
 
     return (asymm_1, asymm_2)
+
+
+cpdef DT_D get_hargreaves_pet(
+        DT_UL d_o_y, 
+        DT_D lat, 
+        DT_D t_min, 
+        DT_D t_max, 
+        DT_D t_avg, 
+        DT_UL leap) nogil:
+
+    """
+    Purpose: To get the potential evapotranspiration at a given latitude \
+                for a given date and temperature.
+
+    Description of the arguments:
+        d_o_y (int): day of the year
+        lat (radians): latitude of the point
+        t_min (celsius): minimum temperature on that day
+        t_max (celsius): maximum temperature on that day
+        t_avg (celsius): average temperature on that day
+        leap (flag): non-zero means year has 365 days else 366
+    """
+
+    cdef:
+        int tot_days
+
+        DT_D ndec, nws, dfr, ra, pet
+
+    if leap == 0:
+        tot_days = 366
+
+    else:
+        tot_days = 365
+
+    ndec = 0.409 * sin(((2 * M_PI * d_o_y) / tot_days) - 1.39)
+
+    nws = acos(-tan(lat) * tan(ndec))
+ 
+    dfr = 1 + (0.033 * cos((2 * M_PI * d_o_y) / tot_days))
+
+    #fac_1 = 15.342618001389575 # ((1440 * 0.082 * 0.4082)/pi)
+
+    ra = (
+        15.342618 * 
+        dfr * 
+        ((nws * sin(lat) * sin(ndec)) + (cos(lat) * cos(ndec) * sin(nws))))
+
+    #fac_2 = 0.002295 # (0.0135 * 0.17)
+
+    pet = 0.002295 * ra * ((t_max - t_min)**0.5) * (t_avg + 17.8)
+
+    if pet < 0:
+        pet = 0.0
+
+    return pet

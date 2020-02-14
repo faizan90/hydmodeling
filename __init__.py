@@ -47,7 +47,10 @@ from .models import (
     get_pcorr_prt_cy,
     get_kge_prt_cy,
     get_ns_var_res_prt_cy,
-    get_ln_ns_var_res_prt_cy)
+    get_ln_ns_var_res_prt_cy,
+
+    get_hargreaves_pet,
+    )
 
 from .plotting import (
     plot_cats_hbv_sim,
@@ -64,6 +67,9 @@ from .plotting import (
     plot_cats_best_prms_1d,
     plot_cats_best_prms_2d,
 
-    plot_cats_diags)
+    plot_cats_diags,
+    )
 
 from .forcings import solve_cats_sys_forcings
+
+from .misc import change_pt_crs, ret_mp_idxs

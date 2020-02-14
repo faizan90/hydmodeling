@@ -21,6 +21,8 @@ from .miscs.misc_ftns import (
     get_demr,
     get_ln_mean,
     get_ln_demr,
+
+    get_hargreaves_pet,
     )
 
 from .miscs.misc_ftns_partial import (
