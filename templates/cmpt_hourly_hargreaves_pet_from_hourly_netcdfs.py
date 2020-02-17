@@ -114,7 +114,7 @@ def main():
     # time var name in hr file
     args = ['DN', 31467, 'X', 'Y', 'IDW_000', 'time']
 
-    out_units = 'mm/day'
+    out_units = 'mm/hour'
 
     msgs = True
 
@@ -191,8 +191,8 @@ def main():
     time_nc = out_pet_nc.createVariable('time', 'i8', dimensions='time')
 
     time_nc[:] = in_hr_nc.variables['time'][:]
-    time_nc.units = time_hr_var.calendar
-    time_nc.calendar = time_hr_var.units
+    time_nc.units = time_hr_var.units
+    time_nc.calendar = time_hr_var.calendar
 
     interp_type = 'PET'
 
