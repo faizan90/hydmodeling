@@ -117,6 +117,61 @@ def get_data_dict_from_h5_with_time(
     return out_data_dict
 
 
+def get_data_dict_from_h5_with_time_and_cat(
+        path_to_h5,
+        ds_grp,
+        beg_times,
+        end_times,
+        cats,
+        set_na_to_zero_flag=False):
+
+    # beg_times and end_times have corresponding beg and end times
+    # for the selection period
+
+    out_data_dict = {}
+    with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
+        h5_times = pd.to_datetime(
+            h5_hdl['time/time_strs'][...], format='%Y%m%dT%H%M%S')
+
+        select_idxs = np.zeros(h5_times.size, dtype=bool)
+
+        for beg_time, end_time in zip(beg_times, end_times):
+            sub_sel_idxs = ((h5_times >= beg_time) & (h5_times <= end_time))
+
+            select_idxs |= sub_sel_idxs
+
+        data_ds = h5_hdl[ds_grp]
+
+        keys = [int(key) for key in data_ds.keys()]
+
+        for key in keys:
+
+            if key not in cats:
+                continue
+
+            out_data_dict[key] = pd.DataFrame(
+                index=h5_times[select_idxs],
+                data=data_ds[str(key)][select_idxs, :])
+
+            if set_na_to_zero_flag:
+                nan_ct = np.isnan(out_data_dict[key].values).sum()
+
+                if nan_ct:
+                    print('\n')
+                    print('#' * 30)
+                    print(
+                        f'WARNING: Set {nan_ct} values to zero in dataset '
+                        f'{key} in file: {os.path.basename(path_to_h5)}!')
+                    print('#' * 30)
+                    print('\n')
+
+                    out_data_dict[key].replace(np.nan, 0.0, inplace=True)
+
+    assert out_data_dict, 'Nothing selected!'
+
+    return out_data_dict
+
+
 def get_cell_vars_dict_from_h5(path_to_h5, extra_ds=None):
 
     cat_intersect_rows_dict = {}
@@ -144,7 +199,7 @@ def get_cell_vars_dict_from_h5(path_to_h5, extra_ds=None):
             if rows.max() > extent_shape[0]:
                 extent_shape[0] = rows.max()
 
-            if cols.max() > extent_shape[0]:
+            if cols.max() > extent_shape[1]:
                 extent_shape[1] = cols.max()
 
             if extra_ds is not None:
@@ -217,7 +272,7 @@ def main():
 #     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-    use_cv_time_flag = True
+#     use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing
@@ -635,14 +690,38 @@ def main():
 #         in_temp_dfs_dict = get_data_dict_from_h5(temp_file, temp_ds_grp)
 #         in_pet_dfs_dict = get_data_dict_from_h5(pet_file, pet_ds_grp)
 
-        in_ppt_dfs_dict = get_data_dict_from_h5_with_time(
-            ppt_file, ppt_ds_grp, h5_beg_times, h5_end_times, True)
+#         in_ppt_dfs_dict = get_data_dict_from_h5_with_time(
+#             ppt_file, ppt_ds_grp, h5_beg_times, h5_end_times, True)
+#
+#         in_temp_dfs_dict = get_data_dict_from_h5_with_time(
+#             temp_file, temp_ds_grp, h5_beg_times, h5_end_times,)
+#
+#         in_pet_dfs_dict = get_data_dict_from_h5_with_time(
+#             pet_file, pet_ds_grp, h5_beg_times, h5_end_times,)
 
-        in_temp_dfs_dict = get_data_dict_from_h5_with_time(
-            temp_file, temp_ds_grp, h5_beg_times, h5_end_times,)
+        prcss_cats_ints_list = [int(cat) for cat in prcss_cats_list]
 
-        in_pet_dfs_dict = get_data_dict_from_h5_with_time(
-            pet_file, pet_ds_grp, h5_beg_times, h5_end_times,)
+        in_ppt_dfs_dict = get_data_dict_from_h5_with_time_and_cat(
+            ppt_file,
+            ppt_ds_grp,
+            h5_beg_times,
+            h5_end_times,
+            prcss_cats_ints_list,
+            True)
+
+        in_temp_dfs_dict = get_data_dict_from_h5_with_time_and_cat(
+            temp_file,
+            temp_ds_grp,
+            h5_beg_times,
+            h5_end_times,
+            prcss_cats_ints_list,)
+
+        in_pet_dfs_dict = get_data_dict_from_h5_with_time_and_cat(
+            pet_file,
+            pet_ds_grp,
+            h5_beg_times,
+            h5_end_times,
+            prcss_cats_ints_list,)
 
         in_cell_vars_dict = get_cell_vars_dict_from_h5(ppt_file)
 

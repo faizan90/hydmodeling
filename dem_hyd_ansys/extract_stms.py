@@ -8,6 +8,7 @@ import os
 import tempfile
 from shutil import copy2
 from copy import deepcopy
+from io import BytesIO as StringIO
 
 import ogr
 import numpy as np
@@ -45,9 +46,26 @@ def get_stms(in_dem_net_shp_file,
                                dtype=int)
     in_wat_id_arr = np.atleast_2d(in_wat_id_arr)
 
-    out_dem_net_writer_01 = shp.Writer(shp.POLYLINE)
-    out_dem_net_writer_02 = shp.Writer(shp.POLYLINE)
-    out_dem_net_writer_03 = shp.Writer(shp.POLYLINE)
+    shp_01 = StringIO()
+    shx_01 = StringIO()
+    dbf_01 = StringIO()
+
+    shp_02 = StringIO()
+    shx_02 = StringIO()
+    dbf_02 = StringIO()
+
+    shp_03 = StringIO()
+    shx_03 = StringIO()
+    dbf_03 = StringIO()
+
+    out_dem_net_writer_01 = shp.Writer(
+        shp=shp_01, shx=shx_01, dbf=dbf_01, shapeType=shp.POLYLINE)
+
+    out_dem_net_writer_02 = shp.Writer(
+        shp=shp_02, shx=shx_02, dbf=dbf_02, shapeType=shp.POLYLINE)
+
+    out_dem_net_writer_03 = shp.Writer(
+        shp=shp_03, shx=shx_03, dbf=dbf_03, shapeType=shp.POLYLINE)
 
     temp_dem_net_1_path = tempfile.NamedTemporaryFile().name + '.shp'
     temp_dem_net_2_path = tempfile.NamedTemporaryFile().name + '.shp'
@@ -250,6 +268,7 @@ def get_stms(in_dem_net_shp_file,
     assert len(direct_next_streams_node_ids_list) == len(unique_cats_list), (
         'unequal lengths!')
 
+    n_recs = 0
     for idx, rec in enumerate(
         zip(in_dem_net_reader.records(), in_dem_net_reader.shapes())):
 
@@ -259,13 +278,19 @@ def get_stms(in_dem_net_shp_file,
             if del_idx_cond:
                 out_dem_net_writer_01.line(parts=[rec[1].points])
                 out_dem_net_writer_01.record(*rec[0])
+                n_recs += 1
 
     fin_stream_idxs_list = []
     contain_cats_list = []
-    recs_and_shapes = list(zip(out_dem_net_writer_01.records,
-                               out_dem_net_writer_01.shapes()))
 
-    assert recs_and_shapes
+    if n_recs:
+        recs_and_shapes = list(zip(
+            out_dem_net_writer_01.records, out_dem_net_writer_01.shapes()))
+
+    else:
+        recs_and_shapes = []
+
+#     assert recs_and_shapes
 
     def get_cont_streams(cat_no, ds_link_no):
         curr_idx = None
@@ -334,48 +359,50 @@ def get_stms(in_dem_net_shp_file,
 
     new_recs_list = []
     link_nos_list = []
-    for rec in out_dem_net_writer_02.records:
-        link_nos_list.append(rec[link_col_id])
 
-    for rec in deepcopy(out_dem_net_writer_02.records):
-        curr_us_link_no_1 = rec[us_link_01_col_id]
-        curr_us_link_no_2 = rec[us_link_02_col_id]
+    if n_recs:
+        for rec in out_dem_net_writer_02.records:
+            link_nos_list.append(rec[link_col_id])
 
-        if curr_us_link_no_1 not in link_nos_list:
-            curr_us_link_no_1 = -1
+        for rec in deepcopy(out_dem_net_writer_02.records):
+            curr_us_link_no_1 = rec[us_link_01_col_id]
+            curr_us_link_no_2 = rec[us_link_02_col_id]
 
-        if curr_us_link_no_2 not in link_nos_list:
-            curr_us_link_no_2 = -1
+            if curr_us_link_no_1 not in link_nos_list:
+                curr_us_link_no_1 = -1
 
-        rec[us_link_01_col_id] = curr_us_link_no_1
-        rec[us_link_02_col_id] = curr_us_link_no_2
+            if curr_us_link_no_2 not in link_nos_list:
+                curr_us_link_no_2 = -1
 
-        new_recs_list.append(rec)
+            rec[us_link_01_col_id] = curr_us_link_no_1
+            rec[us_link_02_col_id] = curr_us_link_no_2
 
-    for item in zip(new_recs_list, out_dem_net_writer_02.shapes()):
-        out_dem_net_writer_03.line(parts=[item[1].points])
-        out_dem_net_writer_03.record(*item[0])
+            new_recs_list.append(rec)
 
-    out_dem_net_writer_03.save(temp_dem_net_2_path)
+        for item in zip(new_recs_list, out_dem_net_writer_02.shapes()):
+            out_dem_net_writer_03.line(parts=[item[1].points])
+            out_dem_net_writer_03.record(*item[0])
 
-    temps_streams_vec = ogr.Open(temp_dem_net_2_path)
-    lyr = temps_streams_vec.GetLayer(0)
+        out_dem_net_writer_03.save(temp_dem_net_2_path)
 
-    out_lyr = out_ds.CreateLayer(str('0'), geom_type=ogr.wkbMultiLineString)
+        temps_streams_vec = ogr.Open(temp_dem_net_2_path)
+        lyr = temps_streams_vec.GetLayer(0)
 
-    in_lyr_dfn = lyr.GetLayerDefn()
-    lyr.GetLayerDefn().GetFieldDefn(ds_node_col_id).SetType(ogr.OFTInteger)
-    lyr.GetLayerDefn().GetFieldDefn(length_col_id).SetWidth(16)
-    lyr.GetLayerDefn().GetFieldDefn(length_col_id).SetPrecision(1)
-    lyr.GetLayerDefn().GetFieldDefn(slope_col_id).SetWidth(16)
-    lyr.GetLayerDefn().GetFieldDefn(slope_col_id).SetPrecision(10)
-    for i in range(0, in_lyr_dfn.GetFieldCount()):
-        field_dfn = in_lyr_dfn.GetFieldDefn(i)
-        out_lyr.CreateField(field_dfn)
+        out_lyr = out_ds.CreateLayer(str('0'), geom_type=ogr.wkbMultiLineString)
 
-    out_lyr_dfn = out_lyr.GetLayerDefn()
+        in_lyr_dfn = lyr.GetLayerDefn()
+        lyr.GetLayerDefn().GetFieldDefn(ds_node_col_id).SetType(ogr.OFTInteger)
+        lyr.GetLayerDefn().GetFieldDefn(length_col_id).SetWidth(16)
+        lyr.GetLayerDefn().GetFieldDefn(length_col_id).SetPrecision(1)
+        lyr.GetLayerDefn().GetFieldDefn(slope_col_id).SetWidth(16)
+        lyr.GetLayerDefn().GetFieldDefn(slope_col_id).SetPrecision(10)
+        for i in range(0, in_lyr_dfn.GetFieldCount()):
+            field_dfn = in_lyr_dfn.GetFieldDefn(i)
+            out_lyr.CreateField(field_dfn)
 
-    direct_us_streams_list = []
+        out_lyr_dfn = out_lyr.GetLayerDefn()
+
+        direct_us_streams_list = []
 
     def get_us_stream_fids(stream_fid):
         us_stream_link_no_1 = (
@@ -505,256 +532,257 @@ def get_stms(in_dem_net_shp_file,
 
         return (get_slope(merged_line), merged_line)
 
-    feat_count = lyr.GetFeatureCount()
-    for cat_no in unique_cats_list:
-        if cat_no in cats_not_us_cats_list:
-            continue
-
-        feat_dict = {}
-        feat_us_links_list = []
-
-        fin_cat_stream_fid = None
-        for idx in range(feat_count):
-            feat = lyr.GetFeature(idx)
-            stream_cat_no = feat.GetFieldAsInteger(ds_node_col_id)
-
-            if stream_cat_no != cat_no:
+    if n_recs:
+        feat_count = lyr.GetFeatureCount()
+        for cat_no in unique_cats_list:
+            if cat_no in cats_not_us_cats_list:
                 continue
 
-            stream_fid = feat.GetFID()
-            feat_us_links_list.append(feat.GetFieldAsInteger(link_col_id))
-            feat_dict[stream_fid] = feat.Clone()
-            stream_ds_link_no = feat.GetFieldAsInteger(ds_link_col_id)
+            feat_dict = {}
+            feat_us_links_list = []
 
-            if stream_ds_link_no == -1:
-                fin_cat_stream_fid = stream_fid
+            fin_cat_stream_fid = None
+            for idx in range(feat_count):
+                feat = lyr.GetFeature(idx)
+                stream_cat_no = feat.GetFieldAsInteger(ds_node_col_id)
 
-        assert fin_cat_stream_fid is not None, (
-            'Couldn\'t get fin_cat_stream_fid!')
-
-        if len(feat_dict) == 1:
-            out_feat = ogr.Feature(out_lyr_dfn)
-
-            geom = list(feat_dict.values())[0].GetGeometryRef()
-
-            out_feat.SetField(ds_node_col_id, int(cat_no))
-
-            _ = feat_dict[fin_cat_stream_fid]
-            _ = _.GetFieldAsInteger(us_link_01_col_id)
-
-            out_feat.SetField(us_link_01_col_id, _)
-            out_feat.SetField(length_col_id, geom.Length())
-            out_feat.SetField(slope_col_id, get_slope(geom))
-            out_feat.SetGeometry(geom)
-
-            out_lyr.CreateFeature(out_feat)
-            continue
-
-        else:
-            merged_stream_fids_list = []
-            for curr_fid in feat_dict:
-                if curr_fid in merged_stream_fids_list:
+                if stream_cat_no != cat_no:
                     continue
 
-                direct_us_streams_list = []
-                get_us_stream_fids(curr_fid)
+                stream_fid = feat.GetFID()
+                feat_us_links_list.append(feat.GetFieldAsInteger(link_col_id))
+                feat_dict[stream_fid] = feat.Clone()
+                stream_ds_link_no = feat.GetFieldAsInteger(ds_link_col_id)
 
-                for fid in direct_us_streams_list:
-                    if fid not in merged_stream_fids_list:
-                        merged_stream_fids_list.append(fid)
+                if stream_ds_link_no == -1:
+                    fin_cat_stream_fid = stream_fid
 
-                if len(direct_us_streams_list) > 1:
-                    ds_cat_feat = feat_dict[direct_us_streams_list[0]].Clone()
+            assert fin_cat_stream_fid is not None, (
+                'Couldn\'t get fin_cat_stream_fid!')
 
-                    for fid in direct_us_streams_list[1:]:
-                        ds_cat = ds_cat_feat.GetGeometryRef()
-                        curr_cat_feat = feat_dict[fid].Clone()
-                        curr_cat = curr_cat_feat.GetGeometryRef()
+            if len(feat_dict) == 1:
+                out_feat = ogr.Feature(out_lyr_dfn)
 
-                        ds_cat = ds_cat.Union(curr_cat)
-                        merged_cat_feat = ogr.Feature(out_lyr_dfn)
-                        merged_cat_feat.SetGeometry(ds_cat)
-                        ds_cat_feat = merged_cat_feat
+                geom = list(feat_dict.values())[0].GetGeometryRef()
 
-                    slope, merged_line = get_max_slope(
-                        ds_cat_feat.GetGeometryRef())
+                out_feat.SetField(ds_node_col_id, int(cat_no))
 
-                    fin_cat_feat = ogr.Feature(out_lyr_dfn)
-                    fin_cat_feat.SetGeometry(merged_line)
+                _ = feat_dict[fin_cat_stream_fid]
+                _ = _.GetFieldAsInteger(us_link_01_col_id)
 
-                    fin_cat_feat.SetField(ds_node_col_id, int(cat_no))
-                    fin_cat_feat.SetField(
-                        us_link_01_col_id,
-                        fin_cat_feat.GetFieldAsInteger(us_link_01_col_id))
+                out_feat.SetField(us_link_01_col_id, _)
+                out_feat.SetField(length_col_id, geom.Length())
+                out_feat.SetField(slope_col_id, get_slope(geom))
+                out_feat.SetGeometry(geom)
 
-                    fin_cat_feat.SetField(length_col_id, merged_line.Length())
-                    fin_cat_feat.SetField(slope_col_id, slope)
-
-                    out_lyr.CreateFeature(fin_cat_feat)
-
-                elif len(direct_us_streams_list) == 1:
-                    geom = feat_dict[
-                        direct_us_streams_list[0]].GetGeometryRef()
-
-                    out_feat = ogr.Feature(out_lyr_dfn)
-                    out_feat.SetField(ds_node_col_id, int(cat_no))
-
-                    _ = feat_dict[direct_us_streams_list[0]]
-                    _ = _.GetFieldAsInteger(us_link_01_col_id)
-
-                    out_feat.SetField(us_link_01_col_id, _)
-                    out_feat.SetField(length_col_id, geom.Length())
-                    out_feat.SetField(slope_col_id, get_slope(geom))
-                    out_feat.SetGeometry(geom)
-
-                    out_lyr.CreateFeature(out_feat)
-
-                elif not direct_us_streams_list:
-                    raise Exception('zero lines for FID: %s' % str(curr_fid))
-
-                else:
-                    raise Exception(
-                        ('Couldn\'t do anything about FID: %s, %s') % (
-                            str(curr_fid), str(direct_us_streams_list)))
-
-    feat_count = out_lyr.GetFeatureCount()
-    del_feat_ids_list = []
-    for i in range(feat_count):
-        if i in del_feat_ids_list:
-            continue
-
-        i_feat = out_lyr.GetFeature(i)
-        i_geom = i_feat.GetGeometryRef()
-        for j in range(feat_count):
-            if (i != j) and (i not in del_feat_ids_list):
-                j_feat = out_lyr.GetFeature(j)
-                j_geom = j_feat.GetGeometryRef()
-
-                if j_geom.Contains(i_geom):
-                    del_feat_ids_list.append(i)
-
-    del_feat_ids_list.sort()
-    for del_feat_id in reversed(del_feat_ids_list):
-        out_lyr.DeleteFeature(del_feat_id)
-
-    field_id = 0
-    things_todo = True
-    while things_todo:
-        curr_fin_field_ids = [
-            out_lyr.GetLayerDefn().GetFieldIndex(str(i))
-            for i in fin_field_names]
-
-        field_count = out_lyr.GetLayerDefn().GetFieldCount()
-        for field_id in range(field_count):
-            if field_id not in curr_fin_field_ids:
-                out_lyr.DeleteField(field_id)
-                break
-
-        else:
-            things_todo = False
-
-    out_lyr_defn = out_lyr.GetLayerDefn()
-    up_stream_01_defn = ogr.FieldDefn(str('up_strm_01'))
-    up_stream_01_defn.SetType(ogr.OFTInteger)
-    out_lyr.CreateField(up_stream_01_defn)
-
-    up_stream_02_defn = ogr.FieldDefn(str('up_strm_02'))
-    up_stream_02_defn.SetType(ogr.OFTInteger)
-    out_lyr.CreateField(up_stream_02_defn)
-
-    stream_no_defn = ogr.FieldDefn(str('stream_no'))
-    stream_no_defn.SetType(ogr.OFTInteger)
-    out_lyr.CreateField(stream_no_defn)
-
-    up_stream_cat_defn = ogr.FieldDefn(str('up_cat'))
-    up_stream_cat_defn.SetType(ogr.OFTInteger)
-    out_lyr.CreateField(up_stream_cat_defn)
-
-    out_stream_cat_defn = ogr.FieldDefn(str('out_stm'))
-    out_stream_cat_defn.SetType(ogr.OFTInteger)
-    out_lyr.CreateField(out_stream_cat_defn)
-
-    up_stream_01_col_id = out_lyr_defn.GetFieldIndex(str('up_strm_01'))
-    up_stream_02_col_id = out_lyr_defn.GetFieldIndex(str('up_strm_02'))
-    stream_no_col_id = out_lyr_defn.GetFieldIndex(str('stream_no'))
-    up_stream_cat_col_id = out_lyr_defn.GetFieldIndex(str('up_cat'))
-    out_stream_cat_col_id = out_lyr_defn.GetFieldIndex(str('out_stm'))
-
-    if any([
-        (up_stream_01_col_id == -1),
-        (up_stream_02_col_id == -1),
-        (stream_no_col_id == -1),
-        (up_stream_cat_col_id == -1),
-        (out_stream_cat_col_id == -1)]):
-
-        raise Exception(
-            'Fields not created properly or invalid names requested!')
-
-    ndv = -2  # means no upstreams
-    fin_stream_no = 0
-    for geom_i in range(out_lyr.GetFeatureCount()):
-        out_feat = out_lyr.GetFeature(geom_i)
-        if out_feat is None:
-            continue
-
-        out_feat.SetField(stream_no_col_id, fin_stream_no)
-        out_feat.SetField(up_stream_01_col_id, ndv)
-        out_feat.SetField(up_stream_02_col_id, ndv)
-        out_feat.SetField(out_stream_cat_col_id, ndv)
-        fin_stream_no += 1
-        out_lyr.SetFeature(out_feat)
-
-    for geom_i in range(out_lyr.GetFeatureCount()):
-        curr_stream_feat = out_lyr.GetFeature(geom_i)
-        no_more_us_streams = False
-
-        if curr_stream_feat is None:
-            continue
-
-        geoms = curr_stream_feat.GetGeometryRef()
-        geoms_count = geoms.GetGeometryCount()
-
-        if geoms_count == 0:
-            stream_us_pt = geoms.GetPoints()[-1]
-
-        else:
-            raise Exception('More than one geometry in the feature!')
-
-        for geom_j in range(out_lyr.GetFeatureCount()):
-            if geom_i == geom_j:
+                out_lyr.CreateFeature(out_feat)
                 continue
 
-            curr_us_stream_feat = out_lyr.GetFeature(geom_j)
-            if curr_us_stream_feat is None:
+            else:
+                merged_stream_fids_list = []
+                for curr_fid in feat_dict:
+                    if curr_fid in merged_stream_fids_list:
+                        continue
+
+                    direct_us_streams_list = []
+                    get_us_stream_fids(curr_fid)
+
+                    for fid in direct_us_streams_list:
+                        if fid not in merged_stream_fids_list:
+                            merged_stream_fids_list.append(fid)
+
+                    if len(direct_us_streams_list) > 1:
+                        ds_cat_feat = feat_dict[direct_us_streams_list[0]].Clone()
+
+                        for fid in direct_us_streams_list[1:]:
+                            ds_cat = ds_cat_feat.GetGeometryRef()
+                            curr_cat_feat = feat_dict[fid].Clone()
+                            curr_cat = curr_cat_feat.GetGeometryRef()
+
+                            ds_cat = ds_cat.Union(curr_cat)
+                            merged_cat_feat = ogr.Feature(out_lyr_dfn)
+                            merged_cat_feat.SetGeometry(ds_cat)
+                            ds_cat_feat = merged_cat_feat
+
+                        slope, merged_line = get_max_slope(
+                            ds_cat_feat.GetGeometryRef())
+
+                        fin_cat_feat = ogr.Feature(out_lyr_dfn)
+                        fin_cat_feat.SetGeometry(merged_line)
+
+                        fin_cat_feat.SetField(ds_node_col_id, int(cat_no))
+                        fin_cat_feat.SetField(
+                            us_link_01_col_id,
+                            fin_cat_feat.GetFieldAsInteger(us_link_01_col_id))
+
+                        fin_cat_feat.SetField(length_col_id, merged_line.Length())
+                        fin_cat_feat.SetField(slope_col_id, slope)
+
+                        out_lyr.CreateFeature(fin_cat_feat)
+
+                    elif len(direct_us_streams_list) == 1:
+                        geom = feat_dict[
+                            direct_us_streams_list[0]].GetGeometryRef()
+
+                        out_feat = ogr.Feature(out_lyr_dfn)
+                        out_feat.SetField(ds_node_col_id, int(cat_no))
+
+                        _ = feat_dict[direct_us_streams_list[0]]
+                        _ = _.GetFieldAsInteger(us_link_01_col_id)
+
+                        out_feat.SetField(us_link_01_col_id, _)
+                        out_feat.SetField(length_col_id, geom.Length())
+                        out_feat.SetField(slope_col_id, get_slope(geom))
+                        out_feat.SetGeometry(geom)
+
+                        out_lyr.CreateFeature(out_feat)
+
+                    elif not direct_us_streams_list:
+                        raise Exception('zero lines for FID: %s' % str(curr_fid))
+
+                    else:
+                        raise Exception(
+                            ('Couldn\'t do anything about FID: %s, %s') % (
+                                str(curr_fid), str(direct_us_streams_list)))
+
+        feat_count = out_lyr.GetFeatureCount()
+        del_feat_ids_list = []
+        for i in range(feat_count):
+            if i in del_feat_ids_list:
                 continue
 
-            geoms = curr_us_stream_feat.GetGeometryRef()
+            i_feat = out_lyr.GetFeature(i)
+            i_geom = i_feat.GetGeometryRef()
+            for j in range(feat_count):
+                if (i != j) and (i not in del_feat_ids_list):
+                    j_feat = out_lyr.GetFeature(j)
+                    j_geom = j_feat.GetGeometryRef()
+
+                    if j_geom.Contains(i_geom):
+                        del_feat_ids_list.append(i)
+
+        del_feat_ids_list.sort()
+        for del_feat_id in reversed(del_feat_ids_list):
+            out_lyr.DeleteFeature(del_feat_id)
+
+        field_id = 0
+        things_todo = True
+        while things_todo:
+            curr_fin_field_ids = [
+                out_lyr.GetLayerDefn().GetFieldIndex(str(i))
+                for i in fin_field_names]
+
+            field_count = out_lyr.GetLayerDefn().GetFieldCount()
+            for field_id in range(field_count):
+                if field_id not in curr_fin_field_ids:
+                    out_lyr.DeleteField(field_id)
+                    break
+
+            else:
+                things_todo = False
+
+        out_lyr_defn = out_lyr.GetLayerDefn()
+        up_stream_01_defn = ogr.FieldDefn(str('up_strm_01'))
+        up_stream_01_defn.SetType(ogr.OFTInteger)
+        out_lyr.CreateField(up_stream_01_defn)
+
+        up_stream_02_defn = ogr.FieldDefn(str('up_strm_02'))
+        up_stream_02_defn.SetType(ogr.OFTInteger)
+        out_lyr.CreateField(up_stream_02_defn)
+
+        stream_no_defn = ogr.FieldDefn(str('stream_no'))
+        stream_no_defn.SetType(ogr.OFTInteger)
+        out_lyr.CreateField(stream_no_defn)
+
+        up_stream_cat_defn = ogr.FieldDefn(str('up_cat'))
+        up_stream_cat_defn.SetType(ogr.OFTInteger)
+        out_lyr.CreateField(up_stream_cat_defn)
+
+        out_stream_cat_defn = ogr.FieldDefn(str('out_stm'))
+        out_stream_cat_defn.SetType(ogr.OFTInteger)
+        out_lyr.CreateField(out_stream_cat_defn)
+
+        up_stream_01_col_id = out_lyr_defn.GetFieldIndex(str('up_strm_01'))
+        up_stream_02_col_id = out_lyr_defn.GetFieldIndex(str('up_strm_02'))
+        stream_no_col_id = out_lyr_defn.GetFieldIndex(str('stream_no'))
+        up_stream_cat_col_id = out_lyr_defn.GetFieldIndex(str('up_cat'))
+        out_stream_cat_col_id = out_lyr_defn.GetFieldIndex(str('out_stm'))
+
+        if any([
+            (up_stream_01_col_id == -1),
+            (up_stream_02_col_id == -1),
+            (stream_no_col_id == -1),
+            (up_stream_cat_col_id == -1),
+            (out_stream_cat_col_id == -1)]):
+
+            raise Exception(
+                'Fields not created properly or invalid names requested!')
+
+        ndv = -2  # means no upstreams
+        fin_stream_no = 0
+        for geom_i in range(out_lyr.GetFeatureCount()):
+            out_feat = out_lyr.GetFeature(geom_i)
+            if out_feat is None:
+                continue
+
+            out_feat.SetField(stream_no_col_id, fin_stream_no)
+            out_feat.SetField(up_stream_01_col_id, ndv)
+            out_feat.SetField(up_stream_02_col_id, ndv)
+            out_feat.SetField(out_stream_cat_col_id, ndv)
+            fin_stream_no += 1
+            out_lyr.SetFeature(out_feat)
+
+        for geom_i in range(out_lyr.GetFeatureCount()):
+            curr_stream_feat = out_lyr.GetFeature(geom_i)
+            no_more_us_streams = False
+
+            if curr_stream_feat is None:
+                continue
+
+            geoms = curr_stream_feat.GetGeometryRef()
             geoms_count = geoms.GetGeometryCount()
 
             if geoms_count == 0:
-                us_stream_us_pt = geoms.GetPoints()[0]
+                stream_us_pt = geoms.GetPoints()[-1]
 
             else:
                 raise Exception('More than one geometry in the feature!')
 
-            if us_stream_us_pt == stream_us_pt:
-                us_stream_no = (
-                    curr_us_stream_feat.GetField(stream_no_col_id))
+            for geom_j in range(out_lyr.GetFeatureCount()):
+                if geom_i == geom_j:
+                    continue
 
-                if curr_stream_feat.GetField(up_stream_01_col_id) == ndv:
-                    curr_stream_feat.SetField(
-                        up_stream_01_col_id, us_stream_no)
+                curr_us_stream_feat = out_lyr.GetFeature(geom_j)
+                if curr_us_stream_feat is None:
+                    continue
+
+                geoms = curr_us_stream_feat.GetGeometryRef()
+                geoms_count = geoms.GetGeometryCount()
+
+                if geoms_count == 0:
+                    us_stream_us_pt = geoms.GetPoints()[0]
 
                 else:
-                    curr_stream_feat.SetField(
-                        up_stream_02_col_id, us_stream_no)
+                    raise Exception('More than one geometry in the feature!')
 
-                    no_more_us_streams = True
+                if us_stream_us_pt == stream_us_pt:
+                    us_stream_no = (
+                        curr_us_stream_feat.GetField(stream_no_col_id))
 
-                out_lyr.SetFeature(curr_stream_feat)
+                    if curr_stream_feat.GetField(up_stream_01_col_id) == ndv:
+                        curr_stream_feat.SetField(
+                            up_stream_01_col_id, us_stream_no)
 
-                if no_more_us_streams:
-                    break
+                    else:
+                        curr_stream_feat.SetField(
+                            up_stream_02_col_id, us_stream_no)
+
+                        no_more_us_streams = True
+
+                    out_lyr.SetFeature(curr_stream_feat)
+
+                    if no_more_us_streams:
+                        break
 
     cat_vec = ogr.Open(in_cats_file)
     cat_lyr = cat_vec.GetLayer(0)
@@ -781,99 +809,105 @@ def get_stms(in_dem_net_shp_file,
     half_pix_width = dem_pix_width * 0.5
     half_pix_heit = dem_pix_heit * 0.5
 
-    for geom_i in range(out_lyr.GetFeatureCount()):
-        curr_stream_feat = out_lyr.GetFeature(geom_i)
-        if curr_stream_feat is None:
-            continue
+    if n_recs:
+        for geom_i in range(out_lyr.GetFeatureCount()):
+            curr_stream_feat = out_lyr.GetFeature(geom_i)
+            if curr_stream_feat is None:
+                continue
 
-        curr_stream_us_pt = ogr.Geometry(ogr.wkbPoint)
-        curr_stream_ds_pt = ogr.Geometry(ogr.wkbPoint)
+            curr_stream_us_pt = ogr.Geometry(ogr.wkbPoint)
+            curr_stream_ds_pt = ogr.Geometry(ogr.wkbPoint)
 
-        stm_us_coords = curr_stream_feat.GetGeometryRef().GetPoints()[-1]
-        stm_us_x_coord, stm_us_y_coord = stm_us_coords[:2]
+            stm_us_coords = curr_stream_feat.GetGeometryRef().GetPoints()[-1]
+            stm_us_x_coord, stm_us_y_coord = stm_us_coords[:2]
 
-        stm_ds_coords = curr_stream_feat.GetGeometryRef().GetPoints()[0]
-        stm_ds_x_coord, stm_ds_y_coord = stm_ds_coords[:2]
+            stm_ds_coords = curr_stream_feat.GetGeometryRef().GetPoints()[0]
+            stm_ds_x_coord, stm_ds_y_coord = stm_ds_coords[:2]
 
-        curr_stream_us_pt.AddPoint(stm_us_x_coord, stm_us_y_coord)
-        curr_stream_ds_pt.AddPoint(stm_ds_x_coord, stm_ds_y_coord)
-        feat_modifd = False
+            curr_stream_us_pt.AddPoint(stm_us_x_coord, stm_us_y_coord)
+            curr_stream_ds_pt.AddPoint(stm_ds_x_coord, stm_ds_y_coord)
+            feat_modifd = False
 
-        for cat in cats_dict:
-            if cats_dict[cat].Contains(curr_stream_us_pt):
-                curr_stream_feat.SetField(up_stream_cat_col_id, cat)
-                feat_modifd = True
-
-            if cats_dict[cat].Contains(curr_stream_ds_pt):
-                ring = ogr.Geometry(ogr.wkbLinearRing)
-
-                ring.AddPoint(stm_ds_x_coord - half_pix_width,
-                              stm_ds_y_coord - half_pix_heit)
-
-                ring.AddPoint(stm_ds_x_coord - half_pix_width,
-                              stm_ds_y_coord + half_pix_heit)
-
-                ring.AddPoint(stm_ds_x_coord + half_pix_width,
-                              stm_ds_y_coord + half_pix_heit)
-
-                ring.AddPoint(stm_ds_x_coord + half_pix_width,
-                              stm_ds_y_coord - half_pix_heit)
-
-                ring.AddPoint(stm_ds_x_coord - half_pix_width,
-                              stm_ds_y_coord - half_pix_heit)
-
-                poly = ogr.Geometry(ogr.wkbPolygon)
-                poly.AddGeometry(ring)
-
-                if poly.Contains(coords_feat_dict[cat]):
-                    curr_stream_feat.SetField(out_stream_cat_col_id, 1)
+            for cat in cats_dict:
+                if cats_dict[cat].Contains(curr_stream_us_pt):
+                    curr_stream_feat.SetField(up_stream_cat_col_id, cat)
                     feat_modifd = True
 
-            if feat_modifd:
-                out_lyr.SetFeature(curr_stream_feat)
+                if cats_dict[cat].Contains(curr_stream_ds_pt):
+                    ring = ogr.Geometry(ogr.wkbLinearRing)
 
-        geoms_count += 1
+                    ring.AddPoint(stm_ds_x_coord - half_pix_width,
+                                  stm_ds_y_coord - half_pix_heit)
 
-    out_cols = [out_lyr.GetLayerDefn().GetFieldDefn(i).GetName()
-                for i in range(out_lyr.GetLayerDefn().GetFieldCount())]
+                    ring.AddPoint(stm_ds_x_coord - half_pix_width,
+                                  stm_ds_y_coord + half_pix_heit)
 
-    out_df = pd.DataFrame(index=list(range(geoms_count)), columns=out_cols)
+                    ring.AddPoint(stm_ds_x_coord + half_pix_width,
+                                  stm_ds_y_coord + half_pix_heit)
 
-    curr_field_idxs = [out_lyr.GetLayerDefn().GetFieldIndex(str(i))
-                       for i in out_cols]
-    geoms_count = 0
-    for geom_i in range(out_lyr.GetFeatureCount()):
-        curr_stream_feat = out_lyr.GetFeature(geom_i)
-        if curr_stream_feat is None:
-            continue
-        out_df.loc[geoms_count] = [
-            curr_stream_feat.GetField(i) for i in curr_field_idxs]
+                    ring.AddPoint(stm_ds_x_coord + half_pix_width,
+                                  stm_ds_y_coord - half_pix_heit)
 
-        geoms_count += 1
+                    ring.AddPoint(stm_ds_x_coord - half_pix_width,
+                                  stm_ds_y_coord - half_pix_heit)
 
-    if not out_df.shape[0]:
-        assert not cats_us_cats_list
-        out_df = pd.DataFrame(index=list(range(len(cats_not_us_cats_list))),
-                              columns=out_cols)
+                    poly = ogr.Geometry(ogr.wkbPolygon)
+                    poly.AddGeometry(ring)
 
-        for i, cat in enumerate(cats_not_us_cats_list):
-            out_df.loc[i, out_cols] = (
-                [-1, 0, 0, -2, -2, i, cats_not_us_cats_list[i], -2])
+                    if poly.Contains(coords_feat_dict[cat]):
+                        curr_stream_feat.SetField(out_stream_cat_col_id, 1)
+                        feat_modifd = True
 
-    out_df.index = out_df['stream_no'].values
-    out_df.drop(labels=['stream_no'], axis=1, inplace=True)
+                if feat_modifd:
+                    out_lyr.SetFeature(curr_stream_feat)
+
+            geoms_count += 1
+
+        out_cols = [out_lyr.GetLayerDefn().GetFieldDefn(i).GetName()
+                    for i in range(out_lyr.GetLayerDefn().GetFieldCount())]
+
+        out_df = pd.DataFrame(index=list(range(geoms_count)), columns=out_cols)
+
+        curr_field_idxs = [out_lyr.GetLayerDefn().GetFieldIndex(str(i))
+                           for i in out_cols]
+        geoms_count = 0
+        for geom_i in range(out_lyr.GetFeatureCount()):
+            curr_stream_feat = out_lyr.GetFeature(geom_i)
+            if curr_stream_feat is None:
+                continue
+            out_df.loc[geoms_count] = [
+                curr_stream_feat.GetField(i) for i in curr_field_idxs]
+
+            geoms_count += 1
+
+        if not out_df.shape[0]:
+            assert not cats_us_cats_list
+            out_df = pd.DataFrame(index=list(range(len(cats_not_us_cats_list))),
+                                  columns=out_cols)
+
+            for i, cat in enumerate(cats_not_us_cats_list):
+                out_df.loc[i, out_cols] = (
+                    [-1, 0, 0, -2, -2, i, cats_not_us_cats_list[i], -2])
+
+        out_df.index = out_df['stream_no'].values
+        out_df.drop(labels=['stream_no'], axis=1, inplace=True)
+
+        out_df.to_csv(out_df_file, sep=str(sep), index_label='stream_no')
+
+        driver.CopyDataSource(out_ds, out_dem_net_shp_file)
+
+        cat_vec.Destroy()
+        out_ds.Destroy()
+        coords_vec.Destroy()
+        temps_streams_vec.Destroy()
+
+        driver.DeleteDataSource(temp_dem_net_1_path)
+        driver.DeleteDataSource(temp_dem_net_2_path)
+
+    out_df = pd.DataFrame(
+        columns='stream_no;DSNODEID;Length;Slope;up_strm_01;up_strm_02;up_cat;out_stm'.split(';'))
 
     out_df.to_csv(out_df_file, sep=str(sep), index_label='stream_no')
-
-    driver.CopyDataSource(out_ds, out_dem_net_shp_file)
-
-    cat_vec.Destroy()
-    out_ds.Destroy()
-    coords_vec.Destroy()
-    temps_streams_vec.Destroy()
-
-    driver.DeleteDataSource(temp_dem_net_1_path)
-    driver.DeleteDataSource(temp_dem_net_2_path)
     return
 
 
