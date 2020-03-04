@@ -12,6 +12,7 @@ import timeit
 from pathlib import Path
 
 import h5py
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -21,6 +22,7 @@ DEBUG_FLAG = False
 
 from hydmodeling.models import (
     hbv_loop_py,
+#     hbv_c_loop_py,
     tfm_opt_to_hbv_prms_py)
 
 
@@ -32,25 +34,93 @@ def get_sim_ress(kf_dict, area_arr, conv_ratio):
     prms_dist_arr = kf_dict['hbv_prms']
 
     all_outputs_dict = hbv_loop_py(
+#     all_outputs_dict = hbv_c_loop_py(
         temp_dist_arr,
         prec_dist_arr,
         pet_dist_arr,
         prms_dist_arr,
-        kf_dict['ini_arr'],
+        np.array(kf_dict['ini_arr']),
         area_arr,
         conv_ratio,
-        1)
+        0)
 
     assert all_outputs_dict['loop_ret'] == 0.0
 
     q_sim_arr = all_outputs_dict['qsim_arr']
 
-    extra_us_inflow_flag = 'extra_us_inflow' in kf_dict
+#==============================================================================
+    # For checking water balance.
+    # Change the opt_flag in hbv_loop_py to 0.
 
-    q_sim_arr = (q_sim_arr).copy(order='C')
-    if extra_us_inflow_flag:
-        extra_us_inflow = kf_dict['extra_us_inflow']
-        q_sim_arr = q_sim_arr + extra_us_inflow
+    plot_flag = False
+
+    wb_lhss = []
+    wb_rhss = []
+    for i in range(all_outputs_dict['outs_arr'].shape[0]):
+        outs_arr = all_outputs_dict['outs_arr'][i, :, :]
+
+        snow_arr = outs_arr[:, 0]
+        sm_arr = outs_arr[:, 2]
+        evap_arr = outs_arr[:, 4]
+        ur_sto_arr = outs_arr[:, 5]
+        ur_run_uu = outs_arr[:, 6]
+        ur_run_ul = outs_arr[:, 7]
+        lr_sto_arr = outs_arr[:, 9]
+        lr_run_arr = lr_sto_arr * prms_dist_arr[i, 10]
+
+        storage = snow_arr + sm_arr + ur_sto_arr + lr_sto_arr
+
+        runoff = (ur_run_uu + ur_run_ul + lr_run_arr)[1:]
+
+        curr_sto = storage[+1:]
+        prev_sto = storage[:-1]
+
+        wb_rhs = -prev_sto + curr_sto + evap_arr[1:] + runoff
+
+        wb_lhs = prec_dist_arr[i, 1:]
+
+        wb_lhss.append(wb_lhs)
+        wb_rhss.append(wb_rhs)
+
+        rel_abs_diff = np.abs(wb_rhs - wb_lhs).sum() / wb_rhs.sum()
+
+        if rel_abs_diff >= 1e-5:
+            print(
+                f'Relative water balance difference not zero '
+                f'({rel_abs_diff:0.3f}) at cell: {i}!')
+
+        if plot_flag:
+            axes = plt.subplots(1, 2, squeeze=False)[1]
+
+            axes[0, 0].scatter(wb_rhs, wb_lhs, alpha=0.7)
+
+            axes[0, 0].grid()
+
+            axes[0, 1].plot(wb_rhs - wb_lhs, alpha=0.7)
+
+            axes[0, 1].grid()
+
+            plt.show()
+
+            plt.close()
+
+#     wb_lhss = np.sort(np.array(wb_lhss).ravel())
+#     wb_rhss = np.sort(np.array(wb_rhss).ravel())
+
+    wb_lhss = np.array(wb_lhss)
+    wb_rhss = np.array(wb_rhss)
+
+    wb_lhss_sum, wb_rhss_sum = wb_lhss.sum(), wb_rhss.sum()
+
+    print('Input output sum:', wb_lhss_sum, wb_rhss_sum)
+    print(f'Overall input by output ratio: {wb_lhss_sum / wb_rhss_sum:0.5f}')
+
+#         assert np.isclose(abs_diff, 0.0), (
+#             f'Water balance difference too high ({abs_diff}) at cell: {i}!')
+#==============================================================================
+
+    if 'extra_us_inflow' in kf_dict:
+        q_sim_arr = q_sim_arr + kf_dict['extra_us_inflow']
 
     return kf_dict, all_outputs_dict, q_sim_arr, kf_dict['qact_arr']
 
@@ -147,21 +217,20 @@ def run_sim(args):
 
 def main():
 
-    main_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\ns_peaks_calib_valid')
+    main_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\test_wat_bal_01')
     os.chdir(main_dir)
 
-    cats = [420, 3421, 3465, 3470]
+    cats = [420]
 
-    data_ds = 'valid'  # read calibration/validation data
+    data_ds = 'calib'  # read calibration/validation data
 
-    prms_dir = Path(r'calib_ns__5_peaks\01_database')
+    prms_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\neckar_lulc\01_database')
 
-    data_dir = Path(r'calib_ns__5_peaks\01_database')
+    data_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\neckar_lulc\01_database')
 
-    out_dir = Path('valid_ns__5_peaks')
+    out_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\test_wat_bal_02')
 
-    if not out_dir.exists():
-        out_dir.mkdir(exist_ok=True)
+    out_dir.mkdir(exist_ok=True)
 
     for cat in cats:
         in_prms_h5 = prms_dir / f'cat_{cat}.hdf5'
@@ -227,3 +296,4 @@ if __name__ == '__main__':
 
     if _save_log_:
         log_link.stop()
+

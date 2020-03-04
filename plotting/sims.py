@@ -231,6 +231,75 @@ class PlotCatHBVSimKf:
 
         assert all_outputs_dict['loop_ret'] == 0.0
 
+        self.q_sim_arr = all_outputs_dict['qsim_arr']
+
+#==============================================================================
+        # For checking water balance.
+        # Change the opt_flag in hbv_loop_py to 0.
+
+        plot_flag = False
+
+        rel_err_cell_min = +np.inf
+        rel_err_cell_max = -np.inf
+
+        wb_lhs_sum = 0.0
+        wb_rhs_sum = 0.0
+        for i in range(all_outputs_dict['outs_arr'].shape[0]):
+            outs_arr = all_outputs_dict['outs_arr'][i, :, :]
+
+            snow_arr = outs_arr[:, 0]
+            sm_arr = outs_arr[:, 2]
+            evap_arr = outs_arr[:, 4]
+            ur_sto_arr = outs_arr[:, 5]
+            ur_run_uu = outs_arr[:, 6]
+            ur_run_ul = outs_arr[:, 7]
+            lr_sto_arr = outs_arr[:, 9]
+            lr_run_arr = lr_sto_arr * prms_dist_arr[i, 10]
+
+            storage = snow_arr + sm_arr + ur_sto_arr + lr_sto_arr
+
+            runoff = (ur_run_uu + ur_run_ul + lr_run_arr)[1:]
+
+            curr_sto = storage[+1:]
+            prev_sto = storage[:-1]
+
+            wb_rhs = -prev_sto + curr_sto + evap_arr[1:] + runoff
+
+            wb_lhs = prec_dist_arr[i, 1:]
+
+            wb_lhs_sum += wb_lhs.sum()
+            wb_rhs_sum += wb_rhs.sum()
+
+            rel_abs_diff = np.abs(wb_rhs - wb_lhs).sum() / wb_rhs.sum()
+
+            if rel_abs_diff < rel_err_cell_min:
+                rel_err_cell_min = rel_abs_diff
+
+            if rel_abs_diff > rel_err_cell_max:
+                rel_err_cell_max = rel_abs_diff
+
+            if plot_flag:
+                axes = plt.subplots(1, 2, squeeze=False)[1]
+
+                axes[0, 0].scatter(wb_rhs, wb_lhs, alpha=0.7)
+
+                axes[0, 0].grid()
+
+                axes[0, 1].plot(wb_rhs - wb_lhs, alpha=0.7)
+
+                axes[0, 1].grid()
+
+                plt.show()
+
+                plt.close()
+
+        print(f'Cat: {cat}, Input and output sums:', wb_lhs_sum, wb_rhs_sum)
+
+        print(
+            f'Cat: {cat}, Overall input by output ratio: '
+            f'{wb_lhs_sum / wb_rhs_sum:0.5f}')
+#==============================================================================
+
         self.temp_arr = (rarea_arr * temp_dist_arr).sum(axis=0)
         self.prec_arr = (rarea_arr * prec_dist_arr).sum(axis=0)
         self.pet_arr = (rarea_arr * pet_dist_arr).sum(axis=0)
@@ -256,8 +325,6 @@ class PlotCatHBVSimKf:
 #                 f'kf_{self.kf_str}_HBV_snow_{self.cat}.npy')
 #
 #             np.save(out_data_loc, all_output[:, :, 0])
-
-        self.q_sim_arr = all_outputs_dict['qsim_arr']
 
         all_output = (rrarea_arr * all_output).sum(axis=0)
 
@@ -417,16 +484,16 @@ class PlotCatHBVSimKf:
                 self.comb_run_arr[self.bal_idxs[i]:self.bal_idxs[i + 1]])
 
             curr_sto = (
-                self.ur_sto_arr[self.bal_idxs[i + 1]] +
-                self.lr_sto_arr[self.bal_idxs[i + 1]] +
-                self.snow_arr[self.bal_idxs[i + 1]] +
-                self.sm_arr[self.bal_idxs[i + 1]])
+                self.ur_sto_arr[self.bal_idxs[i + 1] - 1] +
+                self.lr_sto_arr[self.bal_idxs[i + 1] - 1] +
+                self.snow_arr[self.bal_idxs[i + 1] - 1] +
+                self.sm_arr[self.bal_idxs[i + 1] - 1])
 
             pre_sto = (
-                self.ur_sto_arr[self.bal_idxs[i]] +
-                self.lr_sto_arr[self.bal_idxs[i]] +
-                self.snow_arr[self.bal_idxs[i]] +
-                self.sm_arr[self.bal_idxs[i]])
+                self.ur_sto_arr[self.bal_idxs[i] - 1] +
+                self.lr_sto_arr[self.bal_idxs[i] - 1] +
+                self.snow_arr[self.bal_idxs[i] - 1] +
+                self.sm_arr[self.bal_idxs[i] - 1])
 
             # ET accounted for
             act_bal_w_et_arr.append(
