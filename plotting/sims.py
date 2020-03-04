@@ -451,6 +451,10 @@ class PlotCatHBVSimKf:
         act_bal_w_et_arr = np.asarray(act_bal_w_et_arr)
         act_bal_wo_et_arr = np.asarray(act_bal_wo_et_arr)
 
+        sim_bal_w_et_arr = np.array(sim_bal_w_et_arr)
+        sim_bal_wo_et_arr = np.array(sim_bal_wo_et_arr)
+        et_ratio_arr = np.array(et_ratio_arr)
+
         act_bal_w_et_arr[act_bal_w_et_arr < min_vol_ratio_err] = (
             min_vol_ratio_err)
 
@@ -459,6 +463,12 @@ class PlotCatHBVSimKf:
 
         act_bal_w_et_arr = (
             np.concatenate(([np.nan, np.nan], act_bal_w_et_arr), axis=0))
+
+        sim_bal_w_et_arr[sim_bal_w_et_arr < min_vol_ratio_err] = (
+            min_vol_ratio_err)
+
+        sim_bal_w_et_arr[sim_bal_w_et_arr > max_vol_ratio_err] = (
+            max_vol_ratio_err)
 
         sim_bal_w_et_arr = (
             np.concatenate(([np.nan, np.nan], sim_bal_w_et_arr), axis=0))
@@ -472,8 +482,23 @@ class PlotCatHBVSimKf:
         act_bal_wo_et_arr = (
             np.concatenate(([np.nan, np.nan], act_bal_wo_et_arr), axis=0))
 
+        sim_bal_wo_et_arr[sim_bal_wo_et_arr < min_vol_ratio_err] = (
+            min_vol_ratio_err)
+
+        sim_bal_wo_et_arr[sim_bal_wo_et_arr > max_vol_ratio_err] = (
+            max_vol_ratio_err)
+
         sim_bal_wo_et_arr = (
             np.concatenate(([np.nan, np.nan], sim_bal_wo_et_arr), axis=0))
+
+        et_ratio_arr[et_ratio_arr < min_vol_ratio_err] = (
+            min_vol_ratio_err)
+
+        et_ratio_arr[et_ratio_arr > max_vol_ratio_err] = (
+            max_vol_ratio_err)
+
+        et_ratio_arr = (
+            np.concatenate(([np.nan, np.nan], et_ratio_arr), axis=0))
 
         prec_sum_arr = np.concatenate(
             ([np.nan, np.nan], prec_sum_arr), axis=0)
@@ -486,9 +511,6 @@ class PlotCatHBVSimKf:
 
         q_sim_sum_arr = (
             np.concatenate(([np.nan, np.nan], q_sim_sum_arr), axis=0))
-
-        et_ratio_arr = (
-            np.concatenate(([np.nan, np.nan], et_ratio_arr), axis=0))
 
         font_size = 5
         t_rows = 7
@@ -604,9 +626,6 @@ class PlotCatHBVSimKf:
 
         balance_ratio_ax.set_ylim(min_vol_ratio_err, max_vol_ratio_err)
         balance_ratio_ax.set_xticklabels([])
-
-#         for i in range(2, len(self.bal_idxs)):
-#             balance_ratio_ax.text(self.bal_idxs[i], sim_bal_w_et_arr[i], f'{sim_bal_w_et_arr[i]:0.5f}')
 
         balance_sum_ax.scatter(
             self.bal_idxs,
