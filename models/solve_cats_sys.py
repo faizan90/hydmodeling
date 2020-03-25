@@ -1006,7 +1006,7 @@ def solve_cat(
                 else:
                     raise NotImplementedError('Incorrect route_type!')
 
-            bounds_arr = np.asarray(bounds_list)
+            bounds_arr = np.asarray(bounds_list, dtype=np.float64)
             assert bounds_arr.ndim == 2
             assert prms_span_idxs.ndim == 2
 

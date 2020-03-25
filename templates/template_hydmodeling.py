@@ -537,7 +537,7 @@ def main():
 
     bounds_dict = OrderedDict()
 
-    if True:
+    if not cfp['TEST_MODEL']['test_params_loc']:
 
         bounds_dict['tt_bds'] = [
             float(_) for _ in cfp['PARAM_BOUNDS']['tt'].split(sep)]
@@ -582,6 +582,15 @@ def main():
             float(_) for _ in cfp['PARAM_BOUNDS']['musk_wt'].split(sep)]
 
     else:
+
+        print('\n\n')
+        print('#' * 30)
+        print('Using test_params_loc for parameters...')
+        print('#' * 30)
+        print('\n\n')
+
+        opt_schm_vars_dict['max_iters'] = 1
+
         prm_cols = [
             'tt',
             'cm',
@@ -599,29 +608,29 @@ def main():
         prms_df = pd.read_csv(
             cfp['TEST_MODEL']['test_params_loc'],
             sep=sep,
-            index_col=0).loc[prm_cols]
+            index_col=0).loc[prm_cols].astype(float)
 
-        bounds_dict['tt_bds'] = [prms_df.loc['tt']] * 2
+        bounds_dict['tt_bds'] = [prms_df.loc['tt'][0]] * 2
 
-        bounds_dict['cm_bds'] = [prms_df.loc['cm']] * 2
+        bounds_dict['cm_bds'] = [prms_df.loc['cm'][0]] * 2
 
-        bounds_dict['pcm_bds'] = [prms_df.loc['pcm']] * 2
+        bounds_dict['pcm_bds'] = [prms_df.loc['pcm'][0]] * 2
 
-        bounds_dict['fc_bds'] = [prms_df.loc['fc']] * 2
+        bounds_dict['fc_bds'] = [prms_df.loc['fc'][0]] * 2
 
-        bounds_dict['beta_bds'] = [prms_df.loc['beta']] * 2
+        bounds_dict['beta_bds'] = [prms_df.loc['beta'][0]] * 2
 
-        bounds_dict['pwp_bds'] = [prms_df.loc['pwp']] * 2
+        bounds_dict['pwp_bds'] = [prms_df.loc['pwp'][0]] * 2
 
-        bounds_dict['ur_thr_bds'] = [prms_df.loc['ur_thr']] * 2
+        bounds_dict['ur_thr_bds'] = [prms_df.loc['ur_thr'][0]] * 2
 
-        bounds_dict['k_uu_bds'] = [prms_df.loc['k_uu']] * 2
+        bounds_dict['k_uu_bds'] = [prms_df.loc['k_uu'][0]] * 2
 
-        bounds_dict['k_ul_bds'] = [prms_df.loc['k_ul']] * 2
+        bounds_dict['k_ul_bds'] = [prms_df.loc['k_ul'][0]] * 2
 
-        bounds_dict['k_d_bds'] = [prms_df.loc['k_d']] * 2
+        bounds_dict['k_d_bds'] = [prms_df.loc['k_d'][0]] * 2
 
-        bounds_dict['k_ll_bds'] = [prms_df.loc['k_ll']] * 2
+        bounds_dict['k_ll_bds'] = [prms_df.loc['k_ll'][0]] * 2
 
     tt_flags = [int(_) for _ in cfp['PRM_FLAGS']['tt'].split(sep)]
     cm_flags = [int(_) for _ in cfp['PRM_FLAGS']['cm'].split(sep)]
