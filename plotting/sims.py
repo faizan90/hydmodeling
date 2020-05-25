@@ -411,7 +411,8 @@ class PlotCatHBVSimKf:
             'lr_sto': self.lr_sto_arr,
             'lr_run': self.lr_run_arr,
             'comb_run': self.comb_run_arr,
-            'q_sim': self.q_sim_arr
+            'q_sim': self.q_sim_arr,
+            'q_obs': self.q_act_arr,
             }
 
         sim_df = pd.DataFrame(sim_dict, dtype=float)
