@@ -7,7 +7,6 @@
 # cython: embedsignature=True
 
 import time
-import timeit
 import random
 
 from libcpp.map cimport map as cmap

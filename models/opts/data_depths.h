@@ -17,39 +17,31 @@ double shrink_cnst = 1e-6;
 
 void quick_sort(double *arr, long first_index, long last_index) {
 
-	long pivotIndex, index_a, index_b;
-	double temp;
+	if (first_index >= last_index) return;
 
-	if (first_index < last_index) {
-		pivotIndex = first_index;
-		index_a = first_index;
-		index_b = last_index;
+    double pivot = arr[first_index + ((last_index - first_index) / 2)];
 
-		while (index_a < index_b) {
+    long long index_a = first_index - 1;
 
-			while ((arr[index_a] <= arr[pivotIndex]) &&
-					(index_a < last_index)) {
-				index_a++;
-			}
+    long long index_b = last_index + 1;
 
-			while (arr[index_b] > arr[pivotIndex]) {
-				index_b--;
-			}
+    double temp;
 
-			if (index_a < index_b) {
-				temp = arr[index_a];
-				arr[index_a] = arr[index_b];
-				arr[index_b] = temp;
-			}
-		}
+    while (1) {
 
-		temp = arr[pivotIndex];
-		arr[pivotIndex] = arr[index_b];
-		arr[index_b] = temp;
+    	while(arr[++index_a] < pivot);
 
-		quick_sort(arr, first_index, index_b - 1);
-		quick_sort(arr, index_b + 1, last_index);
-	}
+        while(arr[--index_b] > pivot);
+
+        if (index_a >= index_b) break;
+
+        temp = arr[index_a];
+        arr[index_a] = arr[index_b];
+        arr[index_b] = temp;
+    }
+
+    quick_sort(arr, first_index, index_b);
+    quick_sort(arr, index_b + 1, last_index);
 	return;
 }
 
