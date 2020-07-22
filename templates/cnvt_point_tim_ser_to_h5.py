@@ -79,23 +79,22 @@ def cnvt_text_to_h5(
 def main():
 
     main_dir = Path(
-        r'P:\Synchronize\IWS\Colleagues_Students\Sebastian'
-        r'_Bachelor\hydmod_test_data')
+        r'P:\Synchronize\IWS\QGIS_Neckar\hydmod\phsann_sims')
 
     os.chdir(main_dir)
 
     in_files = [
-        r'rockenau_ppt_1961_2015_lumped.csv',
-        r'rockenau_tem_1961_2015_lumped.csv',
-        r'rockenau_pet_1961_2015_lumped.csv',
+        r'sim_data_0_prec.csv',
+        r'sim_data_0_temp.csv',
+        r'sim_data_0_pet.csv',
         ]
 
-    out_files = ['ppt.h5', 'tem.h5', 'pet.h5']
+    out_files = ['sim_data_0_ppt.h5', 'sim_data_0_tem.h5', 'sim_data_0_pet.h5']
 
     labels = ['lump'] * len(in_files)
 
-    beg_date = '1961-01-01'
-    end_date = '2015-11-30'
+    beg_date = '1963-01-01'
+    end_date = '1967-12-31'
     time_fmt = '%Y-%m-%d'
 
     sep = ';'
