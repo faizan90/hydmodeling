@@ -186,7 +186,7 @@ def plot_cat_discharge_errors(plot_args):
             # For this specific case only!
             if calib_valid_lab == 'calib':
                 dummy_index = pd.date_range(
-                    '1990-06-01', periods=qsims_df_orig.shape[0] + off_idx,
+                    '1991-06-01', periods=qsims_df_orig.shape[0] + off_idx,
                     freq='D')[off_idx:]
 
             elif calib_valid_lab == 'valid':

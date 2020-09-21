@@ -23,6 +23,7 @@ DEBUG_FLAG = False
 from hydmodeling.models import (
     hbv_loop_py,
 #     hbv_c_loop_py,
+    get_ns_cy,
     tfm_opt_to_hbv_prms_py)
 
 
@@ -82,12 +83,12 @@ def get_sim_ress(kf_dict, area_arr, conv_ratio):
         wb_lhss.append(wb_lhs)
         wb_rhss.append(wb_rhs)
 
-        rel_abs_diff = np.abs(wb_rhs - wb_lhs).sum() / wb_rhs.sum()
-
-        if rel_abs_diff >= 1e-5:
-            print(
-                f'Relative water balance difference not zero '
-                f'({rel_abs_diff:0.3f}) at cell: {i}!')
+#         rel_abs_diff = np.abs(wb_rhs - wb_lhs).sum() / wb_rhs.sum()
+#
+#         if rel_abs_diff >= 1e-5:
+#             print(
+#                 f'Relative water balance difference not zero '
+#                 f'({rel_abs_diff:0.3f}) at cell: {i}!')
 
         if plot_flag:
             axes = plt.subplots(1, 2, squeeze=False)[1]
@@ -177,6 +178,8 @@ def run_sim(args):
         area_arr = db['data/area_arr'][...]
         n_cells = area_arr.shape[0]
 
+        off_idx = db['data'].attrs['off_idx']
+
         all_kfs_dict = {}
         for i in range(1, kfolds + 1):
             cd_db = db[f'{data_ds}/kf_{i:02d}']
@@ -206,7 +209,8 @@ def run_sim(args):
             ress = (
                 prm_cat,
                 data_cat,
-                get_sim_ress(kf_dict, area_arr, conv_ratio))
+                get_sim_ress(kf_dict, area_arr, conv_ratio),
+                off_idx)
 
             break
 
@@ -222,13 +226,13 @@ def main():
 
     cats = [420]
 
-    data_ds = 'calib'  # read calibration/validation data
+    data_ds = 'valid'  # read calibration/validation data
 
-    prms_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\neckar_lulc\01_database')
+    prms_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\hist_1882_hist_calib\01_database')
 
-    data_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\neckar_lulc\01_database')
+    data_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\hist_1882_calib_valid_prsnt_dist\01_database')
 
-    out_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\test_wat_bal_02')
+    out_dir = Path(fr'P:\Synchronize\IWS\QGIS_Neckar\hist_1882__hist_prms__prsnt_data_{data_ds}')
 
     out_dir.mkdir(exist_ok=True)
 
@@ -241,9 +245,14 @@ def main():
 
         assert in_data_h5.exists()
 
-        prm_cat, data_cat, ress = run_sim((in_prms_h5, in_data_h5, data_ds))
+        prm_cat, data_cat, ress, off_idx = run_sim(
+            (in_prms_h5, in_data_h5, data_ds))
 
         out_df = pd.DataFrame(data={'ref': ress[3], 'sim': ress[2]})
+
+        ns = get_ns_cy(out_df['ref'].values, out_df['sim'].values, off_idx)
+
+        print(f'Cat {cat}\'s NS: {ns:0.3f}')
 
         out_df.to_csv(
             out_dir / f'{prm_cat}p_{data_cat}d.csv',

@@ -30,7 +30,7 @@ def plot_cat_qsims(cat_db):
 
     with h5py.File(cat_db, 'r') as db:
         # opt_iters = list(range(db['calib/kf_01/iter_prm_vecs'].shape[0]))
-        opt_iters = [6]
+        opt_iters = [4]
         long_short_break_freqs = ['A']
 
         cv_flag = db['data'].attrs['cv_flag']
@@ -78,7 +78,7 @@ class PlotCatQSims:
             raise NotImplementedError(
                 f'Only configured for ROPE, got {self.opt_schm} instead!')
 
-        self.acc_rate = 0.4  # db['cdata/opt_schm_vars_dict'].attrs['acc_rate']
+        self.acc_rate = db['cdata/opt_schm_vars_dict'].attrs['acc_rate']
 
         print(f'acc_rate: {self.acc_rate}')
 
