@@ -302,7 +302,7 @@ cdef void gen_vecs_in_chull(
 
                 if bds_adj_atpts == max_bds_adj_atpts:
                     with gil: print(
-                        ('Maximum attempts to adjust bounds for paramter '
+                        ('Maximum attempts to adjust bounds for parameter '
                          'at index (PWP): %d reached!') % cpwp_i)
 
             for j in range(n_hbv_prms):
@@ -324,7 +324,7 @@ cdef void gen_vecs_in_chull(
 
                     if bds_adj_atpts == max_bds_adj_atpts:
                         with gil: print(
-                            ('Maximum attempts to adjust bounds for paramter '
+                            ('Maximum attempts to adjust bounds for parameter '
                              'at index: %d reached!') % (k + 1))
 
         for j in range(n_cpus):
