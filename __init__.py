@@ -13,7 +13,8 @@ from .dem_hyd_ansys import (
     get_stms,
     TauDEMAnalysis,
     crt_strms_rltn_tree,
-    plot_strm_rltn)
+    plot_strm_rltn,
+    merge_same_id_shp_poly)
 
 from .models import (
     get_ns_cy,
