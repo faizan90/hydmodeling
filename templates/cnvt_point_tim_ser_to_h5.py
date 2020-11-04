@@ -79,22 +79,23 @@ def cnvt_text_to_h5(
 def main():
 
     main_dir = Path(
-        r'P:\Synchronize\IWS\QGIS_Neckar\hydmod\phsann_sims')
+        r'P:\Synchronize\IWS\QGIS_Neckar\hydmod\input_hyd_data')
 
     os.chdir(main_dir)
 
     in_files = [
-        r'sim_data_0_prec.csv',
-        r'sim_data_0_temp.csv',
-        r'sim_data_0_pet.csv',
+        r'neckar_tot_prec_1901_2010_daysum__TOT_PREC.csv',
+        r'neckar_full_neckar_ppt_interp__1961-01-01_to_2015-12-31_1km_all__EDK.csv',
+        r'neckar_full_neckar_pet_kriging_1961-01-01_to_2015-12-31_1km_all__EDK.csv',
+        r'neckar_full_neckar_avg_temp_kriging_1961-01-01_to_2015-12-31_1km_all__EDK.csv',
         ]
 
-    out_files = ['sim_data_0_ppt.h5', 'sim_data_0_tem.h5', 'sim_data_0_pet.h5']
+    out_files = ['neckar_ppt_cosmo.h5', 'neckar_ppt_obs.h5', 'neckar_pet_obs.h5', 'neckar_tem_obs.h5']
 
     labels = ['lump'] * len(in_files)
 
-    beg_date = '1963-01-01'
-    end_date = '1967-12-31'
+    beg_date = '1961-01-01'
+    end_date = '2010-12-31'
     time_fmt = '%Y-%m-%d'
 
     sep = ';'
