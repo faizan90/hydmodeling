@@ -98,7 +98,7 @@ def get_data_dict_from_h5_with_time(
         for key in keys:
             out_data_dict[key] = pd.DataFrame(
                 index=h5_times[select_idxs],
-                data=data_ds[str(key)][select_idxs, :])
+                data=data_ds[str(key)][select_idxs,:])
 
             if set_na_to_zero_flag:
                 nan_ct = np.isnan(out_data_dict[key].values).sum()
@@ -151,7 +151,7 @@ def get_data_dict_from_h5_with_time_and_cat(
 
             out_data_dict[key] = pd.DataFrame(
                 index=h5_times[select_idxs],
-                data=data_ds[str(key)][select_idxs, :])
+                data=data_ds[str(key)][select_idxs,:])
 
             if set_na_to_zero_flag:
                 nan_ct = np.isnan(out_data_dict[key].values).sum()
@@ -272,7 +272,7 @@ def main():
 #     plot_cats_discharge_errs_flag = True
 
     use_cv_time_flag = False
-#     use_cv_time_flag = True
+    use_cv_time_flag = True
 
     #=========================================================================
     # This performs the hydrological preprocessing

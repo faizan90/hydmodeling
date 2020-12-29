@@ -51,6 +51,9 @@ from .models import (
     get_ln_ns_var_res_prt_cy,
 
     get_hargreaves_pet,
+
+    get_sim_probs_in_ref_cy,
+    rank_sorted_arr_cy,
     )
 
 from .plotting import (

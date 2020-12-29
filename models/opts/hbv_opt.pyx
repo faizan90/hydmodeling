@@ -37,6 +37,7 @@ from ..miscs.misc_ftns_partial cimport (
     get_ln_mean_prt,
     get_variance_prt,
     cmpt_resampled_arr_prt)
+from..miscs.fdcs cimport sort_arr, rank_sorted_arr
 from ..miscs.dtypes cimport (
     DT_D,
     DT_UL,
@@ -78,7 +79,8 @@ from ..miscs.dtypes cimport (
     ft_demr_1_i,
     ft_demr_2_i,
     demr_peak_i,
-    ln_demr_peak_i)
+    ln_demr_peak_i,
+    demr_sort_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -202,17 +204,22 @@ cpdef dict hbv_opt(args):
         DT_UL n_cells, n_recs, cat, stm, n_route_prms, opt_schm
         DT_UL route_type, n_stms, cat_no, stm_idx, cat_idx
         DT_UL n_pts_ft  # always even
+        DT_UL n_fdc_vals
 
         DT_UL[::1] stms_idxs
 
         DT_ULL[::1] obj_ftn_resamp_tags_arr
 
         DT_D[::1] inflow_arr, qact_arr, f_vars, area_arr, qact_resamp_arr
+        DT_D[::1] qact_arr_sort, qact_probs_arr_sort
+
         DT_D[:, ::1] qact_qres_mult_arr
         DT_D[:, ::1] inis_arr, temp_arr, prec_arr, petn_arr, route_prms
         DT_D[:, ::1] dem_net_arr, qsim_qres_mult_arr
         DT_D[:, ::1] qsim_mult_arr, inflow_mult_arr
         DT_D[:, ::1] qsim_resamp_mult_arr
+        DT_D[:, ::1] qsim_mult_arr_sort, qsim_mult_probs_arr_sort
+ 
         DT_D[:, :, :, ::1] outs_mult_arr
 
         cmap[long, long] cat_to_idx_map, stm_to_idx_map
@@ -226,7 +233,7 @@ cpdef dict hbv_opt(args):
         # All other variables
         DT_UL n_cpus, n_resamp_tags = 0, a_zero = 0
 
-        DT_D min_q_thresh
+        DT_D min_q_thresh, temp = np.nan
 #         DT_D mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
         DT_D ft_demr_1, ft_demr_2
 
@@ -300,7 +307,7 @@ cpdef dict hbv_opt(args):
      use_step_arr,
      min_q_thresh,
      use_res_cat_runoff_flag) = args[6]
-    
+
     (area_arr,
      prms_idxs, 
      prms_flags,
@@ -651,6 +658,36 @@ cpdef dict hbv_opt(args):
             obj_res_mult_doubles[i, ln_demr_peak_i] = (
                 obj_doubles[ln_demr_peak_i])
 
+    if obj_ftn_wts[6]:
+        n_fdc_vals = n_recs
+
+    else:
+        n_fdc_vals = 1
+
+    qact_arr_sort = np.full(n_fdc_vals, np.nan, dtype=DT_D_NP)
+    qact_probs_arr_sort = np.full(n_fdc_vals, np.nan, dtype=DT_D_NP)
+    qsim_mult_arr_sort = np.full((n_cpus, n_fdc_vals), np.nan, dtype=DT_D_NP)
+    qsim_mult_probs_arr_sort = np.full(
+        (n_cpus, n_fdc_vals), np.nan, dtype=DT_D_NP)
+
+    if obj_ftn_wts[6]:
+        sort_arr(qact_arr, qact_arr_sort)
+        rank_sorted_arr(qact_arr_sort, qact_probs_arr_sort, 3)
+
+        temp = n_fdc_vals + 1.0
+        for i in range(n_fdc_vals):
+            qact_probs_arr_sort[i] /= temp
+
+        temp = get_mean(qact_probs_arr_sort, obj_longs[off_idx_i])
+
+        obj_doubles[demr_sort_i] = get_demr(
+            qact_probs_arr_sort, temp, obj_longs[off_idx_i])
+
+        for i in range(n_cpus):
+            obj_res_mult_doubles[i, demr_sort_i] = obj_doubles[demr_sort_i]
+
+        temp = np.nan
+
     # for the selected parameters, get obj vals
     for i in prange(
         n_prm_vecs,
@@ -688,6 +725,10 @@ cpdef dict hbv_opt(args):
             qact_qres_mult_arr[tid],
             qsim_qres_mult_arr[tid],
             obj_res_mult_doubles[tid],
+            qact_arr_sort,
+            qsim_mult_arr_sort[tid],
+            qact_probs_arr_sort,
+            qsim_mult_probs_arr_sort[tid],
             inis_arr,
             temp_arr,
             prec_arr,
@@ -859,6 +900,10 @@ cpdef dict hbv_opt(args):
                 qact_qres_mult_arr[tid],
                 qsim_qres_mult_arr[tid],
                 obj_res_mult_doubles[tid],
+                qact_arr_sort,
+                qsim_mult_arr_sort[tid],
+                qact_probs_arr_sort,
+                qsim_mult_probs_arr_sort[tid],
                 inis_arr,
                 temp_arr,
                 prec_arr,
@@ -989,6 +1034,10 @@ cpdef dict hbv_opt(args):
         qact_qres_mult_arr[tid],
         qsim_qres_mult_arr[tid],
         obj_res_mult_doubles[tid],
+        qact_arr_sort,
+        qsim_mult_arr_sort[tid],
+        qact_probs_arr_sort,
+        qsim_mult_probs_arr_sort[tid],
         inis_arr,
         temp_arr,
         prec_arr,

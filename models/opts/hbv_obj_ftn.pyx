@@ -15,6 +15,7 @@ from ..miscs.misc_ftns_partial cimport (
 from ..miscs.sec_miscs cimport update_obj_doubles
 from ..ft.dfti cimport cmpt_real_fourtrans_1d, cmpt_cumm_freq_pcorrs
 from ..ft.effs cimport get_ft_eff
+from..miscs.fdcs cimport sort_arr, get_sim_probs_in_ref
 
 from ..hbvs.hbv_mult_cat_loop cimport hbv_mult_cat_loop
 from ..miscs.dtypes cimport (
@@ -34,7 +35,8 @@ from ..miscs.dtypes cimport (
     route_type_i,
     NAN,
     demr_peak_i,
-    ln_demr_peak_i)
+    ln_demr_peak_i,
+    demr_sort_i)
 
 
 cdef DT_D obj_ftn(
@@ -65,6 +67,10 @@ cdef DT_D obj_ftn(
               DT_D[::1] qact_qres_arr,
               DT_D[::1] qsim_qres_arr,
               DT_D[::1] obj_res_doubles,
+        const DT_D[::1] qact_arr_sort,
+              DT_D[::1] qsim_arr_sort,
+        const DT_D[::1] qact_probs_arr_sort,
+              DT_D[::1] qsim_probs_arr_sort,
 
         const DT_D[:, ::1] inis_arr,
               DT_D[:, ::1] temp_arr,
@@ -93,7 +99,7 @@ cdef DT_D obj_ftn(
 
         DT_D res, obj_ftn_wts_sum, min_q_thresh
 
-    if obj_ftn_wts.shape[0] > 6:
+    if obj_ftn_wts.shape[0] > 7:
         with gil: raise NotImplementedError
 
     tfm_opt_to_hbv_prms(
@@ -156,10 +162,12 @@ cdef DT_D obj_ftn(
                 qact_qres_arr[i] = qact_arr[i] - stms_outflow_arr[i, stm_idx]
                 qsim_qres_arr[i] = qsim_arr[i] - stms_outflow_arr[i, stm_idx]
 
-                # the limiting is needed only for discharges to be higher than
+                # The limiting is needed only for discharges to be higher than
                 # zero in case of ln_NS but it is done for all obj_ftns,
                 # to have them comparable. Theoretically, doing so produces
-                # mass balance problems.
+                # mass balance problems. Will also set negative values to
+                # min_q_thresh. Don't uncomment.
+
 #                 if qact_qres_arr[i] < min_q_thresh:
 #                     qact_qres_arr[i] = min_q_thresh
 # 
@@ -343,7 +351,7 @@ cdef DT_D obj_ftn(
 
     if obj_ftn_wts[5]:
         res = res + obj_ftn_wts[5] * (
-            get_ns_prt(
+            get_ln_ns_prt(
                 qact_qres_arr,
                 qsim_qres_arr,
                 use_step_arr,
@@ -351,5 +359,23 @@ cdef DT_D obj_ftn(
                 obj_longs[off_idx_i]))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[5]
+
+    if obj_ftn_wts[6]:
+        sort_arr(qsim_arr, qsim_arr_sort)
+
+        get_sim_probs_in_ref(
+            qact_arr_sort, 
+            qact_probs_arr_sort, 
+            qsim_arr_sort, 
+            qsim_probs_arr_sort)
+
+        res = res + obj_ftn_wts[6] * (
+               get_ns(
+                qact_probs_arr_sort,
+                qsim_probs_arr_sort,
+                obj_res_doubles[demr_sort_i],
+                obj_longs[off_idx_i]))  # off_idxs can be user defined?
+
+        obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[6]
 
     return obj_ftn_wts_sum - res

@@ -33,6 +33,8 @@ from .miscs.misc_ftns_partial import (
     get_ns_var_res_prt_cy,
     get_ln_ns_var_res_prt_cy)
 
+from .miscs.fdcs import get_sim_probs_in_ref_cy, rank_sorted_arr_cy
+
 from .opts.hbv_opt import hbv_opt
 
 from .opts.test_depth_ftns import depth_ftn_cy, pre_depth_cy, post_depth_cy
