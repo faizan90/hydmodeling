@@ -1211,7 +1211,10 @@ class PlotCatDiagnostics1D:
                     sq_diffs_sum -= sq_diffs_arr[i]
                     err_red_arr[i + 1] = 1.0 - (sq_diffs_sum / demr)
 
-                assert np.isclose(sq_diffs_sum, 0.0)
+                if not np.isclose(sq_diffs_sum, 0.0):
+                    print(
+                        f'Square differences sum ({sq_diffs_sum:0.5e}) '
+                        f'not close to zero:')
 
             elif eff_ftn == 'ln_ns':
                 mean = get_ln_mean(qobs_sort_arr, 0)
