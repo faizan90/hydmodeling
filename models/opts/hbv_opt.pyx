@@ -659,7 +659,7 @@ cpdef dict hbv_opt(args):
                 obj_doubles[ln_demr_peak_i])
 
     if obj_ftn_wts[6]:
-        n_fdc_vals = n_recs
+        n_fdc_vals = n_recs - obj_longs[off_idx_i]
 
     else:
         n_fdc_vals = 1
@@ -671,17 +671,16 @@ cpdef dict hbv_opt(args):
         (n_cpus, n_fdc_vals), np.nan, dtype=DT_D_NP)
 
     if obj_ftn_wts[6]:
-        sort_arr(qact_arr, qact_arr_sort)
+        sort_arr(qact_arr[obj_longs[off_idx_i]:], qact_arr_sort)
         rank_sorted_arr(qact_arr_sort, qact_probs_arr_sort, 3)
 
         temp = n_fdc_vals + 1.0
         for i in range(n_fdc_vals):
             qact_probs_arr_sort[i] /= temp
 
-        temp = get_mean(qact_probs_arr_sort, obj_longs[off_idx_i])
+        temp = get_mean(qact_probs_arr_sort, 0)
 
-        obj_doubles[demr_sort_i] = get_demr(
-            qact_probs_arr_sort, temp, obj_longs[off_idx_i])
+        obj_doubles[demr_sort_i] = get_demr(qact_probs_arr_sort, temp, 0)
 
         for i in range(n_cpus):
             obj_res_mult_doubles[i, demr_sort_i] = obj_doubles[demr_sort_i]

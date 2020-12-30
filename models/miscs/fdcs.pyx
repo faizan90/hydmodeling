@@ -11,7 +11,8 @@ cimport numpy as np
 
 cdef extern from "../opts/data_depths.h" nogil:
     cdef:
-        void quick_sort(double *arr, long first_index, long last_index)
+        void quick_sort(
+            double *arr, long long first_index, long long last_index)
 
 
 DT_D_NP = np.float64

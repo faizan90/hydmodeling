@@ -361,7 +361,7 @@ cdef DT_D obj_ftn(
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[5]
 
     if obj_ftn_wts[6]:
-        sort_arr(qsim_arr, qsim_arr_sort)
+        sort_arr(qsim_arr[obj_longs[off_idx_i]:], qsim_arr_sort)
 
         get_sim_probs_in_ref(
             qact_arr_sort, 
@@ -374,7 +374,7 @@ cdef DT_D obj_ftn(
                 qact_probs_arr_sort,
                 qsim_probs_arr_sort,
                 obj_res_doubles[demr_sort_i],
-                obj_longs[off_idx_i]))  # off_idxs can be user defined?
+                0))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[6]
 

@@ -15,7 +15,7 @@ double rand_c_mp(unsigned long long &seed);
 double shrink_cnst = 1e-6;
 
 
-void quick_sort(double *arr, long first_index, long last_index) {
+void quick_sort(double *arr, long long first_index, long long last_index) {
 
 	if (first_index >= last_index) return;
 

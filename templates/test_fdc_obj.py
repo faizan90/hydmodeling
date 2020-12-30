@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.stats import rankdata
 import matplotlib.pyplot as plt
 
-from hydmodeling import get_sim_probs_in_ref_cy, rank_sorted_arr_cy
+from hydmodeling import get_sim_probs_in_ref_cy, rank_sorted_arr_cy, get_ns_cy
 
 plt.ioff()
 
@@ -91,6 +91,8 @@ def main():
     end_time = '1995-12-31'
 #     end_time = '1962-01-31'
 
+    off_idx = 365
+
     sep = ';'
 
 #     plot_type = 'dist'
@@ -99,10 +101,14 @@ def main():
     fig_size = (10, 7)
 
     ref_vals = pd.read_csv(
-        ref_file, sep=sep, index_col=0).loc[beg_time:end_time, col].values
+        ref_file,
+        sep=sep,
+        index_col=0).loc[beg_time:end_time, col].values[off_idx:]
 
     sim_vals = pd.read_csv(
-        sim_file, sep=sep, index_col=0).loc[beg_time:end_time, col].values
+        sim_file,
+        sep=sep,
+        index_col=0).loc[beg_time:end_time, col].values[off_idx:]
 
     assert np.all(np.isfinite(ref_vals))
     assert np.all(np.isfinite(sim_vals))
@@ -110,7 +116,8 @@ def main():
     ref_vals_sort = np.sort(ref_vals)
     sim_vals_sort = np.sort(sim_vals)
 
-    ref_probs_sort = rankdata(ref_vals_sort) / (ref_vals_sort.size + 1.0)
+    ref_ranks_sort = rankdata(ref_vals_sort)
+    ref_probs_sort = ref_ranks_sort / (ref_vals_sort.size + 1.0)
 
     if False:  # Test python version
         t_beg = timeit.default_timer()
@@ -134,10 +141,13 @@ def main():
         err = ((ref_probs_sort - sim_probs_sort) ** 2).sum()
         print('Squared difference sum in probs:', err)
 
-    if False:  # Compare cython and scipy versions of ranking data.
-        ref_ranks_sort = rankdata(ref_vals_sort)
+    if True:  # Compare cython and scipy versions of ranking data.
         ref_ranks_sort_cy = rank_sorted_arr_cy(ref_vals_sort, 3)
         assert np.all(np.isclose(ref_ranks_sort, ref_ranks_sort_cy))
+
+    if True:
+        ns_fdc = get_ns_cy(ref_probs_sort, sim_probs_sort, 0)
+        print('NS FDC:', ns_fdc)
 
     if True:
         plt.figure(figsize=fig_size)
