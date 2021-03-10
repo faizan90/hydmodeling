@@ -5,7 +5,7 @@ Created on Oct 8, 2017
 '''
 from os.path import exists as os_exists
 
-import ogr
+from osgeo import ogr
 from numpy import unique
 
 

@@ -8,6 +8,10 @@ Created on 23 Jun 2018
 
 # matplotlib.use('Cairo')
 
+# Due to shitty tkinter errors.
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+
 from .dem_hyd_ansys import (
     get_cumm_cats,
     get_stms,

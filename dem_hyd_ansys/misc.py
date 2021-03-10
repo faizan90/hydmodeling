@@ -5,9 +5,8 @@ Created on Oct 8, 2017
 '''
 import os
 
-import gdal
-import ogr
 import numpy as np
+from osgeo import gdal, ogr
 
 
 def list_full_path(ext, file_dir):

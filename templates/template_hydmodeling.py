@@ -38,8 +38,6 @@ from hydmodeling import (
 
 from hydmodeling.plotting.perfs import get_peaks_mask
 
-# raise Exception
-
 
 def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
 
@@ -131,7 +129,7 @@ def get_data_dict_from_h5_with_time_and_cat(
     out_data_dict = {}
     with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
         h5_times = pd.to_datetime(
-            h5_hdl['time/time_strs'][...], format='%Y%m%dT%H%M%S')
+            h5_hdl['time/time_strs'][...].astype(str), format='%Y%m%dT%H%M%S')
 
         select_idxs = np.zeros(h5_times.size, dtype=bool)
 
@@ -139,6 +137,8 @@ def get_data_dict_from_h5_with_time_and_cat(
             sub_sel_idxs = ((h5_times >= beg_time) & (h5_times <= end_time))
 
             select_idxs |= sub_sel_idxs
+
+        select_idxs = np.where(select_idxs)[0]
 
         data_ds = h5_hdl[ds_grp]
 
@@ -268,8 +268,8 @@ def main():
     plot_opt_evo_flag = True
     plot_hbv_vars_flag = True
     plot_diags_flag = True
-#     plot_qsims_flag = True
-#     plot_cats_discharge_errs_flag = True
+#     plot_qsims_flag = True  # for ROPE only.
+#     plot_cats_discharge_errs_flag = True  # For ROPE only.
 
     use_cv_time_flag = False
     use_cv_time_flag = True

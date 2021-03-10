@@ -9,9 +9,9 @@ import timeit
 import time
 from pathlib import Path
 
-import ogr
 import numpy as np
 import pandas as pd
+from osgeo import ogr
 import matplotlib.pyplot as plt
 
 plt.ioff()
@@ -347,7 +347,7 @@ def crt_strms_rltn_tree(
 
             no_us_cats_flag = cat in no_cats_us_list
 
-            cats_prcssed_df.loc[cat, :3] = [
+            cats_prcssed_df.loc[cat, 'prcssed,no_up_cats,area'.split(',')] = [
                 False, no_us_cats_flag, cats_area_dict[cat]]
 
             cats_prcssed_df.loc[cat, 'optd'] = False

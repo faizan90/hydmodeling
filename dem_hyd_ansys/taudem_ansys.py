@@ -15,7 +15,7 @@ from os.path import (
 	basename,
 	dirname)
 
-import ogr
+from osgeo import ogr
 
 from .misc import get_ras_props, get_vec_props
 from .merge_polys import merge_same_id_shp_poly

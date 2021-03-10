@@ -25,9 +25,13 @@ DEBUG_FLAG = False
 
 def get_sim_probs_in_ref(ref_vals_sort, ref_probs_sort, sim_vals_sort):
 
+    '''
+    All inputs must be sorted in an ascending.
+    '''
+
     app_zero = 1e-15
 
-    sim_probs_sort = np.full_like(ref_probs_sort, np.nan)
+    sim_probs_sort = np.full_like(sim_vals_sort, np.nan)
 
     n_ref_vals = ref_vals_sort.size
     n_sim_vals = sim_vals_sort.size

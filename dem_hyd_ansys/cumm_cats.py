@@ -6,10 +6,11 @@ Created on %(date)s
 import timeit
 import time
 
-import ogr
 import os
 import numpy as np
 import pandas as pd
+
+from osgeo import ogr
 
 
 def get_cumm_cats(in_cat_shp,

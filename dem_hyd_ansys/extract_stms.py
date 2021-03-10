@@ -10,10 +10,10 @@ from shutil import copy2
 from copy import deepcopy
 from io import BytesIO as StringIO
 
-import ogr
 import numpy as np
-import shapefile as shp
 import pandas as pd
+from osgeo import ogr
+import shapefile as shp
 
 from .misc import get_ras_props, get_ras_as_array_GDAL
 

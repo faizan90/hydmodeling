@@ -38,7 +38,7 @@ def plot_cats_best_prms_2d(dbs_dir):
 
         bds_db = db['data/bds_dict']
         bds_dict = {key: bds_db[key][...] for key in bds_db}
-        prms_labs = db['data/all_prms_labs'][...]
+        prms_labs = db['data/all_prms_labs'][...].astype(str)
         lumped_prms_flag = db['data'].attrs['run_as_lump_flag']
 
         out_dir = db['data'].attrs['main']
@@ -513,7 +513,7 @@ def plot_cat_best_prms_1d(cat_db):
     out_params_fig_loc = os.path.join(
         out_dir, f'kfolds_prms_compare_{cat}.png')
 
-    plt.savefig(out_params_fig_loc, bbox='tight_layout')
+    plt.savefig(out_params_fig_loc, bbox_inches='tight')
 
     plt.close()
     return
@@ -956,7 +956,7 @@ def plot_cat_prm_vecs_evo_kf(
             fig_arr = fig_arr.reshape(
                 fig.canvas.get_width_height()[::-1] + (3,))
 
-            mins_arr = fig_arr[:, :, :].min(axis=2)
+            mins_arr = fig_arr[:,:,:].min(axis=2)
 
             not_white_idxs = np.where(mins_arr < 255)
 
@@ -972,7 +972,7 @@ def plot_cat_prm_vecs_evo_kf(
             c_left -= min(blines, c_left)
             c_rght += min(blines, mins_arr.shape[1] - c_rght)
 
-            fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1, :]
+            fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1,:]
 
             opt_vecs_fig_arrs_list.append(fig_arr)
 
@@ -1016,8 +1016,8 @@ def plot_cat_prm_vecs_evo_kf(
                 ax.set_ylim(chull_min, chull_max)
 
                 ax.scatter(
-                    iter_prm_vecs[opt_iter, :, i],
-                    iter_prm_vecs[opt_iter, :, j],
+                    iter_prm_vecs[opt_iter,:, i],
+                    iter_prm_vecs[opt_iter,:, j],
                     s=2,
                     color='k',
                     alpha=0.05)
@@ -1062,7 +1062,7 @@ def plot_cat_prm_vecs_evo_kf(
             fig_arr = fig_arr.reshape(
                 fig.canvas.get_width_height()[::-1] + (3,))
 
-            mins_arr = fig_arr[:, :, :].min(axis=2)
+            mins_arr = fig_arr[:,:,:].min(axis=2)
 
             not_white_idxs = np.where(mins_arr < 255)
 
@@ -1078,7 +1078,7 @@ def plot_cat_prm_vecs_evo_kf(
             c_left -= min(blines, c_left)
             c_rght += min(blines, mins_arr.shape[1] - c_rght)
 
-            fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1, :]
+            fig_arr = fig_arr[r_top:r_bot + 1, c_left:c_rght + 1,:]
 
             chull_fig_arrs_list.append(fig_arr)
 
