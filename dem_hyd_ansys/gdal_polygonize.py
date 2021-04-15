@@ -138,9 +138,9 @@ if src_ds is None:
 
 srcband = src_ds.GetRasterBand(src_band_n)
 
-if mask is 'default':
+if mask == 'default':
     maskband = srcband.GetMaskBand()
-elif mask is 'none':
+elif mask == 'none':
     maskband = None
 else:
     mask_ds = gdal.Open(mask)

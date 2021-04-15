@@ -15,7 +15,8 @@ from os.path import (
 	basename,
 	dirname)
 
-from osgeo import ogr
+import numpy as np
+from osgeo import ogr, gdal
 
 from .misc import get_ras_props, get_vec_props
 from .merge_polys import merge_same_id_shp_poly
@@ -243,21 +244,6 @@ class TauDEMAnalysis:
 
 			cmd_list.append(gage_watershed_cmd)
 
-		if self.strm_dists_flag:
-			strm_dist_cmd = (
-				'"%s" -p "%s" -src "%s" -dist "%s" -thresh "%d"' % (
-					self.strm_dist_exe,
-					self.fdr,
-					self.fac,
-					self.strm_dist,
-					self.strm_orign_thresh))
-
-			if self.n_cpus > 1:
-				strm_dist_cmd = (
-					'mpiexec -n %d %s' % (self.n_cpus, strm_dist_cmd))
-
-			cmd_list.append(strm_dist_cmd)
-
 		if self.verbose:
 			for cmd in cmd_list:
 				print('\nExecuting: %s' % cmd)
@@ -314,6 +300,60 @@ class TauDEMAnalysis:
 			driver = ogr.GetDriverByName(fmt)
 			if os_exists(temp_shp):
 				driver.DeleteDataSource(temp_shp)
+
+		if self.strm_dists_flag:
+
+			# Distance to closest stream.
+# 			strm_dist_cmd = (
+# 				'"%s" -p "%s" -src "%s" -dist "%s" -thresh "%d"' % (
+# 					self.strm_dist_exe,
+# 					self.fdr,
+# 					self.fac,
+# 					self.strm_dist,
+# 					self.strm_orign_thresh))
+
+			# Distance to the main outlet.
+			in_ds = gdal.Open(self.fac)
+
+			if in_ds is None:
+				raise RuntimeError('Could not open %s for reading!' % self.fac)
+
+			in_band = in_ds.GetRasterBand(1)
+			fac_arr = np.array(in_band.ReadAsArray())
+
+			max_fac = np.nanmax(fac_arr)
+
+			in_ds = None
+			fac_arr = None
+
+			strm_dist_cmd = (
+				'"%s" -p "%s" -src "%s" -dist "%s" -thresh "%d"' % (
+					self.strm_dist_exe,
+					self.fdr,
+					self.fac,
+					self.strm_dist,
+					max_fac))
+
+			if self.n_cpus > 1:
+				strm_dist_cmd = (
+					'mpiexec -n %d %s' % (self.n_cpus, strm_dist_cmd))
+
+			print('\nExecuting: %s' % strm_dist_cmd)
+
+			if self.verbose:
+				proc = subprocess.Popen(strm_dist_cmd, shell=False)
+				proc.wait()
+
+			else:
+				log_file_cur = open(self.log_file, 'a')
+				proc = subprocess.Popen(
+					strm_dist_cmd,
+					shell=False,
+					stdout=log_file_cur,
+					stderr=log_file_cur)
+
+				proc.wait()
+				log_file_cur.close()
 		return
 
 

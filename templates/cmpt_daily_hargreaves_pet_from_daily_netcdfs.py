@@ -4,8 +4,8 @@
 14 Feb 2020
 
 13:21:14
-
 '''
+
 import os
 import time
 import timeit
@@ -16,14 +16,11 @@ import numpy as np
 import pandas as pd
 import netCDF4 as nc
 
-from hydmodeling import get_hargreaves_pet, change_pt_crs
+import pyproj
+
+from hydmodeling import get_hargreaves_pet
 
 DEBUG_FLAG = False
-
-
-def change_crs(x, y, epsg):
-
-    return change_pt_crs(x, y, epsg, 4326)
 
 
 def cmpt_hargreaves_pet_grids(args):
@@ -56,30 +53,6 @@ def cmpt_hargreaves_pet_grids(args):
         else:
             leap = 1
 
-#         if msgs:
-#             min_ge_avg_sum = (min_temp_grid[i] > avg_temp_grid[i]).sum()
-#             min_ge_max_sum = (min_temp_grid[i] > max_temp_grid[i]).sum()
-#             avg_ge_max_sum = (avg_temp_grid[i] > avg_temp_grid[i]).sum()
-#
-#             if min_ge_avg_sum:
-# #                 _idxs = min_temp_grid[i] > avg_temp_grid[i]
-# #                 print(min_temp_grid[i][_idxs])
-# #                 print(avg_temp_grid[i][_idxs])
-#                 print((f'{min_ge_avg_sum} out of {n_cells} min. temperature '
-#                        f'values greater than the mean on {curr_date}'))
-#
-#             if min_ge_max_sum:
-#                 print(('%d out of %d min. temperature values greater than the '
-#                        'max on %s') % (min_ge_max_sum,
-#                                        n_cells,
-#                                        str(curr_date)))
-#
-#             if avg_ge_max_sum:
-#                 print(('%d out of %d mean temperature values greater than the '
-#                        'max on %s') % (avg_ge_max_sum,
-#                                        n_cells,
-#                                        str(curr_date)))
-
         pet_vals = vec_ftn(curr_date.dayofyear,
                            degs_grid,
                            min_temp_grid[i],
@@ -88,28 +61,29 @@ def cmpt_hargreaves_pet_grids(args):
                            leap)
 
         if msgs:
-#             print(f'min, max pet on {curr_date}: {pet_vals.min():0.2f}, '
-#                   f'{pet_vals.max():0.2f}')
             nan_ct = np.isnan(pet_vals).sum()
+
             if nan_ct:
                 print(f'{nan_ct} out of {n_cells} values are NaNs in pet '
                       f'grid on {curr_date}!')
 
         pet_grid[i] = pet_vals
 
+#         print(i, np.nanmax(pet_vals))
+
     return strt_index, end_index, pet_grid
 
 
 def main():
 
-    main_dir = Path(os.getcwd())
+    main_dir = Path(r'P:\Synchronize\IWS\Colleagues_Students\Jochen\dS2\neckar_full\data')
     os.chdir(main_dir)
 
-    in_min_temp_file = r''
+    in_min_temp_file = r'tem_min_interp\tem_min.nc'
 
-    in_avg_temp_file = r''
+    in_avg_temp_file = r'tem_avg_interp\tem_avg.nc'
 
-    in_max_temp_file = r''
+    in_max_temp_file = r'tem_max_interp\tem_max.nc'
 
     # a list of some arguments
     # [field name to use as catchment names / numbers,
@@ -120,15 +94,17 @@ def main():
     # var name in min file
     # var name in max file
     # var name in avg file
-    args = ['DN', 3396, 'longitude', 'latitude', 'EDK', 'EDK', 'EDK']
+    args = ['DN', 3396, 'X', 'Y', 'OK', 'OK', 'OK']
+
+    time_var = 'time'
 
     units = 'mm/day'
 
     msgs = True
 
-    out_dir = main_dir
+    out_dir = main_dir / 'pet_interp'
 
-    out_pet_file = out_dir / ''
+    out_pet_file = out_dir / 'pet.nc'
 
     os.chdir(main_dir)
 
@@ -136,31 +112,40 @@ def main():
         out_dir.mkdir()
 
     in_avg_nc = nc.Dataset(in_avg_temp_file)
-    lat_avg_arr = in_avg_nc.variables[args[3]][:]
-    lon_avg_arr = in_avg_nc.variables[args[2]][:]
+    lat_avg_arr = in_avg_nc.variables[args[3]][:].data
+    lon_avg_arr = in_avg_nc.variables[args[2]][:].data
 
-    time_avg_var = in_avg_nc.variables['z']
+    time_avg_var = in_avg_nc.variables[time_var]
 
     time_avg_arr = nc.num2date(
-        time_avg_var[:], time_avg_var.units, calendar=time_avg_var.calendar)
+        time_avg_var[:],
+        time_avg_var.units,
+        calendar=time_avg_var.calendar,
+        only_use_cftime_datetimes=False).data.astype(np.datetime64)
 
     in_min_nc = nc.Dataset(in_min_temp_file)
-    lat_min_arr = in_min_nc.variables[args[3]][:]
-    lon_min_arr = in_min_nc.variables[args[2]][:]
+    lat_min_arr = in_min_nc.variables[args[3]][:].data
+    lon_min_arr = in_min_nc.variables[args[2]][:].data
 
-    time_min_var = in_min_nc.variables['z']
+    time_min_var = in_min_nc.variables[time_var]
 
     time_min_arr = nc.num2date(
-        time_min_var[:], time_min_var.units, calendar=time_min_var.calendar)
+        time_min_var[:],
+        time_min_var.units,
+        calendar=time_min_var.calendar,
+        only_use_cftime_datetimes=False).data.astype(np.datetime64)
 
     in_max_nc = nc.Dataset(in_max_temp_file)
-    lat_max_arr = in_max_nc.variables[args[3]][:]
-    lon_max_arr = in_max_nc.variables[args[2]][:]
+    lat_max_arr = in_max_nc.variables[args[3]][:].data
+    lon_max_arr = in_max_nc.variables[args[2]][:].data
 
-    time_max_var = in_max_nc.variables['time']
+    time_max_var = in_max_nc.variables[time_var]
 
     time_max_arr = nc.num2date(
-        time_max_var[:], time_max_var.units, calendar=time_max_var.calendar)
+        time_max_var[:],
+        time_max_var.units,
+        calendar=time_max_var.calendar,
+        only_use_cftime_datetimes=False).data.astype(np.datetime64)
 
     assert (lat_min_arr.shape[0] ==
             lat_max_arr.shape[0] ==
@@ -182,14 +167,16 @@ def main():
             time_max_arr.shape[0] ==
             time_avg_arr.shape[0])
 
-    assert np.all(np.isclose(time_min_arr, time_max_arr))
+    assert np.all(time_min_arr == time_max_arr)
 
-    assert np.all(np.isclose(time_min_arr, time_avg_arr))
+    assert np.all(time_min_arr == time_avg_arr)
 
     lons_grid, lats_grid = np.meshgrid(lon_min_arr, lat_min_arr)
 
-    lons_grid, lats_grid = np.vectorize(change_crs)(
-        lons_grid, lats_grid, args[1])
+    tfmr = pyproj.Transformer.from_crs(
+        f'EPSG:{args[1]}', f'EPSG:{4326}', always_xy=True)
+
+    lons_grid, lats_grid = tfmr.transform(lons_grid, lats_grid)
 
     out_pet_nc = nc.Dataset(str(out_pet_file), mode='w')
 
@@ -213,7 +200,7 @@ def main():
     time_nc.units = time_max_var.units
     time_nc.calendar = time_max_var.calendar
 
-    idxs = np.arange(time_max_arr.shape[0])
+    idxs = np.array([0, time_max_arr.shape[0]])
 
     interp_type = 'PET'
 
@@ -226,9 +213,9 @@ def main():
             dimensions=('time', args[3], args[2]),
             fill_value=False))
 
-    har_vars_gen = ((in_min_nc.variables[args[4]][idxs[i]:idxs[i + 1]],
-                     in_max_nc.variables[args[5]][idxs[i]:idxs[i + 1]],
-                     in_avg_nc.variables[args[6]][idxs[i]:idxs[i + 1]],
+    har_vars_gen = ((in_min_nc.variables[args[4]][idxs[i]:idxs[i + 1]].data,
+                     in_max_nc.variables[args[5]][idxs[i]:idxs[i + 1]].data,
+                     in_avg_nc.variables[args[6]][idxs[i]:idxs[i + 1]].data,
                      time_max_arr[idxs[i]:idxs[i + 1]],
                      lats_grid,
                      idxs[i],
@@ -236,7 +223,7 @@ def main():
                      msgs)
                     for i in range(1))
 
-    pet_flds = cmpt_hargreaves_pet_grids(next(har_vars_gen))[0]
+    pet_flds = cmpt_hargreaves_pet_grids(next(har_vars_gen))[2]
 
     curr_pet_interp_var[:] = pet_flds
 
