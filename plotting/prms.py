@@ -366,7 +366,7 @@ def plot_cat_best_prms_1d(cat_db):
         cat = db.attrs['cat']
         kfolds = db['data'].attrs['kfolds']
         bds_arr = db['cdata/bds_arr'][...]
-        best_prms_labs = db['cdata/use_prms_labs'][...]
+        best_prms_labs = db['cdata/use_prms_labs'][...].astype(str)
 
         cv_flag = db['data'].attrs['cv_flag']
         if cv_flag:
@@ -540,7 +540,7 @@ def plot_cat_prm_vecs(cat_db):
         calib_db = db['calib']
 
         bounds_arr = db['cdata/bds_arr'][...]
-        prm_syms = db['cdata/use_prms_labs'][...]
+        prm_syms = db['cdata/use_prms_labs'][...].astype(str)
 
         for i in range(1, kfolds + 1):
             kf_str = f'kf_{i:02d}'
@@ -778,7 +778,7 @@ def plot_cat_prm_vecs_evo(plot_args):
 
         calib_db = db['calib']
 
-        prm_syms = db['cdata/use_prms_labs'][...]
+        prm_syms = db['cdata/use_prms_labs'][...].astype(str)
 
         for kf_i in range(1, kfolds + 1):
 

@@ -44,7 +44,7 @@ def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
     out_data_dict = {}
     with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
         h5_times = pd.to_datetime(
-            h5_hdl['time/time_strs'][...], format='%Y%m%dT%H%M%S')
+            h5_hdl['time/time_strs'][...].astype(str), format='%Y%m%dT%H%M%S')
 
         data_ds = h5_hdl[ds_grp]
 
@@ -80,7 +80,7 @@ def get_data_dict_from_h5_with_time(
     out_data_dict = {}
     with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
         h5_times = pd.to_datetime(
-            h5_hdl['time/time_strs'][...], format='%Y%m%dT%H%M%S')
+            h5_hdl['time/time_strs'][...].astype(str), format='%Y%m%dT%H%M%S')
 
         select_idxs = np.zeros(h5_times.size, dtype=bool)
 

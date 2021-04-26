@@ -76,14 +76,14 @@ def cmpt_hargreaves_pet_grids(args):
 
 def main():
 
-    main_dir = Path(r'P:\Synchronize\IWS\Colleagues_Students\Jochen\dS2\neckar_full\data')
+    main_dir = Path(r'P:\Synchronize\IWS\Colleagues_Students\Zulqarnain_Sabir\data')
     os.chdir(main_dir)
 
-    in_min_temp_file = r'tem_min_interp\tem_min.nc'
+    in_min_temp_file = r'spinterps_echaz_daily_tem_min\spinterps.nc'
 
-    in_avg_temp_file = r'tem_avg_interp\tem_avg.nc'
+    in_avg_temp_file = r'spinterps_echaz_daily_tem_mean\spinterps.nc'
 
-    in_max_temp_file = r'tem_max_interp\tem_max.nc'
+    in_max_temp_file = r'spinterps_echaz_daily_tem_max\spinterps.nc'
 
     # a list of some arguments
     # [field name to use as catchment names / numbers,
@@ -94,7 +94,7 @@ def main():
     # var name in min file
     # var name in max file
     # var name in avg file
-    args = ['DN', 3396, 'X', 'Y', 'OK', 'OK', 'OK']
+    args = ['DN', 3396, 'X', 'Y', 'IDW_001', 'IDW_001', 'IDW_001']
 
     time_var = 'time'
 
@@ -102,9 +102,10 @@ def main():
 
     msgs = True
 
-    out_dir = main_dir / 'pet_interp'
+    out_dir = main_dir / 'spinterps_echaz_daily_pet'
 
-    out_pet_file = out_dir / 'pet.nc'
+    # var name for avg file is var name for PET in nc.
+    out_pet_file = out_dir / 'spinterps.nc'
 
     os.chdir(main_dir)
 
@@ -202,7 +203,7 @@ def main():
 
     idxs = np.array([0, time_max_arr.shape[0]])
 
-    interp_type = 'PET'
+    interp_type = args[6]
 
     print('PET for:', interp_type)
 
