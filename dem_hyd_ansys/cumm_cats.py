@@ -98,9 +98,9 @@ def get_cumm_cats(in_cat_shp,
             # print 'cat: %s, has these upstream:' % key, cat_nos
             ds_cat_feat = feat_dict[key].Clone()
             for cat_no in cat_nos:
-                ds_cat = ds_cat_feat.GetGeometryRef()
+                ds_cat = ds_cat_feat.GetGeometryRef().Buffer(0)
                 curr_cat_feat = feat_dict[cat_no].Clone()
-                curr_cat = curr_cat_feat.GetGeometryRef()
+                curr_cat = curr_cat_feat.GetGeometryRef().Buffer(0)
 
                 merged_cat = ds_cat.Union(curr_cat)
                 merged_cat_feat = ogr.Feature(out_lyr_dfn)

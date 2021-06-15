@@ -40,19 +40,21 @@ def get_stms(in_dem_net_shp_file,
     fin_field_names = ['DSNODEID', 'Length', 'Slope']
 
     in_dem_net_reader = shp.Reader(in_dem_net_shp_file)
+
     in_wat_id_arr = np.loadtxt(in_wat_ids_file,
                                delimiter=' ',
                                skiprows=1,
                                dtype=int)
+
     in_wat_id_arr = np.atleast_2d(in_wat_id_arr)
 
     shp_01 = StringIO()
     shx_01 = StringIO()
     dbf_01 = StringIO()
 
-    shp_02 = StringIO()
-    shx_02 = StringIO()
-    dbf_02 = StringIO()
+#     shp_02 = StringIO()
+#     shx_02 = StringIO()
+#     dbf_02 = StringIO()
 
     shp_03 = StringIO()
     shx_03 = StringIO()
@@ -61,14 +63,16 @@ def get_stms(in_dem_net_shp_file,
     out_dem_net_writer_01 = shp.Writer(
         shp=shp_01, shx=shx_01, dbf=dbf_01, shapeType=shp.POLYLINE)
 
-    out_dem_net_writer_02 = shp.Writer(
-        shp=shp_02, shx=shx_02, dbf=dbf_02, shapeType=shp.POLYLINE)
+#     out_dem_net_writer_02 = shp.Writer(
+#         shp=shp_02, shx=shx_02, dbf=dbf_02, shapeType=shp.POLYLINE)
+
+    out_dem_net_writer_02 = []
 
     out_dem_net_writer_03 = shp.Writer(
         shp=shp_03, shx=shx_03, dbf=dbf_03, shapeType=shp.POLYLINE)
 
     temp_dem_net_1_path = tempfile.NamedTemporaryFile().name + '.shp'
-    temp_dem_net_2_path = tempfile.NamedTemporaryFile().name + '.shp'
+    temp_dem_net_2_path = tempfile.NamedTemporaryFile().name
 
     driver = ogr.GetDriverByName(str('ESRI Shapefile'))
     if os.path.exists(out_dem_net_shp_file):
@@ -99,7 +103,7 @@ def get_stms(in_dem_net_shp_file,
 
     for idx, field in enumerate(in_dem_net_reader.fields):
         out_dem_net_writer_01.field(field[0], field[1], field[2], field[3])
-        out_dem_net_writer_02.field(field[0], field[1], field[2], field[3])
+#         out_dem_net_writer_02.field(field[0], field[1], field[2], field[3])
         out_dem_net_writer_03.field(field[0], field[1], field[2], field[3])
 
         if field[0] == 'USLINKNO1':
@@ -269,6 +273,7 @@ def get_stms(in_dem_net_shp_file,
         'unequal lengths!')
 
     n_recs = 0
+    recs_and_shapes = []
     for idx, rec in enumerate(
         zip(in_dem_net_reader.records(), in_dem_net_reader.shapes())):
 
@@ -276,19 +281,27 @@ def get_stms(in_dem_net_shp_file,
             del_idx_cond = (idx not in del_stream_ids_list)
 
             if del_idx_cond:
-                out_dem_net_writer_01.line(parts=[rec[1].points])
-                out_dem_net_writer_01.record(*rec[0])
+#                 out_dem_net_writer_01.line(lines=[rec[1].points])
+#                 out_dem_net_writer_01.record(*rec[0])
+
+                recs_and_shapes.append((rec[0][:], rec[1].points))
+
                 n_recs += 1
 
     fin_stream_idxs_list = []
     contain_cats_list = []
 
-    if n_recs:
-        recs_and_shapes = list(zip(
-            out_dem_net_writer_01.records, out_dem_net_writer_01.shapes()))
-
-    else:
-        recs_and_shapes = []
+#     if n_recs:
+#         # Old version of pyshp.
+# #         recs_and_shapes = list(zip(
+# #             out_dem_net_writer_01.records, out_dem_net_writer_01.shapes()))
+#
+#         recs_and_shapes = [
+#             (out_dem_net_writer_01.record(i), out_dem_net_writer_01.shape(i))
+#             for i in range(n_recs)]
+#
+#     else:
+#         recs_and_shapes = []
 
 #     assert recs_and_shapes
 
@@ -352,19 +365,23 @@ def get_stms(in_dem_net_shp_file,
         else:
             temp_cat_reqs[ds_node_col_id] = ds_cat
 
-        out_dem_net_writer_02.line(
-            parts=[recs_and_shapes[fin_idx][1].points])
-        out_dem_net_writer_02.record(*temp_cat_reqs)
+#         out_dem_net_writer_02.line(
+#             lines=[recs_and_shapes[fin_idx][1]])
+#         out_dem_net_writer_02.record(*temp_cat_reqs)
+
+        out_dem_net_writer_02.append(
+            (temp_cat_reqs, recs_and_shapes[fin_idx][1]))
+
         contain_test_list.append(fin_idx)
 
     new_recs_list = []
     link_nos_list = []
 
     if n_recs:
-        for rec in out_dem_net_writer_02.records:
+        for rec in [x[0] for x in out_dem_net_writer_02]:
             link_nos_list.append(rec[link_col_id])
 
-        for rec in deepcopy(out_dem_net_writer_02.records):
+        for rec in [deepcopy(x[0]) for x in out_dem_net_writer_02]:
             curr_us_link_no_1 = rec[us_link_01_col_id]
             curr_us_link_no_2 = rec[us_link_02_col_id]
 
@@ -379,16 +396,26 @@ def get_stms(in_dem_net_shp_file,
 
             new_recs_list.append(rec)
 
-        for item in zip(new_recs_list, out_dem_net_writer_02.shapes()):
-            out_dem_net_writer_03.line(parts=[item[1].points])
+        for item in zip(new_recs_list, [x[1] for x in out_dem_net_writer_02]):
+            out_dem_net_writer_03.line(lines=[item[1]])
             out_dem_net_writer_03.record(*item[0])
 
-        out_dem_net_writer_03.save(temp_dem_net_2_path)
+        out_dem_net_writer_03.close()
 
-        temps_streams_vec = ogr.Open(temp_dem_net_2_path)
+        with open(temp_dem_net_2_path + '.shp', 'wb') as shp_03_hdl:
+            shp_03_hdl.write(shp_03.getvalue())
+
+        with open(temp_dem_net_2_path + '.shx', 'wb') as shx_03_hdl:
+            shx_03_hdl.write(shx_03.getvalue())
+
+        with open(temp_dem_net_2_path + '.dbf', 'wb') as dbf_03_hdl:
+            dbf_03_hdl.write(dbf_03.getvalue())
+
+        temps_streams_vec = ogr.Open(temp_dem_net_2_path + '.shp')
         lyr = temps_streams_vec.GetLayer(0)
 
-        out_lyr = out_ds.CreateLayer(str('0'), geom_type=ogr.wkbMultiLineString)
+        out_lyr = out_ds.CreateLayer(
+            str('0'), geom_type=ogr.wkbMultiLineString)
 
         in_lyr_dfn = lyr.GetLayerDefn()
         lyr.GetLayerDefn().GetFieldDefn(ds_node_col_id).SetType(ogr.OFTInteger)
@@ -896,18 +923,19 @@ def get_stms(in_dem_net_shp_file,
 
         driver.CopyDataSource(out_ds, out_dem_net_shp_file)
 
-        cat_vec.Destroy()
-        out_ds.Destroy()
-        coords_vec.Destroy()
-        temps_streams_vec.Destroy()
+    else:
+        out_df = pd.DataFrame(
+            columns='DSNODEID;Length;Slope;up_strm_01;up_strm_02;up_cat;out_stm'.split(';'))
 
-        driver.DeleteDataSource(temp_dem_net_1_path)
-        driver.DeleteDataSource(temp_dem_net_2_path)
+        out_df.to_csv(out_df_file, sep=str(sep), index_label='stream_no')
 
-    out_df = pd.DataFrame(
-        columns='stream_no;DSNODEID;Length;Slope;up_strm_01;up_strm_02;up_cat;out_stm'.split(';'))
+    cat_vec.Destroy()
+    out_ds.Destroy()
+    coords_vec.Destroy()
+    temps_streams_vec.Destroy()
 
-    out_df.to_csv(out_df_file, sep=str(sep), index_label='stream_no')
+    driver.DeleteDataSource(temp_dem_net_1_path)
+    driver.DeleteDataSource(temp_dem_net_2_path)
     return
 
 

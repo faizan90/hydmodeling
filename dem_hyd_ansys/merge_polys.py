@@ -10,12 +10,14 @@ from numpy import unique
 
 
 def merge_same_id_shp_poly(in_shp, out_shp, field='DN'):
+
     '''Merge all polygons with the same ID in the 'field' (from TauDEM)
 
     Because sometimes there are some polygons from the same catchment,
     this is problem because there can only one cathcment with one ID,
     it is an artifact of gdal_polygonize.
     '''
+
     cat_ds = ogr.Open(in_shp)
     lyr = cat_ds.GetLayer(0)
     spt_ref = lyr.GetSpatialRef()
@@ -55,9 +57,10 @@ def merge_same_id_shp_poly(in_shp, out_shp, field='DN'):
         if len(fid_list) > 1:
             cat_feat = feat_dict[fid_list[0]]
             for fid in fid_list[1:]:
-                ds_cat = cat_feat.GetGeometryRef()
+                # The buffer with zero seems to fix invalid geoms somehow.
+                ds_cat = cat_feat.GetGeometryRef().Buffer(0)
                 curr_cat_feat = feat_dict[fid].Clone()
-                curr_cat = curr_cat_feat.GetGeometryRef()
+                curr_cat = curr_cat_feat.GetGeometryRef().Buffer(0)
 
                 merged_cat = ds_cat.Union(curr_cat)
                 merged_cat_feat = ogr.Feature(out_lyr_dfn)

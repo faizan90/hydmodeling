@@ -3,6 +3,16 @@ Created on Oct 8, 2017
 
 @author: Faizan
 '''
+#==============================================================================
+# GDAL should exist at the following location.
+# Paths should look something like this for the local environments.
+#
+# set PATH=PATH;C:\Program Files\GDAL
+# set GDAL_DATA=C:\Program Files\GDAL\gdal-data
+# set GDAL_DRIVER_PATH=C:\Program Files\GDAL\gdalplugins
+# set PROJ_LIB=C:\Program Files\GDAL\projlib
+#==============================================================================
+import os
 import time
 import timeit
 import subprocess
@@ -20,6 +30,28 @@ from osgeo import ogr, gdal
 
 from .misc import get_ras_props, get_vec_props
 from .merge_polys import merge_same_id_shp_poly
+
+GDAL_VERSION = 111
+
+USEABLE_GDAL_VERSIONS = (111,)
+
+subproc_env = os.environ.copy()
+subproc_env['PATH'] = r'C:\Program Files\GDAL'
+subproc_env['GDAL_DATA'] = r'C:\Program Files\GDAL\gdal-data'
+subproc_env['GDAL_DRIVER_PATH'] = r'C:\Program Files\GDAL\gdalplugins'
+subproc_env['PROJ_LIB'] = r'C:\Program Files\GDAL\projlib'
+
+assert os.path.exists(subproc_env['PATH']), 'Could not find GDAL!'
+assert os.path.exists(subproc_env['GDAL_DATA']), 'Could not find GDAL!'
+assert os.path.exists(subproc_env['GDAL_DRIVER_PATH']), 'Could not find GDAL!'
+assert os.path.exists(subproc_env['PROJ_LIB']), 'Could not find GDAL!'
+
+if GDAL_VERSION == 111:
+	assert os.path.exists(os_join(subproc_env['PATH'], 'gdal111.dll')), (
+		'Could not find the required GDAL DLL!')
+
+else:
+	raise NotImplementedError('Not implmented for the given GDAL version!')
 
 
 class TauDEMAnalysis:
@@ -175,9 +207,13 @@ class TauDEMAnalysis:
 						self.gage_shp_moved,
 						self.max_cell_move))
 
+		# The -sw flag seem to have been responsible for the incorrect
+		# catchment ids.
+		# TODO: Fix dem_net layer name.
 		streamnet_cmd = (
 			('"%s" -fel "%s" -p "%s" -ad8 "%s" -src "%s" -ord "%s" '
-			 '-tree "%s" -coord "%s" -net "%s" -w "%s" -o "%s" -sw') %
+			 '-tree "%s" -coord "%s" -net "%s" -netlyr dem_net -w "%s" '
+			 '-o "%s"') %
 	 		(self.strm_net_exe,
   			 self.fil,
 		  	 self.fdr,
@@ -247,7 +283,7 @@ class TauDEMAnalysis:
 		if self.verbose:
 			for cmd in cmd_list:
 				print('\nExecuting: %s' % cmd)
-				proc = subprocess.Popen(cmd, shell=False)
+				proc = subprocess.Popen(cmd, shell=False, env=subproc_env)
 				proc.wait()
 
 		else:
@@ -259,7 +295,8 @@ class TauDEMAnalysis:
 					cmd,
 					shell=False,
 					stdout=log_file_cur,
-					stderr=log_file_cur)
+					stderr=log_file_cur,
+					env=subproc_env)
 
 				proc.wait()
 
@@ -280,7 +317,7 @@ class TauDEMAnalysis:
 			print('\nExecuting: %s' % cmd)
 
 			if self.verbose:
-				proc = subprocess.Popen(cmd, shell=False)
+				proc = subprocess.Popen(cmd, shell=False, env=subproc_env)
 				proc.wait()
 
 			else:
@@ -289,7 +326,8 @@ class TauDEMAnalysis:
 					cmd,
 					shell=False,
 					stdout=log_file_cur,
-					stderr=log_file_cur)
+					stderr=log_file_cur,
+					env=subproc_env)
 
 				proc.wait()
 				log_file_cur.close()
@@ -341,7 +379,9 @@ class TauDEMAnalysis:
 			print('\nExecuting: %s' % strm_dist_cmd)
 
 			if self.verbose:
-				proc = subprocess.Popen(strm_dist_cmd, shell=False)
+				proc = subprocess.Popen(
+					strm_dist_cmd, shell=False, env=subproc_env)
+
 				proc.wait()
 
 			else:
@@ -350,7 +390,8 @@ class TauDEMAnalysis:
 					strm_dist_cmd,
 					shell=False,
 					stdout=log_file_cur,
-					stderr=log_file_cur)
+					stderr=log_file_cur,
+					env=subproc_env)
 
 				proc.wait()
 				log_file_cur.close()
