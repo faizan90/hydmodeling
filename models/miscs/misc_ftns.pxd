@@ -180,3 +180,5 @@ cpdef DT_D get_hargreaves_pet(
         DT_D t_max, 
         DT_D t_avg, 
         DT_UL leap) nogil
+
+cpdef void fill_diffs_arr(const DT_D[::1] in_arr, DT_D[::1] diffs_arr) nogil

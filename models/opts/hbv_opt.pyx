@@ -28,7 +28,8 @@ from ..miscs.misc_ftns cimport (
     get_ln_mean,
     get_variance,
     del_idx,
-    cmpt_resampled_arr)
+    cmpt_resampled_arr,
+    fill_diffs_arr)
 from ..miscs.sec_miscs cimport update_obj_doubles
 from ..miscs.misc_ftns_partial cimport (
     get_demr_prt,
@@ -80,7 +81,8 @@ from ..miscs.dtypes cimport (
     ft_demr_2_i,
     demr_peak_i,
     ln_demr_peak_i,
-    demr_sort_i)
+    demr_sort_i,
+    demr_qdiffs_i)
 
 DT_D_NP = np.float64
 DT_UL_NP = np.int32
@@ -211,7 +213,7 @@ cpdef dict hbv_opt(args):
         DT_ULL[::1] obj_ftn_resamp_tags_arr
 
         DT_D[::1] inflow_arr, qact_arr, f_vars, area_arr, qact_resamp_arr
-        DT_D[::1] qact_arr_sort, qact_probs_arr_sort
+        DT_D[::1] qact_arr_sort, qact_probs_arr_sort, qact_diffs_arr
 
         DT_D[:, ::1] qact_qres_mult_arr
         DT_D[:, ::1] inis_arr, temp_arr, prec_arr, petn_arr, route_prms
@@ -219,6 +221,7 @@ cpdef dict hbv_opt(args):
         DT_D[:, ::1] qsim_mult_arr, inflow_mult_arr
         DT_D[:, ::1] qsim_resamp_mult_arr
         DT_D[:, ::1] qsim_mult_arr_sort, qsim_mult_probs_arr_sort
+        DT_D[:, ::1] qsim_mult_diffs_arr
  
         DT_D[:, :, :, ::1] outs_mult_arr
 
@@ -687,6 +690,28 @@ cpdef dict hbv_opt(args):
 
         temp = np.nan
 
+    if obj_ftn_wts[7]:
+        qact_diffs_arr = np.full(n_recs - 1, np.nan, dtype=DT_D_NP)
+
+        qsim_mult_diffs_arr = np.full(
+            (n_cpus, n_recs - 1), np.nan, dtype=DT_D_NP)
+
+        fill_diffs_arr(qact_arr, qact_diffs_arr)
+
+        temp = get_mean(qact_diffs_arr, obj_longs[off_idx_i])
+
+        obj_doubles[demr_qdiffs_i] = get_demr(
+            qact_diffs_arr, temp, obj_longs[off_idx_i])
+
+        for i in range(n_cpus):
+            obj_res_mult_doubles[i, demr_qdiffs_i] = obj_doubles[demr_qdiffs_i]
+
+        temp= np.nan
+
+    else:
+        qact_diffs_arr = np.full(1, np.nan, dtype=DT_D_NP)
+        qsim_mult_diffs_arr = np.full((n_cpus, 1), np.nan, dtype=DT_D_NP)
+
     # for the selected parameters, get obj vals
     for i in prange(
         n_prm_vecs,
@@ -728,6 +753,8 @@ cpdef dict hbv_opt(args):
             qsim_mult_arr_sort[tid],
             qact_probs_arr_sort,
             qsim_mult_probs_arr_sort[tid],
+            qact_diffs_arr,
+            qsim_mult_diffs_arr[tid],
             inis_arr,
             temp_arr,
             prec_arr,
@@ -903,6 +930,8 @@ cpdef dict hbv_opt(args):
                 qsim_mult_arr_sort[tid],
                 qact_probs_arr_sort,
                 qsim_mult_probs_arr_sort[tid],
+                qact_diffs_arr,
+                qsim_mult_diffs_arr[tid],
                 inis_arr,
                 temp_arr,
                 prec_arr,
@@ -1037,6 +1066,8 @@ cpdef dict hbv_opt(args):
         qsim_mult_arr_sort[tid],
         qact_probs_arr_sort,
         qsim_mult_probs_arr_sort[tid],
+        qact_diffs_arr,
+        qsim_mult_diffs_arr[tid],
         inis_arr,
         temp_arr,
         prec_arr,

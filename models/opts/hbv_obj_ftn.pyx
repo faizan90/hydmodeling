@@ -9,7 +9,13 @@
 from ..hyds.routing cimport tfm_opt_to_route_prms
 from ..hyds.opt_to_hbv_prms cimport tfm_opt_to_hbv_prms
 from ..miscs.misc_ftns cimport (
-    get_ns, get_ln_ns, get_kge, cmpt_resampled_arr, get_demr, get_mean)
+    get_ns,
+    get_ln_ns,
+    get_kge,
+    cmpt_resampled_arr,
+    get_demr,
+    get_mean,
+    fill_diffs_arr)
 from ..miscs.misc_ftns_partial cimport (
     get_ns_prt, get_ln_ns_prt, get_kge_prt, cmpt_resampled_arr_prt)
 from ..miscs.sec_miscs cimport update_obj_doubles
@@ -36,7 +42,8 @@ from ..miscs.dtypes cimport (
     NAN,
     demr_peak_i,
     ln_demr_peak_i,
-    demr_sort_i)
+    demr_sort_i,
+    demr_qdiffs_i)
 
 
 cdef DT_D obj_ftn(
@@ -71,6 +78,8 @@ cdef DT_D obj_ftn(
               DT_D[::1] qsim_arr_sort,
         const DT_D[::1] qact_probs_arr_sort,
               DT_D[::1] qsim_probs_arr_sort,
+        const DT_D[::1] qact_diffs_arr,
+              DT_D[::1] qsim_diffs_arr,
 
         const DT_D[:, ::1] inis_arr,
               DT_D[:, ::1] temp_arr,
@@ -99,7 +108,7 @@ cdef DT_D obj_ftn(
 
         DT_D res, obj_ftn_wts_sum, min_q_thresh
 
-    if obj_ftn_wts.shape[0] > 7:
+    if obj_ftn_wts.shape[0] > 8:
         with gil: raise NotImplementedError
 
     tfm_opt_to_hbv_prms(
@@ -377,5 +386,25 @@ cdef DT_D obj_ftn(
                 0))
 
         obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[6]
+
+    if obj_ftn_wts[7]:
+        if obj_longs[resamp_obj_ftns_flag_i]:
+            with gil: raise NotImplementedError
+ 
+        else:
+            if obj_longs[use_step_flag_i]:
+                with gil: raise NotImplementedError
+
+            else:
+                fill_diffs_arr(qsim_arr, qsim_diffs_arr)
+
+                res = obj_ftn_wts[7] * (
+                       get_ns(
+                        qact_diffs_arr,
+                        qsim_diffs_arr,
+                        obj_res_doubles[demr_qdiffs_i],
+                        obj_longs[off_idx_i]))
+
+        obj_ftn_wts_sum = obj_ftn_wts_sum + obj_ftn_wts[7]
 
     return obj_ftn_wts_sum - res

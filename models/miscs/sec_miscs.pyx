@@ -53,7 +53,7 @@ cdef void update_obj_doubles(
         DT_D mean_peak_ref = NAN
         DT_D mean_ln_peak_ref = NAN
 
-    if obj_ftn_wts.shape[0] > 7:
+    if obj_ftn_wts.shape[0] > 8:
         with gil: raise NotImplementedError
 
     if obj_longs[resamp_obj_ftns_flag_i]:

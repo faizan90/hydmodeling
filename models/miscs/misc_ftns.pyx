@@ -645,3 +645,14 @@ cpdef DT_D get_hargreaves_pet(
         pet = 0.0
 
     return pet
+
+
+cpdef void fill_diffs_arr(const DT_D[::1] in_arr, DT_D[::1] diffs_arr) nogil:
+
+    cdef:
+        Py_ssize_t i, n_vals = in_arr.shape[0] - 1
+
+    for i in range(n_vals):
+        diffs_arr[i] = in_arr[i + 1] - in_arr[i]
+
+    return

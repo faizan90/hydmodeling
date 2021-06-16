@@ -227,7 +227,7 @@ def main():
 
     n_cpus = cfp['DEFAULT']['n_cpus']
     if n_cpus == 'auto':
-        n_cpus = cpu_count() - 1
+        n_cpus = cpu_count(logical=False) - 1
 
     else:
         n_cpus = int(n_cpus)

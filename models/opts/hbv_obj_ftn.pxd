@@ -44,6 +44,8 @@ cdef DT_D obj_ftn(
               DT_D[::1] qsim_arr_sort,
         const DT_D[::1] qact_probs_arr_sort,
               DT_D[::1] qsim_probs_arr_sort,
+        const DT_D[::1] qact_diffs_arr,
+              DT_D[::1] qsim_diffs_arr,
 
         const DT_D[:, ::1] inis_arr,
               DT_D[:, ::1] temp_arr,
