@@ -398,7 +398,7 @@ cdef DT_D obj_ftn(
             else:
                 fill_diffs_arr(qsim_arr, qsim_diffs_arr)
 
-                res = obj_ftn_wts[7] * (
+                res = res + obj_ftn_wts[7] * (
                        get_ns(
                         qact_diffs_arr,
                         qsim_diffs_arr,

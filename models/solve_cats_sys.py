@@ -44,6 +44,8 @@ all_prms_labs = [
 
 _at_sp_labs = ['min', 'max', 'exp']
 
+n_obj_ftns = 8
+
 
 def solve_cats_sys(
         in_cats_prcssed_df,
@@ -134,6 +136,7 @@ def solve_cats_sys(
     assert isinstance(obj_ftn_wts, np.ndarray)
     assert obj_ftn_wts.ndim == 1
     assert np.issubdtype(obj_ftn_wts.dtype, np.float64)
+    assert obj_ftn_wts.size == n_obj_ftns
 
     assert isinstance(min_q_thresh, (float, int))
     assert min_q_thresh >= 0
@@ -908,7 +911,7 @@ def solve_cat(
                     assert np.all(all_prms_flags[i, 1:] == 0)
                     _bef_len = len(use_prms_labs)
                     use_prms_labs.append(all_prms_labs[i])
-                    use_prms_idxs[i, 0, :] = _bef_len, _bef_len
+                    use_prms_idxs[i, 0,:] = _bef_len, _bef_len
                     bounds_list.append(bounds_dict[all_prms_labs[i] + '_bds'])
 
                 if all_prms_flags[i, 1]:
@@ -917,7 +920,7 @@ def solve_cat(
                         [f'{all_prms_labs[i]}_lc_{j:02d}'
                          for j in range(n_lulc)])
 
-                    use_prms_idxs[i, 1, :] = _bef_len, len(use_prms_labs)
+                    use_prms_idxs[i, 1,:] = _bef_len, len(use_prms_labs)
 
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_lulc)
@@ -927,7 +930,7 @@ def solve_cat(
                     use_prms_labs.extend(
                         [f'{all_prms_labs[i]}_sl_{j:02d}' for j in range(n_soil)])
 
-                    use_prms_idxs[i, 2, :] = _bef_len, len(use_prms_labs)
+                    use_prms_idxs[i, 2,:] = _bef_len, len(use_prms_labs)
 
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * n_soil)
@@ -939,7 +942,7 @@ def solve_cat(
                         [f'{all_prms_labs[i]}_at_{_at_sp_labs[j]}'
                          for j in range(3)])
 
-                    use_prms_idxs[i, 3, :] = _bef_len, len(use_prms_labs)
+                    use_prms_idxs[i, 3,:] = _bef_len, len(use_prms_labs)
 
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * 2)
@@ -953,7 +956,7 @@ def solve_cat(
                         [f'{all_prms_labs[i]}_sp_{_at_sp_labs[j]}'
                          for j in range(3)])
 
-                    use_prms_idxs[i, 4, :] = _bef_len, len(use_prms_labs)
+                    use_prms_idxs[i, 4,:] = _bef_len, len(use_prms_labs)
 
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * 2)
@@ -967,7 +970,7 @@ def solve_cat(
                         [f'{all_prms_labs[i]}_at_sp_{_at_sp_labs[j]}'
                          for j in range(3)])
 
-                    use_prms_idxs[i, 5, :] = _bef_len, len(use_prms_labs)
+                    use_prms_idxs[i, 5,:] = _bef_len, len(use_prms_labs)
 
                     bounds_list.extend(
                         [bounds_dict[all_prms_labs[i] + '_bds']] * 2)
@@ -1466,8 +1469,9 @@ def get_k_aux_dict(aux_dict, area_dict, cats, lf):
 
     if lf:
         out_dict = {
-            cat: np.asarray([
-                ((area_dict[cat] * out_dict[cat].T).T).sum(axis=0)])
+            cat: np.asarray(
+                (area_dict[cat].reshape(1, -1) * out_dict[cat]).sum(axis=1)
+                ).reshape(3, 1)
 
             for cat in cats}
 
@@ -1809,7 +1813,7 @@ def drop_null_aux_class(aux_cell_var_dict, label):
         for cat in aux_cell_var_dict:
             aux_var_arr = aux_cell_var_dict[cat]
 
-            new_aux_var_arr = aux_var_arr[~nul_cts_sums, :].copy(order='c')
+            new_aux_var_arr = aux_var_arr[~nul_cts_sums,:].copy(order='c')
 
             aux_cell_var_dict[cat] = new_aux_var_arr
 
