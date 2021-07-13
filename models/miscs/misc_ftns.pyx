@@ -601,8 +601,9 @@ cpdef DT_D get_hargreaves_pet(
         DT_UL leap) nogil:
 
     """
-    Purpose: To get the potential evapotranspiration at a given latitude \
-                for a given date and temperature.
+    Purpose: To get the potential evapotranspiration at a given latitude
+    for a given date and temperature. If t_min > t_max, return pet = 0.
+    Also, if pet < 0, return pet = 0.
 
     Description of the arguments:
         d_o_y (int): day of the year
@@ -616,7 +617,7 @@ cpdef DT_D get_hargreaves_pet(
     cdef:
         int tot_days
 
-        DT_D ndec, nws, dfr, ra, pet
+        DT_D ndec, nws, dfr, ra, pet, two_pi = 2 * M_PI
 
     if leap == 0:
         tot_days = 366
@@ -624,11 +625,11 @@ cpdef DT_D get_hargreaves_pet(
     else:
         tot_days = 365
 
-    ndec = 0.409 * sin(((2 * M_PI * d_o_y) / tot_days) - 1.39)
+    ndec = 0.409 * sin(((two_pi * d_o_y) / tot_days) - 1.39)
 
     nws = acos(-tan(lat) * tan(ndec))
  
-    dfr = 1 + (0.033 * cos((2 * M_PI * d_o_y) / tot_days))
+    dfr = 1 + (0.033 * cos((two_pi * d_o_y) / tot_days))
 
     #fac_1 = 15.342618001389575 # ((1440 * 0.082 * 0.4082)/pi)
 
@@ -639,7 +640,11 @@ cpdef DT_D get_hargreaves_pet(
 
     #fac_2 = 0.002295 # (0.0135 * 0.17)
 
-    pet = 0.002295 * ra * ((t_max - t_min)**0.5) * (t_avg + 17.8)
+    if t_max < t_min:
+        pet = 0.0
+
+    else:
+        pet = 0.002295 * ra * ((t_max - t_min)**0.5) * (t_avg + 17.8)
 
     if pet < 0:
         pet = 0.0

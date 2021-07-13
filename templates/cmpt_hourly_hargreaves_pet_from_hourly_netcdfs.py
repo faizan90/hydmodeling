@@ -15,8 +15,8 @@ from calendar import isleap
 import numpy as np
 import pandas as pd
 import netCDF4 as nc
-
 from pyproj import Proj, transform
+import matplotlib.pyplot as plt; plt.ioff()
 
 from hydmodeling import get_hargreaves_pet
 
@@ -99,10 +99,10 @@ def cmpt_hargreaves_pet_grids(args):
 
 def main():
 
-    main_dir = Path(r'E:\\')
+    main_dir = Path(r'P:\hydmod_de')
     os.chdir(main_dir)
 
-    in_hr_temp_file = r'E:\neckar_temp_hr_interp\neckar_temperature_spinterp_2008-01-01-00_to_2015-12-31-23_1km.nc'
+    in_hr_temp_file = r'tem_hourly_2008_2018_interp_5km_hourly_vgs\kriging_5km.nc'
 
     # a list of some arguments
     # [field name to use as catchment names / numbers,
@@ -112,15 +112,15 @@ def main():
     # netCDF Y coords name,
     # var name in hr file
     # time var name in hr file
-    args = ['DN', 31467, 'X', 'Y', 'IDW_000', 'time']
+    args = ['DN', 32632, 'X', 'Y', 'EDK', 'time']
 
     out_units = 'mm/hour'
 
     msgs = True
 
-    out_dir = main_dir / 'neckar_pet_hr_interp'
+    out_dir = Path(r'pet_hourly_2008_2018_interp_5km_hourly_vgs')
 
-    out_pet_file = out_dir / 'neckar_pet_daily_spinterp_2008-01-01-00_to_2015-12-31-23_1km.nc'
+    out_pet_file = out_dir / 'kriging_5km.nc'
 
     os.chdir(main_dir)
 
@@ -133,9 +133,9 @@ def main():
 
     lons_grid, lats_grid = np.meshgrid(lon_hr_arr.data, lat_hr_arr.data)
 
-    out_crs = Proj("+init=EPSG:" + str(4326))
+    out_crs = Proj("EPSG:" + str(4326))
 
-    in_crs = Proj("+init=EPSG:" + str(args[1]))
+    in_crs = Proj("EPSG:" + str(args[1]))
 
     lons_grid, lats_grid = transform(in_crs, out_crs, lons_grid, lats_grid)
 
@@ -146,7 +146,11 @@ def main():
     time_hr_var = in_hr_nc.variables[args[5]]
 
     time_hr_all_arr = pd.DatetimeIndex(nc.num2date(
-        time_hr_var[:], time_hr_var.units, calendar=time_hr_var.calendar))
+        time_hr_var[:],
+        units=time_hr_var.units,
+        calendar=time_hr_var.calendar,
+        only_use_cftime_datetimes=False,
+        only_use_python_datetimes=True))
 
     time_hr_arr = pd.date_range(
         time_hr_all_arr[0], time_hr_all_arr[-1], freq='H')
@@ -156,18 +160,7 @@ def main():
     assert np.all(
         (time_daily_arr[1:] - time_daily_arr[:-1]).total_seconds() == 86400)
 
-    daily_min_arr = np.zeros(
-        (time_daily_arr.size,
-         in_hr_nc.variables[args[4]].shape[1],
-         in_hr_nc.variables[args[4]].shape[2]))
-
-    daily_max_arr = daily_min_arr.copy()
-
-    daily_avg_arr = daily_min_arr.copy()
-
-#     pet_hr_vals = np.full(tem_hr_var.shape, np.nan, dtype=float)
-
-    pet_vec_ftn = np.vectorize(get_hargreaves_pet, otypes=[np.float])
+    pet_vec_ftn = np.vectorize(get_hargreaves_pet, otypes=[float])
 
     #==========================================================================
     # out nc beg
@@ -209,7 +202,12 @@ def main():
     # out nc end
     #==========================================================================
 
-    for i, time_step in enumerate(time_daily_arr):
+    min_hrly_pet = +np.inf
+    max_hrly_pet = -np.inf
+
+    step_pets = []
+
+    for _, time_step in enumerate(time_daily_arr):
 
         if isleap(time_step.year):
             leap = 0
@@ -225,7 +223,7 @@ def main():
         assert sel_idxs.sum() == 24, (
             f'{time_step} does not have 24 hours instead {sel_idxs.sum()}!')
 
-        step_vals = tem_hr_var[sel_idxs, :, :].data
+        step_vals = tem_hr_var[sel_idxs,:,:].data
 
         step_mins = step_vals.min(axis=0)
         step_maxs = step_vals.max(axis=0)
@@ -241,28 +239,20 @@ def main():
 
             continue
 
-        daily_min_arr[i, :, :] = step_mins
-        daily_max_arr[i, :, :] = step_maxs
-        daily_avg_arr[i, :, :] = step_avgs
-
         step_vals_ge_null = step_vals.copy()
 
+        # Temps below zero have almost not PET.
         step_vals_ge_null[step_vals_ge_null < 0] = 0
 
         step_vals_ge_null_sum = step_vals_ge_null.sum(axis=0)
-
-#         # don't want to divide by zero
-#         step_vals_ge_null_sum[step_vals_ge_null_sum == 0] = 1
 
         step_vals_wts = step_vals_ge_null / step_vals_ge_null_sum
 
         step_vals_wts[:, step_vals_ge_null_sum == 0] = 1 / step_vals.shape[0]
 
-        step_vals_wts[:, np.where(fint_idxs)[0][0], np.where(fint_idxs)[1][0]]
-
-        assert (
-            np.isfinite(step_vals_ge_null_sum).sum() ==
-            n_finites)
+        assert np.isclose(np.nanmin(step_vals_wts.sum(axis=0)), 1.0)
+        assert np.isclose(np.nanmax(step_vals_wts.sum(axis=0)), 1.0)
+        assert np.isfinite(step_vals_ge_null_sum).sum() == n_finites
 
         pet_step_vals = pet_vec_ftn(
             time_step.dayofyear,
@@ -276,26 +266,66 @@ def main():
 
         pet_step_hr_vals = np.empty_like(step_vals)
 
-        pet_step_hr_vals[:, :, :] = pet_step_vals
+        pet_step_hr_vals[:,:,:] = pet_step_vals
 
         pet_step_hr_vals *= step_vals_wts
 
+        # Check if the sum of dissaggregateds is similar to the originals.
         assert np.all(
             np.isclose(pet_step_hr_vals[:, fint_idxs].sum(axis=0),
                        pet_step_vals[fint_idxs]))
 
-#         print(time_step, pet_step_hr_vals[:, fint_idxs].sum(axis=0).mean())
-
         pet_hr_interp_var[sel_idxs] = pet_step_hr_vals
 
-#
-#     curr_pet_interp_var[:] = pet_flds
-#
+        step_mean_pet = round(np.nanmean(pet_step_hr_vals), 3)
+
+        step_min_pet = round(np.nanmin(pet_step_hr_vals), 3)
+        if step_min_pet < min_hrly_pet:
+            min_hrly_pet = step_min_pet
+
+        step_max_pet = round(np.nanmax(pet_step_hr_vals), 3)
+        if step_max_pet > max_hrly_pet:
+            max_hrly_pet = step_max_pet
+
+        print(
+            time_step, step_min_pet, step_mean_pet, step_max_pet,)
+
+        step_pets.append([step_min_pet, step_mean_pet, step_max_pet])
+
+    print('min_hrly_pet:', min_hrly_pet)
+    print('max_hrly_pet:', max_hrly_pet)
+
     pet_hr_interp_var.units = out_units
-    pet_hr_interp_var.standard_name = 'PET (%s)' % interp_type
+    pet_hr_interp_var.standard_name = 'PET (%s)' % args[4]
 
     in_hr_nc.close()
     out_pet_nc.close()
+    #==========================================================================
+
+    step_pets = np.array(step_pets, order='f')
+
+    for i, label in enumerate(['min', 'mean', 'max']):
+        plt.figure(figsize=(15, 7))
+
+        plt.plot(
+            time_daily_arr,
+            step_pets[:, i],
+            alpha=0.7,
+            lw=0.75,
+            label=label)
+
+        plt.grid()
+        plt.gca().set_axisbelow(True)
+
+        plt.legend()
+
+        plt.savefig(
+            str(out_dir / f'{out_pet_file.stem}_{label}.png'),
+            bbox_inches='tight',
+            dpi=200)
+
+        plt.close()
+
     return
 
 
