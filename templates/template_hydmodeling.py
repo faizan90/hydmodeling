@@ -7,15 +7,20 @@ Created on %(date)s
 import os
 import time
 import timeit
+from pathlib import Path
 from shutil import copy2
 import configparser as cfpm
 from datetime import datetime
 from collections import OrderedDict
 
-import h5py
 import numpy as np
 import pandas as pd
-from psutil import cpu_count
+
+from hydmodeling.plotting.perfs import get_peaks_mask
+
+from template_ftns import (
+    get_data_dict_from_h5_with_time_and_cat,
+    get_cell_vars_dict_from_h5)
 
 from hydmodeling import (
     TauDEMAnalysis,
@@ -34,213 +39,16 @@ from hydmodeling import (
     plot_cats_prm_vecs_evo,
     plot_cats_qsims,
     plot_cats_discharge_errors,
-    plot_cats_diags)
-
-from hydmodeling.plotting.perfs import get_peaks_mask
-
-
-def get_data_dict_from_h5(path_to_h5, ds_grp, set_na_to_zero_flag=False):
-
-    out_data_dict = {}
-    with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
-        h5_times = pd.to_datetime(
-            h5_hdl['time/time_strs'][...].astype(str), format='%Y%m%dT%H%M%S')
-
-        data_ds = h5_hdl[ds_grp]
-
-        keys = [int(key) for key in data_ds.keys()]
-
-        for key in keys:
-            out_data_dict[key] = pd.DataFrame(
-                index=h5_times, data=data_ds[str(key)][:])
-
-            if set_na_to_zero_flag:
-                nan_ct = np.isnan(out_data_dict[key].values).sum()
-
-                if nan_ct:
-                    print('\n')
-                    print('#' * 30)
-                    print(
-                        f'WARNING: Set {nan_ct} values to zero in dataset '
-                        f'{key} in file: {os.path.basename(path_to_h5)}!')
-                    print('#' * 30)
-                    print('\n')
-
-                    out_data_dict[key].replace(np.nan, 0.0, inplace=True)
-
-    return out_data_dict
-
-
-def get_data_dict_from_h5_with_time(
-        path_to_h5, ds_grp, beg_times, end_times, set_na_to_zero_flag=False):
-
-    # beg_times and end_times have corresponding beg and end times
-    # for the selection period
-
-    out_data_dict = {}
-    with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
-        h5_times = pd.to_datetime(
-            h5_hdl['time/time_strs'][...].astype(str), format='%Y%m%dT%H%M%S')
-
-        select_idxs = np.zeros(h5_times.size, dtype=bool)
-
-        for beg_time, end_time in zip(beg_times, end_times):
-            sub_sel_idxs = ((h5_times >= beg_time) & (h5_times <= end_time))
-
-            select_idxs |= sub_sel_idxs
-
-        data_ds = h5_hdl[ds_grp]
-
-        keys = [int(key) for key in data_ds.keys()]
-
-        for key in keys:
-            out_data_dict[key] = pd.DataFrame(
-                index=h5_times[select_idxs],
-                data=data_ds[str(key)][select_idxs,:])
-
-            if set_na_to_zero_flag:
-                nan_ct = np.isnan(out_data_dict[key].values).sum()
-
-                if nan_ct:
-                    print('\n')
-                    print('#' * 30)
-                    print(
-                        f'WARNING: Set {nan_ct} values to zero in dataset '
-                        f'{key} in file: {os.path.basename(path_to_h5)}!')
-                    print('#' * 30)
-                    print('\n')
-
-                    out_data_dict[key].replace(np.nan, 0.0, inplace=True)
-
-    return out_data_dict
-
-
-def get_data_dict_from_h5_with_time_and_cat(
-        path_to_h5,
-        ds_grp,
-        beg_times,
-        end_times,
-        cats,
-        set_na_to_zero_flag=False):
-
-    # beg_times and end_times have corresponding beg and end times
-    # for the selection period
-
-    out_data_dict = {}
-    with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
-        h5_times = pd.to_datetime(
-            h5_hdl['time/time_strs'][...].astype(str), format='%Y%m%dT%H%M%S')
-
-        select_idxs = np.zeros(h5_times.size, dtype=bool)
-
-        for beg_time, end_time in zip(beg_times, end_times):
-            sub_sel_idxs = ((h5_times >= beg_time) & (h5_times <= end_time))
-
-            select_idxs |= sub_sel_idxs
-
-        select_idxs = np.where(select_idxs)[0]
-
-        data_ds = h5_hdl[ds_grp]
-
-        keys = [int(key) for key in data_ds.keys()]
-
-        for key in keys:
-
-            if key not in cats:
-                continue
-
-            out_data_dict[key] = pd.DataFrame(
-                index=h5_times[select_idxs],
-                data=data_ds[str(key)][select_idxs,:])
-
-            if set_na_to_zero_flag:
-                nan_ct = np.isnan(out_data_dict[key].values).sum()
-
-                if nan_ct:
-                    print('\n')
-                    print('#' * 30)
-                    print(
-                        f'WARNING: Set {nan_ct} values to zero in dataset '
-                        f'{key} in file: {os.path.basename(path_to_h5)}!')
-                    print('#' * 30)
-                    print('\n')
-
-                    out_data_dict[key].replace(np.nan, 0.0, inplace=True)
-
-    assert out_data_dict, 'Nothing selected!'
-
-    return out_data_dict
-
-
-def get_cell_vars_dict_from_h5(path_to_h5, extra_ds=None):
-
-    cat_intersect_rows_dict = {}
-    cat_intersect_cols_dict = {}
-    cat_area_ratios_dict = {}
-    extent_shape = [-np.inf, -np.inf]
-
-    if extra_ds is not None:
-        assert isinstance(extra_ds, str), 'Only string dataset label allowed!'
-
-        cat_extra_dss_dict = {}
-
-    with h5py.File(path_to_h5, mode='r', driver=None) as h5_hdl:
-        keys = [int(key) for key in h5_hdl['rows'].keys()]
-
-        for key in keys:
-            rows = h5_hdl[f'rows/{key}'][...]
-            cols = h5_hdl[f'cols/{key}'][...]
-            key_area_ratios = h5_hdl[f'rel_itsctd_area/{key}'][...]
-
-            cat_intersect_rows_dict[key] = rows
-            cat_intersect_cols_dict[key] = cols
-            cat_area_ratios_dict[key] = key_area_ratios
-
-            if rows.max() > extent_shape[0]:
-                extent_shape[0] = rows.max()
-
-            if cols.max() > extent_shape[1]:
-                extent_shape[1] = cols.max()
-
-            if extra_ds is not None:
-                cat_extra_dss_dict[key] = h5_hdl[f'{extra_ds}/{key}'][...]
-
-    out_dict = {
-        'rows': cat_intersect_rows_dict,
-        'cols': cat_intersect_cols_dict,
-        'shape': extent_shape,
-        'area_ratios': cat_area_ratios_dict}
-
-    if extra_ds is not None:
-        out_dict.update({extra_ds:cat_extra_dss_dict})
-
-    return out_dict
+    plot_cats_diags,
+    get_n_cpus)
 
 
 def main():
-    in_ini_file = r'template_hydmodeling_config.ini'
-
-    cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
-    cfp.read(in_ini_file)
-
-    in_ini_abs_path = os.path.abspath(in_ini_file)
-
-    n_cpus = cfp['DEFAULT']['n_cpus']
-    if n_cpus == 'auto':
-        n_cpus = cpu_count(logical=False) - 1
-
-    else:
-        n_cpus = int(n_cpus)
-
-    old_chdir = os.getcwd()
-
-    main_dir = cfp['DEFAULT']['main_dir']
-    os.chdir(main_dir)
 
     hyd_analysis_flag = False
     get_stms_flag = False
-    create_stms_rels_flag = False
     create_cumm_cats_flag = False
+    create_stms_rels_flag = False
     optimize_flag = False
     plot_kfold_perfs_flag = False
     plot_best_kfold_prms_flag = False
@@ -270,34 +78,44 @@ def main():
     plot_diags_flag = True
 #     plot_qsims_flag = True  # for ROPE only.
 #     plot_cats_discharge_errs_flag = True  # For ROPE only.
+    #==========================================================================
 
-    use_cv_time_flag = False
-    use_cv_time_flag = True
+    in_ini_file = (
+        Path(os.getcwd()).parents[0] / r'template_hydmodeling_config.ini')
+
+    assert in_ini_file.exists(), f'{in_ini_file} does not exist!'
+
+    cfp = cfpm.ConfigParser(interpolation=cfpm.ExtendedInterpolation())
+    cfp.read(in_ini_file)
+
+    in_ini_abs_path = in_ini_file.absolute()
+
+    n_cpus = cfp['DEFAULT']['n_cpus']
+    if n_cpus == 'auto':
+        n_cpus = get_n_cpus()
+
+    else:
+        n_cpus = int(n_cpus)
+
+    old_chdir = os.getcwd()
+
+    main_dir = Path(cfp['DEFAULT']['main_dir'])
+    os.chdir(main_dir)
 
     #=========================================================================
     # This performs the hydrological preprocessing
     #=========================================================================
-    show_ansys_stdout = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
-    hyd_ansys_runtype = cfp['HYD_ANSYS']['hyd_ansys_runtype']
-    calc_for_cats_only = cfp['HYD_ANSYS'].getboolean('calc_for_cats_only')
-    max_cell_move = cfp['HYD_ANSYS'].getint('max_cell_move')
-    strm_strt_thresh = cfp['HYD_ANSYS'].getint('strm_strt_thresh')
-
-    out_pre_proc_dir = cfp['HYD_ANSYS']['out_pre_proc_dir']
-    in_dem_loc = cfp['HYD_ANSYS']['in_dem_loc']
-    in_gage_shp_loc = cfp['HYD_ANSYS']['in_gage_shp_loc']
-
     hyd_ansys = TauDEMAnalysis(
-        in_dem_loc,
-        in_gage_shp_loc,
-        out_pre_proc_dir,
+        cfp['HYD_ANSYS']['in_dem_loc'],
+        cfp['HYD_ANSYS']['in_gage_shp_loc'],
+        cfp['HYD_ANSYS']['out_pre_proc_dir'],
         n_cpus=n_cpus)
 
-    hyd_ansys.run_type = hyd_ansys_runtype
-    hyd_ansys.strm_orign_thresh = strm_strt_thresh
-    hyd_ansys.max_cell_move = max_cell_move
-    hyd_ansys.verbose = show_ansys_stdout
-    hyd_ansys.area_flag = calc_for_cats_only
+    hyd_ansys.run_type = cfp['HYD_ANSYS']['hyd_ansys_runtype']
+    hyd_ansys.strm_orign_thresh = cfp['HYD_ANSYS'].getint('strm_strt_thresh')
+    hyd_ansys.max_cell_move = cfp['HYD_ANSYS'].getint('max_cell_move')
+    hyd_ansys.verbose = cfp['HYD_ANSYS'].getboolean('show_ansys_stdout')
+    hyd_ansys.area_flag = cfp['HYD_ANSYS'].getboolean('calc_for_cats_only')
 
     if hyd_analysis_flag:
         hyd_ansys()
@@ -306,41 +124,50 @@ def main():
     # This extracts the required streams for catchments from the shapefiles
     # that we get from TauDEM
     #=========================================================================
-    in_dem_net_shp_file = hyd_ansys.dem_net
-    in_wat_ids_file = hyd_ansys.watersheds_ids
     out_dem_net_shp_file = cfp['GET_STMS']['out_dem_net_shp_file']
-    in_dem_file = hyd_ansys.fil
     in_cats_file = hyd_ansys.watersheds_shp
-    in_gauges_coords_file = hyd_ansys.gage_shp_moved
-    gauge_coords_field_name = cfp['GET_STMS']['gauge_coords_field_name']
-    out_df_file = cfp['GET_STMS']['dem_net_file']
+    dem_net_file = cfp['GET_STMS']['dem_net_file']
     out_wat_ids_file = cfp['GET_STMS']['out_wat_ids_file']
     sep = cfp['DEFAULT']['sep']
 
     if get_stms_flag:
         get_stms(
-            in_dem_net_shp_file,
-            in_wat_ids_file,
-            in_dem_file,
+            hyd_ansys.dem_net,
+            hyd_ansys.watersheds_ids,
+            hyd_ansys.fil,
             in_cats_file,
-            in_gauges_coords_file,
+            hyd_ansys.gage_shp_moved,
             out_dem_net_shp_file,
-            out_df_file,
+            dem_net_file,
             out_wat_ids_file,
             sep,
-            gauge_coords_field_name)
+            cfp['GET_STMS']['gauge_coords_field_name'])
+
+    #==========================================================================
+    # Creates cummulative catchments for each gauge location.
+    #==========================================================================
+    watershed_field_name = cfp['CREATE_STM_RELS']['watershed_field_name']
+
+    if create_cumm_cats_flag:
+        get_cumm_cats(
+            in_cats_file,
+            watershed_field_name,
+            out_wat_ids_file,
+            sep,
+            cfp['CUMM_CATS']['out_cumm_cat_shp'],
+            cfp['CUMM_CATS']['out_cumm_cat_descrip_file'],
+            sep)
 
     #=========================================================================
     # This creates a stream relationship tree based on their order of
-    # occurrence in the out_df_file
+    # occurrence in the out_dem_net_file
     #=========================================================================
     prcss_cats_list = cfp['CREATE_STM_RELS']['prcss_cats_list'].split(sep)
 
     hyd_mod_dir = cfp['CREATE_STM_RELS']['hyd_mod_dir']
-    out_cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
-    out_stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
-    watershed_field_name = cfp['CREATE_STM_RELS']['watershed_field_name']
-    out_cats_rel_fig_path = cfp['CREATE_STM_RELS']['out_cats_rel_fig_path']
+    cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
+    stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
+    cats_rel_fig_path = cfp['CREATE_STM_RELS']['out_cats_rel_fig_path']
 
     if not os.path.exists(hyd_mod_dir):
         os.mkdir(hyd_mod_dir)
@@ -349,16 +176,21 @@ def main():
 
     crnt_time = datetime.now().strftime('%Y%m%d%H%M%S')
 
+    if any((hyd_analysis_flag, get_stms_flag, create_cumm_cats_flag,)):
+        copy2(in_ini_abs_path, os.path.join(
+            cfp['HYD_ANSYS']['out_pre_proc_dir'],
+            f'{in_ini_name}_{crnt_time}.{in_ini_ext}'))
+
     copy2(in_ini_abs_path, os.path.join(
         hyd_mod_dir, f'{in_ini_name}_{crnt_time}.{in_ini_ext}'))
 
     if create_stms_rels_flag:
         crt_strms_rltn_tree(
             prcss_cats_list,
-            out_df_file,
+            dem_net_file,
             in_cats_file,
-            out_cats_prcssed_file,
-            out_stms_prcssed_file,
+            cats_prcssed_file,
+            stms_prcssed_file,
             sep,
             watershed_field_name)
 
@@ -366,36 +198,20 @@ def main():
             hyd_ansys.watersheds_shp,
             hyd_ansys.gage_shp_moved,
             out_dem_net_shp_file,
-            out_df_file,
-            out_cats_prcssed_file,
-            out_stms_prcssed_file,
+            dem_net_file,
+            cats_prcssed_file,
+            stms_prcssed_file,
             prcss_cats_list,
-            out_cats_rel_fig_path,
+            cats_rel_fig_path,
             sep=sep)
-
-    out_cumm_cat_shp = cfp['CUMM_CATS']['out_cumm_cat_shp']
-    out_cumm_cat_descrip_file = cfp['CUMM_CATS']['out_cumm_cat_descrip_file']
-
-    if create_cumm_cats_flag:
-        get_cumm_cats(
-            in_cats_file,
-            watershed_field_name,
-            out_wat_ids_file,
-            sep,
-            out_cumm_cat_shp,
-            out_cumm_cat_descrip_file,
-            sep)
 
     #=========================================================================
     # Optimize hydrologic model
     #=========================================================================
-    in_dem_net_file = cfp['GET_STMS']['dem_net_file']
-    in_cats_prcssed_file = cfp['CREATE_STM_RELS']['cats_prcssed_file']
-    in_stms_prcssed_file = cfp['CREATE_STM_RELS']['stms_prcssed_file']
-
-    sep = cfp['DEFAULT']['sep']
-
     time_fmt = cfp['OPT_HYD_MODEL']['time_fmt']
+
+    use_cv_time_flag = cfp['OPT_HYD_MODEL'].getboolean(
+        'use_calib_valid_dates_flag')
 
     if use_cv_time_flag:
         (start_cdate,
@@ -659,14 +475,14 @@ def main():
         dtype=np.int32)
 
     if optimize_flag:
-        in_cats_prcssed_df = pd.read_csv(
-            in_cats_prcssed_file, sep=str(sep), index_col=0)
+        cats_prcssed_df = pd.read_csv(
+            cats_prcssed_file, sep=str(sep), index_col=0)
 
-        in_stms_prcssed_df = pd.read_csv(
-            in_stms_prcssed_file, sep=str(sep), index_col=0)
+        stms_prcssed_df = pd.read_csv(
+            stms_prcssed_file, sep=str(sep), index_col=0)
 
-        in_dem_net_df = pd.read_csv(
-            in_dem_net_file, sep=str(sep), index_col=0)
+        dem_net_df = pd.read_csv(
+            dem_net_file, sep=str(sep), index_col=0)
 
         # always in cumecs
         obs_q_file = cfp['OPT_HYD_MODEL']['obs_q_file']
@@ -694,19 +510,6 @@ def main():
 
         in_q_df = pd.read_csv(obs_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=time_fmt)
-
-#         in_ppt_dfs_dict = get_data_dict_from_h5(ppt_file, ppt_ds_grp, True)
-#         in_temp_dfs_dict = get_data_dict_from_h5(temp_file, temp_ds_grp)
-#         in_pet_dfs_dict = get_data_dict_from_h5(pet_file, pet_ds_grp)
-
-#         in_ppt_dfs_dict = get_data_dict_from_h5_with_time(
-#             ppt_file, ppt_ds_grp, h5_beg_times, h5_end_times, True)
-#
-#         in_temp_dfs_dict = get_data_dict_from_h5_with_time(
-#             temp_file, temp_ds_grp, h5_beg_times, h5_end_times,)
-#
-#         in_pet_dfs_dict = get_data_dict_from_h5_with_time(
-#             pet_file, pet_ds_grp, h5_beg_times, h5_end_times,)
 
         prcss_cats_ints_list = [int(cat) for cat in prcss_cats_list]
 
@@ -779,9 +582,9 @@ def main():
         _beg_t = timeit.default_timer()
 
         solve_cats_sys(
-            in_cats_prcssed_df,
-            in_stms_prcssed_df,
-            in_dem_net_df,
+            cats_prcssed_df,
+            stms_prcssed_df,
+            dem_net_df,
             in_use_step_df,
             in_q_df,
             in_ppt_dfs_dict,

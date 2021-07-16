@@ -71,7 +71,7 @@ def merge_same_id_shp_poly(in_shp, out_shp, field='DN'):
             cat = feat_dict[fid_list[0]]
             curr_cat_feat = ogr.Feature(out_lyr_dfn)
             curr_cat_feat.SetField(field, uniq_val)
-            curr_cat_feat.SetGeometry(cat.GetGeometryRef())
+            curr_cat_feat.SetGeometry(cat.GetGeometryRef().Buffer(0))
             cat_feat = curr_cat_feat
 
         for fid in fid_list:

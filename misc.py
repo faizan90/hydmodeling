@@ -5,10 +5,11 @@ Created on Jan 15, 2019
 '''
 import os
 import sys
-from functools import wraps
 import traceback as tb
+from functools import wraps
 
 import pyproj
+import psutil
 import numpy as np
 import pandas as pd
 
@@ -123,6 +124,22 @@ def ret_mp_idxs(n_vals, n_cpus):
 
     assert (idxs[0] == 0) & (idxs[-1] == n_vals), idxs
     return idxs
+
+
+def get_n_cpus():
+
+    phy_cores = psutil.cpu_count(logical=False)
+    log_cores = psutil.cpu_count()
+
+    if phy_cores < log_cores:
+        n_cpus = phy_cores
+
+    else:
+        n_cpus = log_cores - 1
+
+    n_cpus = max(n_cpus, 1)
+
+    return n_cpus
 
 
 if __name__ == '__main__':
