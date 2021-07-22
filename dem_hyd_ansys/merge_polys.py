@@ -19,6 +19,10 @@ def merge_same_id_shp_poly(in_shp, out_shp, field='DN'):
     '''
 
     cat_ds = ogr.Open(in_shp)
+
+    assert cat_ds is not None, (
+        f'Unable to open file: {in_shp}!')
+
     lyr = cat_ds.GetLayer(0)
     spt_ref = lyr.GetSpatialRef()
 

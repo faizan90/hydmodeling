@@ -17,6 +17,7 @@ import time
 import timeit
 import subprocess
 from os import mkdir
+from datetime import datetime
 from platform import architecture
 from os.path import (
 	join as os_join,
@@ -80,7 +81,9 @@ class TauDEMAnalysis:
 		self.fac = os_join(self.outputs_dir, 'fac.tif')
 		self.strm = os_join(self.outputs_dir, 'strm.tif')
 		self.strm_dist = os_join(self.outputs_dir, 'strm_dist.tif')
-		self.log_file = os_join(self.outputs_dir, 'log_file.txt')
+
+		crnt_time = datetime.now().strftime('%Y%m%d%H%M%S')
+		self.log_file = os_join(self.outputs_dir, f'log_file_{crnt_time}.txt')
 
 		self.watersheds = os_join(self.outputs_dir, 'watersheds.tif')
 		self.watersheds_all = os_join(self.outputs_dir, 'watersheds_all.tif')
@@ -311,7 +314,7 @@ class TauDEMAnalysis:
 			temp_shp += basename(self.watersheds_shp)
 
 			fmt = 'ESRI Shapefile'
-			cmd = 'python "%s" "%s" -f "%s" "%s"' % (
+			cmd = 'python "%s" -8 "%s" -f "%s" "%s"' % (
 				self.polygonize_file, self.watersheds, fmt, temp_shp)
 
 			print('\nExecuting: %s' % cmd)
