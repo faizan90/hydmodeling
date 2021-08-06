@@ -78,6 +78,10 @@ from .plotting import (
     plot_cats_diags,
     )
 
+from .templates import (
+    get_data_dict_from_h5_with_time_and_cat,
+    get_cell_vars_dict_from_h5)
+
 from .forcings import solve_cats_sys_forcings
 
 from .misc import change_pt_crs, ret_mp_idxs, get_n_cpus

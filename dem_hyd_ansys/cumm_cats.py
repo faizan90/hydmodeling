@@ -117,6 +117,10 @@ def get_cumm_cats(in_cat_shp,
         cat_feat = feat_dict[key]
         out_feat = ogr.Feature(out_lyr_dfn)
         geom = cat_feat.GetGeometryRef()
+
+        assert geom.GetGeometryType() in (3, 6), (
+            geom.GetGeometryName(), geom.GetGeometryType())
+
         out_feat.SetGeometry(geom)
         out_cat_df.loc[key, 'cumm_area'] = geom.Area()
         out_cat_df.loc[key, 'diff_area'] = feat_area_dict[key]

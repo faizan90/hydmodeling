@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 
 plt.ioff()
 
+ogr.UseExceptions()
+
 
 def get_shp_stuff(in_shp, field_id):
 
@@ -177,19 +179,38 @@ def plot_strm_rltn(
             max_pts_idx = None
 
             for i in range(geom_count):
-                _ = _poly.GetGeometryRef(i).GetGeometryRef(0).GetPointCount()
 
-                if _ is None:
-                    break
+                gt = _poly.GetGeometryRef(i).GetGeometryType()
+
+                if gt == 2:
+                    lin_ring = _poly.GetGeometryRef(i)
+                    sub_poly = ogr.Geometry(ogr.wkbPolygon)
+                    sub_poly.AddGeometry(lin_ring)
+
+                else:
+                    sub_poly = _poly.GetGeometryRef(i)
+
+#                 _ = _poly.GetGeometryRef(i).GetGeometryRef(0).GetPointCount()
+                _ = sub_poly.GetGeometryRef(0).GetPointCount()
+
+#                 if _ is None:
+#                     break
 
                 if _ > max_pts:
                     max_pts = _
                     max_pts_idx = i
 
-            assert max_pts_idx is not None, 'Could not select a polygon!'
+            assert max_pts_idx is not None, (
+                'Could not select a polygon!')
 
-            _ = _poly.GetGeometryRef(
-                max_pts_idx).GetGeometryRef(0).GetPoints()
+#             _ = _poly.GetGeometryRef(
+#                 max_pts_idx).GetGeometryRef(0).GetPoints()
+
+            try:
+                _ = _poly.GetGeometryRef(max_pts_idx).GetGeometryRef(0).GetPoints()
+
+            except:
+                _ = _poly.GetGeometryRef(max_pts_idx).GetPoints()
 
         cats_poly_pts.append(np.asarray(_))
         centroids_list.append([_cent.GetX(), _cent.GetY()])

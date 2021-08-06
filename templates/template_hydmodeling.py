@@ -18,10 +18,6 @@ import pandas as pd
 
 from hydmodeling.plotting.perfs import get_peaks_mask
 
-from template_ftns import (
-    get_data_dict_from_h5_with_time_and_cat,
-    get_cell_vars_dict_from_h5)
-
 from hydmodeling import (
     TauDEMAnalysis,
     get_stms,
@@ -40,7 +36,9 @@ from hydmodeling import (
     plot_cats_qsims,
     plot_cats_discharge_errors,
     plot_cats_diags,
-    get_n_cpus)
+    get_n_cpus,
+    get_data_dict_from_h5_with_time_and_cat,
+    get_cell_vars_dict_from_h5)
 
 
 def main():
@@ -195,7 +193,7 @@ def main():
             watershed_field_name)
 
         plot_strm_rltn(
-            hyd_ansys.watersheds_shp,
+            in_cats_file,
             hyd_ansys.gage_shp_moved,
             out_dem_net_shp_file,
             dem_net_file,
@@ -511,7 +509,7 @@ def main():
         in_q_df = pd.read_csv(obs_q_file, sep=str(sep), index_col=0)
         in_q_df.index = pd.to_datetime(in_q_df.index, format=time_fmt)
 
-        prcss_cats_ints_list = [int(cat) for cat in prcss_cats_list]
+        prcss_cats_ints_list = [int(cat) for cat in cats_prcssed_df.index]
 
         in_ppt_dfs_dict = get_data_dict_from_h5_with_time_and_cat(
             ppt_file,
