@@ -19,7 +19,9 @@ cdef extern from "complex.h" nogil:
 
 
 # should come from a binary compiled on intel (for use on amd systems as well)
-from .intel_dft_mkl cimport mkl_real_dft
+#from .intel_dft_mkl cimport mkl_real_dft
+
+from .pocket_dft cimport pocket_real_dft
 
 # cdef extern from "intel_dfti.h" nogil:
 #     cdef:
@@ -61,7 +63,10 @@ cdef DT_D get_ft_eff(
 
         DT_D abs_ft_sq_diff, abs_ft_diff
 
-    mkl_real_dft(
+    # mkl_real_dft(
+    #     sim_for_four_trans_struct.orig, sim_for_four_trans_struct.ft, n_pts)
+
+    pocket_real_dft(
         sim_for_four_trans_struct.orig, sim_for_four_trans_struct.ft, n_pts)
 
     abs_ft_sq_diff = 0.0

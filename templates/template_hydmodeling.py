@@ -73,13 +73,13 @@ def main():
     plot_prm_trans_comp_flag = True
     plot_opt_evo_flag = True
     plot_hbv_vars_flag = True
-    plot_diags_flag = True
+    # plot_diags_flag = True
 #     plot_qsims_flag = True  # for ROPE only.
 #     plot_cats_discharge_errs_flag = True  # For ROPE only.
     #==========================================================================
 
     in_ini_file = (
-        Path(os.getcwd()).parents[0] / r'template_hydmodeling_config.ini')
+        Path(__file__).parents[0] / r'template_hydmodeling_config.ini')
 
     assert in_ini_file.exists(), f'{in_ini_file} does not exist!'
 
@@ -542,6 +542,9 @@ def main():
                 dtype=np.int32))
 
         if obj_ftn_wts[4] or obj_ftn_wts[5]:
+            if obj_ftn_wts[4]:
+                raise NotImplementedError
+
             for col in in_use_step_df.columns:
                 if use_cv_time_flag:
                     in_use_step_df.loc[start_cdate:end_cdate, col

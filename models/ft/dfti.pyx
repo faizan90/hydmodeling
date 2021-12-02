@@ -9,7 +9,11 @@
 from libc.math cimport cos
 
 # should come from a binary compiled on intel (for use on amd systems as well)
-from .intel_dft_mkl cimport mkl_real_dft
+#from .intel_dft_mkl cimport mkl_real_dft
+
+from .pocket_dft cimport pocket_real_dft
+
+#from .pocket_dft cimport _pocket_real_dft
 
 # cdef extern from "intel_dfti.h" nogil:
 #     cdef:
@@ -23,6 +27,7 @@ cdef extern from "complex.h" nogil:
     cdef:
         DT_D cabs(DT_DC)
         DT_D carg(DT_DC)
+
 
 cdef void cmpt_real_fourtrans_1d(
     ForFourTrans1DReal *for_four_trans_struct) nogil except +:
@@ -40,7 +45,9 @@ cdef void cmpt_real_fourtrans_1d(
     amps = for_four_trans_struct.amps
     angs = for_four_trans_struct.angs
 
-    mkl_real_dft(for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
+    # mkl_real_dft(for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
+    pocket_real_dft(
+        for_four_trans_struct.orig, for_four_trans_struct.ft, n_pts)
 
     for i in range((n_pts // 2) + 1):
         ft = for_four_trans_struct.ft[i]

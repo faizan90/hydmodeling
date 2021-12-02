@@ -51,7 +51,7 @@ cdef void pre_brute(
         DT_UL n_prms = prm_vecs.shape[1]
 
         DT_UL last_prm_idx = n_prms - 1
-        DT_UL last_idx_val= n_discretize - 1
+        DT_UL last_idx_val = n_discretize - 1
 
     for i in range(n_prm_vecs):
         use_prm_vec_flags[i] = 0

@@ -127,7 +127,7 @@ cdef void update_obj_doubles(
                     mean_ref, q_arr, use_step_arr, obj_longs[off_idx_i])**0.5
 
         else:
-            if obj_ftn_wts[0] or obj_ftn_wts[2]:
+            if obj_ftn_wts[0] or obj_ftn_wts[2] or obj_ftn_wts[3]:
                 mean_ref = get_mean(q_arr, obj_longs[off_idx_i])
 
             if obj_ftn_wts[0]:
