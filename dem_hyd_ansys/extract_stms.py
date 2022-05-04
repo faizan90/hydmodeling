@@ -934,8 +934,18 @@ def get_stms(in_dem_net_shp_file,
     coords_vec.Destroy()
     temps_streams_vec.Destroy()
 
-    driver.DeleteDataSource(temp_dem_net_1_path)
-    driver.DeleteDataSource(temp_dem_net_2_path)
+    try:
+        driver.DeleteDataSource(temp_dem_net_1_path)
+
+    except Exception as msg:
+        print(f'Error upon deleting temp_dem_net_1_path: {msg}')
+
+    try:
+        driver.DeleteDataSource(temp_dem_net_2_path)
+
+    except Exception as msg:
+        print(f'Error upon deleting temp_dem_net_2_path: {msg}')
+
     return
 
 
