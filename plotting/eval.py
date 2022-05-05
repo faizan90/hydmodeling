@@ -1051,6 +1051,7 @@ class PlotCatQSims:
 
             all_hbv_prms = []
             for i in range(self.n_prm_vecs):
+
                 opt_prms = prm_vecs[i]
 
                 hbv_prms = tfm_opt_to_hbv_prms_py(
@@ -1085,7 +1086,8 @@ class PlotCatQSims:
                 if plot_qsims_flag:
                     plt.plot(qsim_arr, color='k', alpha=alpha, lw=0.5)
 
-                out_df[f'kf_{k:02d}_sim_{i:04d}'][:] = qsim_arr
+                out_df.loc[:, f'kf_{k:02d}_sim_{i:04d}'] = (
+                    qsim_arr.astype(np.float32))
 
                 for obj_key in obj_ftns_dict:
                     obj_val = obj_ftns_dict[obj_key][0](

@@ -1032,24 +1032,6 @@ cpdef dict hbv_opt(args):
                 &fval_pre_global)
 
         gobj_vals[iter_curr] = fval_pre_global
-#         print('iter_curr:', iter_curr, 'comb_ctr:', comb_ctr)
-
-#     if opt_schm == 2:
-#         get_new_chull_vecs(
-#             depths_arr,
-#             temp_mins,
-#             mins,
-#             pre_obj_vals,
-#             sort_obj_vals,
-#             acc_vecs,
-#             prm_vecs,
-#             uvecs,
-#             dot_ref,
-#             dot_test,
-#             dot_test_sort,
-#             chull_vecs,
-#             n_cpus,
-#             &chull_vecs_ctr)
 
     # it is important to call the obj_ftn to makes changes one last time
     # i.e. fill arrays with the best parameters

@@ -613,7 +613,10 @@ cdef void post_rope(
     with gil:
         print(
             'Discharge within bounds\' variables:', 
-            qsim_bds_ll_ctr, qsim_within_bds_ctr, qsim_bds_ul_ctr)
+            qsim_bds_ll_ctr, 
+            qsim_within_bds_ctr, 
+            qsim_bds_ul_ctr, 
+            (n_recs - off_idx))
 
     # Update stopping criteria.
     if cont_opt_flag[0] and (iter_curr[0] >= max_iters):
@@ -624,8 +627,27 @@ cdef void post_rope(
         with gil: print('***max_cont_iters reached!***')
         cont_opt_flag[0] = 0
 
+    # Not used for now. See note below.
+    # if cont_opt_flag[0] and (
+    #     (qsim_bds_ll_ctr <= qsim_within_bds_ctr <= qsim_bds_ul_ctr)):
+    #
+    #     with gil: print('***Discharge simulations within bounds!***')
+    #     cont_opt_flag[0] = 0
+
+    # It may happen that qsim_within_bds_ctr drops low fast.
+    # This is now made to stop the calibration.
+    # Ideally, it should be monitored to drop monotonically.
+    # Then, even if it has a jump big enough to drop below the
+    # limits in one iteration, the calibration could be stopped.
+    # Otherwise, we don't know if the first iteration was so bad
+    # that qsim_within_bds_ctr was below both limits.
+    # Actually, the initial random sample should be such that
+    # qsim_within_bds_ctr is very close to the number of total values.
+    # If this is not the case, then something is most probably wrong
+    # with the data or the setup. Anyways, the calibration stops.
     if cont_opt_flag[0] and (
-        (qsim_bds_ll_ctr <= qsim_within_bds_ctr <= qsim_bds_ul_ctr)):
+        (qsim_bds_ll_ctr <= qsim_within_bds_ctr <= qsim_bds_ul_ctr) or 
+        (qsim_within_bds_ctr <= qsim_bds_ll_ctr)):
 
         with gil: print('***Discharge simulations within bounds!***')
         cont_opt_flag[0] = 0
