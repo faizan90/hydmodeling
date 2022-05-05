@@ -1024,9 +1024,14 @@ def solve_cat(
 
             _opt_list = []
             if opt_schm_vars_dict['opt_schm'] == 'DE':
-                _opt_list.extend(
-                    [opt_schm_vars_dict['mu_sc_fac_bds'],
-                     opt_schm_vars_dict['cr_cnst_bds']])
+
+                mu_sc_fac_bds = opt_schm_vars_dict['mu_sc_fac_bds']
+                assert 0.0 < mu_sc_fac_bds <= 1.0
+
+                cr_cnst_bds = opt_schm_vars_dict['cr_cnst_bds']
+                assert 0 < cr_cnst_bds <= 1.0
+
+                _opt_list.extend([mu_sc_fac_bds, cr_cnst_bds])
 
             elif opt_schm_vars_dict['opt_schm'] == 'ROPE':
                 acc_rate = opt_schm_vars_dict['acc_rate']
@@ -1035,14 +1040,33 @@ def solve_cat(
                     bounds_arr.shape[0] **
                     opt_schm_vars_dict['n_rope_prm_vecs_exp'])
 
+                assert n_temp_rope_prm_vecs > 0
+
                 n_acc_prm_vecs = int(n_prm_vecs * acc_rate)
                 assert n_acc_prm_vecs >= 3
 
                 n_uvecs = int(
                     bounds_arr.shape[0] ** opt_schm_vars_dict['n_uvecs_exp'])
+
+                assert n_uvecs >= 3
+
                 max_chull_tries = opt_schm_vars_dict['max_chull_tries']
+                assert max_chull_tries >= 1
+
                 depth_ftn_type = opt_schm_vars_dict['depth_ftn_type']
+
                 min_pts_in_chull = opt_schm_vars_dict['min_pts_in_chull']
+                assert min_pts_in_chull >= 3
+
+                qsim_within_bds_ll_ratio = opt_schm_vars_dict[
+                    'qsim_within_bds_ll_ratio']
+
+                qsim_within_bds_ul_ratio = opt_schm_vars_dict[
+                    'qsim_within_bds_ul_ratio']
+
+                assert qsim_within_bds_ll_ratio > 0.0
+                assert qsim_within_bds_ul_ratio <= 1.0
+                assert qsim_within_bds_ll_ratio <= qsim_within_bds_ul_ratio
 
                 _opt_list.extend([
                     n_temp_rope_prm_vecs,
@@ -1050,7 +1074,9 @@ def solve_cat(
                     n_uvecs,
                     max_chull_tries,
                     depth_ftn_type,
-                    min_pts_in_chull])
+                    min_pts_in_chull,
+                    qsim_within_bds_ll_ratio,
+                    qsim_within_bds_ul_ratio])
 
                 print(f'n_temp_rope_prm_vecs: {n_temp_rope_prm_vecs}')
                 print(f'n_acc_prm_vecs: {n_acc_prm_vecs}')
@@ -1067,6 +1093,7 @@ def solve_cat(
                 raise Exception('Incorrect opt_schm!')
 
             print(f'n_prm_vecs: {n_prm_vecs}')
+
             if opt_schm_vars_dict['opt_schm'] != 'BRUTE':
                 _opt_list.extend([
                     n_prm_vecs,

@@ -60,22 +60,22 @@ def main():
     plot_qsims_flag = False
     plot_cats_discharge_errs_flag = False
 
-#     hyd_analysis_flag = True
-#     get_stms_flag = True
-#     create_cumm_cats_flag = True
-    create_stms_rels_flag = True
-    optimize_flag = True
-    plot_kfold_perfs_flag = True
-    plot_best_kfold_prms_flag = True
-    plot_prm_vecs_flag = True
-    plot_2d_kfold_prms_flag = True
-    plot_ann_cys_fdcs_flag = True
-    plot_prm_trans_comp_flag = True
-    plot_opt_evo_flag = True
-    plot_hbv_vars_flag = True
+    # hyd_analysis_flag = True
+    # get_stms_flag = True
+    # create_cumm_cats_flag = True
+    # create_stms_rels_flag = True
+    # optimize_flag = True
+    # plot_kfold_perfs_flag = True
+    # plot_best_kfold_prms_flag = True
+    # plot_prm_vecs_flag = True
+    # plot_2d_kfold_prms_flag = True
+    # plot_ann_cys_fdcs_flag = True
+    # plot_prm_trans_comp_flag = True
+    # plot_opt_evo_flag = True
+    # plot_hbv_vars_flag = True
     # plot_diags_flag = True
-#     plot_qsims_flag = True  # for ROPE only.
-#     plot_cats_discharge_errs_flag = True  # For ROPE only.
+    # plot_qsims_flag = True  # for ROPE only.
+    # plot_cats_discharge_errs_flag = True  # For ROPE only.
     #==========================================================================
 
     in_ini_file = (
@@ -323,6 +323,12 @@ def main():
 
         opt_schm_vars_dict['min_pts_in_chull'] = (
             in_opt_schm_vars_dict.getint('min_pts_in_chull'))
+
+        opt_schm_vars_dict['qsim_within_bds_ll_ratio'] = (
+            in_opt_schm_vars_dict.getfloat('qsim_within_bds_ll_ratio'))
+
+        opt_schm_vars_dict['qsim_within_bds_ul_ratio'] = (
+            in_opt_schm_vars_dict.getfloat('qsim_within_bds_ul_ratio'))
 
     elif in_opt_schm_vars_dict['opt_schm'] == 'BRUTE':
         opt_schm_vars_dict['opt_schm'] = 'BRUTE'

@@ -153,7 +153,7 @@ cpdef dict hbv_opt(args):
         DT_D[::1] obj_ftn_wts, obj_doubles, iobj_vals, gobj_vals
         DT_D[:, ::1] curr_opt_prms, bounds, bds_dfs
         DT_D[:, ::1] prm_vecs, temp_prm_vecs
-
+        
         # temporarily holds some values in case of residual discharges
         DT_D[:, ::1] obj_res_mult_doubles 
 
@@ -222,6 +222,7 @@ cpdef dict hbv_opt(args):
         DT_D[:, ::1] qsim_resamp_mult_arr
         DT_D[:, ::1] qsim_mult_arr_sort, qsim_mult_probs_arr_sort
         DT_D[:, ::1] qsim_mult_diffs_arr
+        DT_D[:, ::1] qsims_iter_arr  # For ROPE stopping criteria.
  
         DT_D[:, :, :, ::1] outs_mult_arr
 
@@ -239,6 +240,9 @@ cpdef dict hbv_opt(args):
         DT_D min_q_thresh, temp = np.nan
 #         DT_D mean_ref, ln_mean_ref, demr, ln_demr, act_std_dev
         DT_D ft_demr_1, ft_demr_2
+
+        # For ROPE stopping criteria.
+        DT_D qsim_within_bds_ll_ratio, qsim_within_bds_ul_ratio
 
         dict out_dict
 
@@ -271,16 +275,18 @@ cpdef dict hbv_opt(args):
          max_chull_tries,
          depth_ftn_type,
          min_pts_in_chull,
+         qsim_within_bds_ll_ratio,
+         qsim_within_bds_ul_ratio,
          n_prm_vecs,
          max_iters, 
          max_cont_iters, 
          obj_ftn_tol,
          prm_pcnt_tol) = args[2]
-    
+
     elif opt_schm == 3:
         (n_discretize,
          n_prm_vecs,) = args[2]
-         
+
     (inis_arr,
      temp_arr,
      prec_arr,
@@ -712,6 +718,10 @@ cpdef dict hbv_opt(args):
         qact_diffs_arr = np.full(1, np.nan, dtype=DT_D_NP)
         qsim_mult_diffs_arr = np.full((n_cpus, 1), np.nan, dtype=DT_D_NP)
 
+    if opt_schm == 2:
+        qsims_iter_arr = np.empty((n_recs, n_prm_vecs), dtype=DT_D_NP)
+
+    # Initial run.
     # for the selected parameters, get obj vals
     for i in prange(
         n_prm_vecs,
@@ -956,6 +966,9 @@ cpdef dict hbv_opt(args):
             elif opt_schm == 2:
                 pre_obj_vals[t_i] = res
 
+                for i in range(n_recs):
+                    qsims_iter_arr[i, t_i] = qsim_mult_arr[tid, i]
+
         for i in range(n_prm_vecs):
             if np.isnan(pre_obj_vals[i]):
                 raise RuntimeError('res is Nan!')
@@ -988,15 +1001,20 @@ cpdef dict hbv_opt(args):
                 pre_obj_vals,
                 best_prm_vec,
                 iobj_vals,
+                qact_arr,
                 prm_vecs,
+                qsims_iter_arr,
                 max_iters,
                 max_cont_iters,
+                off_idx,
                 &iter_curr,
                 &last_succ_i,
                 &n_succ,
                 &cont_iter,
                 &cont_opt_flag,
-                &fval_pre_global)
+                &fval_pre_global,
+                qsim_within_bds_ll_ratio,
+                qsim_within_bds_ul_ratio)
 
         elif opt_schm == 3:
             post_brute(

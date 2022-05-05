@@ -531,11 +531,14 @@ cdef void post_rope(
         const DT_D[::1] pre_obj_vals,
               DT_D[::1] best_prm_vec,
               DT_D[::1] iobj_vals,
+        const DT_D[::1] qact_arr,
 
         const DT_D[:, ::1] prm_vecs,
+        const DT_D[:, ::1] qsims_iter_arr,
 
         const DT_UL max_iters,
         const DT_UL max_cont_iters,
+        const DT_UL off_idx,
               DT_UL *iter_curr,
               DT_UL *last_succ_i,
               DT_UL *n_succ,
@@ -543,15 +546,27 @@ cdef void post_rope(
               DT_UL *cont_opt_flag,
 
               DT_D *fval_pre_global,
+        const DT_D qsim_within_bds_ll_ratio,
+        const DT_D qsim_within_bds_ul_ratio,
         ) nogil except +:
 
     cdef:
-        Py_ssize_t j, k
+        Py_ssize_t i, j, k
 
         DT_D fval_pre, iobj = INF
+        DT_D qact, qsim, qsim_min, qsim_max 
 
         DT_UL n_prms = prm_vecs.shape[1]
         DT_UL n_prm_vecs = prm_vecs.shape[0]
+
+        DT_UL n_recs = qsims_iter_arr.shape[0]
+        DT_UL qsim_within_bds_ctr = 0
+
+        DT_UL qsim_bds_ll_ctr = <DT_UL> (
+            (n_recs - off_idx) * qsim_within_bds_ll_ratio)
+
+        DT_UL qsim_bds_ul_ctr = <DT_UL> (
+            (n_recs - off_idx) * qsim_within_bds_ul_ratio)
 
     for j in range(n_prm_vecs):
         fval_pre = pre_obj_vals[j]
@@ -577,12 +592,42 @@ cdef void post_rope(
 
     iter_curr[0] += 1
 
+    # Test for qact/qsim bounds containment.
+    for i in range(off_idx, n_recs):
+        qact = qact_arr[i]
+        qsim_min = +INF
+        qsim_max = -INF
+
+        for j in range(n_prm_vecs):
+            qsim = qsims_iter_arr[i, j]
+
+            if qsim < qsim_min:
+                qsim_min = qsim
+
+            if qsim > qsim_max:
+                qsim_max = qsim
+
+        if qsim_min <= qact <= qsim_max:
+            qsim_within_bds_ctr += 1
+
+    with gil:
+        print(
+            'Discharge within bounds\' variables:', 
+            qsim_bds_ll_ctr, qsim_within_bds_ctr, qsim_bds_ul_ctr)
+
+    # Update stopping criteria.
     if cont_opt_flag[0] and (iter_curr[0] >= max_iters):
         with gil: print('***Max iterations reached!***')
         cont_opt_flag[0] = 0
 
     if cont_opt_flag[0] and (cont_iter[0] > max_cont_iters):
         with gil: print('***max_cont_iters reached!***')
+        cont_opt_flag[0] = 0
+
+    if cont_opt_flag[0] and (
+        (qsim_bds_ll_ctr <= qsim_within_bds_ctr <= qsim_bds_ul_ctr)):
+
+        with gil: print('***Discharge simulations within bounds!***')
         cont_opt_flag[0] = 0
 
     return

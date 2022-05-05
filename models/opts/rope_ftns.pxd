@@ -67,11 +67,14 @@ cdef void post_rope(
         const DT_D[::1] pre_obj_vals,
               DT_D[::1] best_prm_vec,
               DT_D[::1] iobj_vals,
+        const DT_D[::1] qact_arr,
 
         const DT_D[:, ::1] prm_vecs,
+        const DT_D[:, ::1] qsims_iter_arr,
 
         const DT_UL max_iters,
         const DT_UL max_cont_iters,
+        const DT_UL off_idx,
               DT_UL *iter_curr,
               DT_UL *last_succ_i,
               DT_UL *n_succ,
@@ -79,4 +82,6 @@ cdef void post_rope(
               DT_UL *cont_opt_flag,
 
               DT_D *fval_pre_global,
+        const DT_D qsim_within_bds_ll_ratio,
+        const DT_D qsim_within_bds_ul_ratio,
         ) nogil except +

@@ -90,7 +90,7 @@ class PlotCatQSims:
         self.prms_flags = db['cdata/all_prms_flags'][...]
         self.bds_arr = db['cdata/bds_arr'][...]
 
-        self.prms_syms = db['data/all_prms_labs'][...]
+        self.prms_syms = db['data/all_prms_labs'][...].astype(str)
 
         self.obj_ftn_labs = ['ns', 'ln_ns', 'kge']
         self.obj_ftn_wts = db[
@@ -730,8 +730,8 @@ class PlotCatQSims:
         corr_sims = []
 
         for i in range(self.n_lcs):
-            corr_sims.append(out_df.loc[
-                :, f'kf_{kf:02d}_sim_{self.lc_idxs[i]:04d}'].values)
+            corr_sims.append(
+                out_df.loc[:, f'kf_{kf:02d}_sim_{self.lc_idxs[i]:04d}'].values)
 
         qact_arr = out_df.iloc[:, 0].values
 
@@ -980,13 +980,17 @@ class PlotCatQSims:
         kfs_dict = sim_opt_data[1]
 
         out_df = pd.DataFrame(
-            data=qact_arr, columns=['obs'], dtype=np.float32)
+            index=np.arange(qact_arr.shape[0]),
+            columns=['obs'],
+            dtype=np.float32)
+
+        out_df['obs'][:] = qact_arr
 
         for k in range(1, self.kfolds + 1):
             kf_str = f'kf_{k:02d}'
 
             if self.opt_schm == 'DE':
-                prm_vecs = self.calib_db[kf_str + '/opt_prms'][...][None, :]
+                prm_vecs = self.calib_db[kf_str + '/opt_prms'][...][None,:]
 
             else:
                 if self.opt_iter is None:
@@ -996,10 +1000,19 @@ class PlotCatQSims:
                     iter_prm_vecs = self.calib_db[
                         kf_str + '/iter_prm_vecs'][...]
 
-                    prm_vecs = iter_prm_vecs[self.opt_iter, :, :].copy('c')
+                    prm_vecs = iter_prm_vecs[self.opt_iter,:,:].copy('c')
 
             self.n_prm_vecs = prm_vecs.shape[0]
             print(f'Plotting {self.n_prm_vecs} sims only!')
+
+            out_df = pd.concat((
+                out_df,
+                pd.DataFrame(
+                    index=np.arange(qact_arr.shape[0]),
+                    columns=[
+                        f'{kf_str}_sim_{i:04d}'
+                        for i in range(self.n_prm_vecs)],
+                    dtype=np.float32)), axis=1)
 
             alpha = 0.01
 
@@ -1070,7 +1083,7 @@ class PlotCatQSims:
                 if plot_qsims_flag:
                     plt.plot(qsim_arr, color='k', alpha=alpha, lw=0.5)
 
-                out_df[f'kf_{k:02d}_sim_{i:04d}'] = qsim_arr
+                out_df[f'kf_{k:02d}_sim_{i:04d}'][:] = qsim_arr
 
                 for obj_key in obj_ftns_dict:
                     obj_val = obj_ftns_dict[obj_key][0](
