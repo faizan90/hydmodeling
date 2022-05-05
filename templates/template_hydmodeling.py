@@ -3,15 +3,15 @@ Created on %(date)s
 
 @author: %(Faizan Anwar, IWS Uni-Stuttgart)s
 """
-
 import os
+import sys
 import time
 import timeit
+import traceback as tb
 from pathlib import Path
 from shutil import copy2
 import configparser as cfpm
 from datetime import datetime
-from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -40,6 +40,8 @@ from hydmodeling import (
     get_data_dict_from_h5_with_time_and_cat,
     get_cell_vars_dict_from_h5)
 
+DEBUG_FLAG = False
+
 
 def main():
 
@@ -60,20 +62,20 @@ def main():
     plot_qsims_flag = False
     plot_cats_discharge_errs_flag = False
 
-    # hyd_analysis_flag = True
-    # get_stms_flag = True
-    # create_cumm_cats_flag = True
-    # create_stms_rels_flag = True
-    # optimize_flag = True
-    # plot_kfold_perfs_flag = True
-    # plot_best_kfold_prms_flag = True
-    # plot_prm_vecs_flag = True
-    # plot_2d_kfold_prms_flag = True
-    # plot_ann_cys_fdcs_flag = True
-    # plot_prm_trans_comp_flag = True
-    # plot_opt_evo_flag = True
-    # plot_hbv_vars_flag = True
-    # plot_diags_flag = True
+    hyd_analysis_flag = True
+    get_stms_flag = True
+    create_cumm_cats_flag = True
+    create_stms_rels_flag = True
+    optimize_flag = True
+    plot_kfold_perfs_flag = True
+    plot_best_kfold_prms_flag = True
+    plot_prm_vecs_flag = True
+    plot_2d_kfold_prms_flag = True
+    plot_ann_cys_fdcs_flag = True
+    plot_prm_trans_comp_flag = True
+    plot_opt_evo_flag = True
+    plot_hbv_vars_flag = True
+    plot_diags_flag = True
     # plot_qsims_flag = True  # for ROPE only.
     # plot_cats_discharge_errs_flag = True  # For ROPE only.
     #==========================================================================
@@ -355,7 +357,7 @@ def main():
     opt_schm_vars_dict['n_prm_vecs_exp'] = in_opt_schm_vars_dict.getfloat(
         'n_prm_vecs_exp')
 
-    bounds_dict = OrderedDict()
+    bounds_dict = {}
 
     if not cfp['TEST_MODEL']['test_params_loc']:
 
@@ -900,26 +902,36 @@ def main():
 
 
 if __name__ == '__main__':
-    _save_log_ = False
-    if _save_log_:
-        from std_logger import StdFileLoggerCtrl
+    print('#### Started on %s ####\n' % time.asctime())
+    START = timeit.default_timer()
 
-        # save all console activity to out_log_file
-        out_log_file = os.path.join(r'P:\\',
-                                    r'Synchronize',
-                                    r'python_script_logs',
-                                    ('hydmodeling_template_log_%s.log' %
-                                     datetime.now().strftime('%Y%m%d%H%M%S')))
-        log_link = StdFileLoggerCtrl(out_log_file)
+    #==========================================================================
+    # When in post_mortem:
+    # 1. "where" to show the stack,
+    # 2. "up" move the stack up to an older frame,
+    # 3. "down" move the stack down to a newer frame, and
+    # 4. "interact" start an interactive interpreter.
+    #==========================================================================
 
-    print('\a\a\a\a Started on %s \a\a\a\a\n' % time.asctime())
-    START = timeit.default_timer()  # to get the runtime of the program
+    if DEBUG_FLAG:
+        try:
+            main()
 
-    main()
+        except:
+            pre_stack = tb.format_stack()[:-1]
 
-    STOP = timeit.default_timer()  # Ending time
-    print(('\n\a\a\a Done with everything on %s. Total run time was'
-           ' about %0.4f seconds \a\a\a' % (time.asctime(), STOP - START)))
+            err_tb = list(tb.TracebackException(*sys.exc_info()).format())
 
-    if _save_log_:
-        log_link.stop()
+            lines = [err_tb[0]] + pre_stack + err_tb[2:]
+
+            for line in lines:
+                print(line, file=sys.stderr, end='')
+
+            import pdb
+            pdb.post_mortem()
+    else:
+        main()
+
+    STOP = timeit.default_timer()
+    print(('\n#### Done with everything on %s.\nTotal run time was'
+           ' about %0.4f seconds ####' % (time.asctime(), STOP - START)))

@@ -1026,10 +1026,16 @@ def solve_cat(
             if opt_schm_vars_dict['opt_schm'] == 'DE':
 
                 mu_sc_fac_bds = opt_schm_vars_dict['mu_sc_fac_bds']
-                assert 0.0 < mu_sc_fac_bds <= 1.0
+
+                assert all(
+                    [0.0 < mu_sc_fac_bd <= 1.0
+                     for mu_sc_fac_bd in mu_sc_fac_bds]), mu_sc_fac_bds
 
                 cr_cnst_bds = opt_schm_vars_dict['cr_cnst_bds']
-                assert 0 < cr_cnst_bds <= 1.0
+
+                assert all(
+                    [0.0 < cr_cnst_bd <= 1.0
+                     for cr_cnst_bd in cr_cnst_bds]), cr_cnst_bds
 
                 _opt_list.extend([mu_sc_fac_bds, cr_cnst_bds])
 

@@ -156,7 +156,7 @@ def plot_cat_discharge_errors(plot_args):
             parse_patt, os.path.basename(qsim_file))
 
         qsims_df_orig = pd.read_csv(
-            qsim_file, sep=';', dtype=float).iloc[off_idx:, :]
+            qsim_file, sep=';', dtype=float).iloc[off_idx:,:]
 
         qobs_quants_masks_dict = get_quant_masks_dict(
             qsims_df_orig.iloc[:, 0], n_q_quants)
@@ -254,7 +254,7 @@ def plot_cat_discharge_errors(plot_args):
                 if sim_type == 'lo_hi':
                     lc_idxs = list(map(
                         int,
-                        best_prm_idxs_df.loc[f'kf_{kf:02d}_idxs', :].values))
+                        best_prm_idxs_df.loc[f'kf_{kf:02d}_idxs',:].values))
 
                     lc_labs = lo_hi_lc_labs
 
@@ -336,7 +336,7 @@ def plot_cat_discharge_errors(plot_args):
 
                         if 'ed' in plot_types:
                             ensemble_peak_evts[ensemble_lc_lab] = (
-                                ens_sims_df.values[peaks_mask, :].copy(
+                                ens_sims_df.values[peaks_mask,:].copy(
                                     order='c'))
 
                         if 'vd' in plot_types:
@@ -408,7 +408,7 @@ def plot_cat_discharge_errors(plot_args):
                     ann_cycs_df.columns = lc_labs
                     ann_cycs_df['obs'] = qobs_ann_cyc_ser
 
-                    ann_cycs_df = ann_cycs_df.iloc[:366, :]
+                    ann_cycs_df = ann_cycs_df.iloc[:366,:]
 
                     ann_cyc_df_name = (
                         f'ann_cyc_{sim_type}_q_df_cat_{cat}_'
@@ -639,8 +639,7 @@ def plot_cat_discharge_errors(plot_args):
                             lc_labs,
                             peaks_mask,
                             qobs_arr,
-                            [qsims_df.loc[
-                                :, f'kf_{kf:02d}_sim_{lc_idx:04d}'].values
+                            [qsims_df.loc[:, f'kf_{kf:02d}_sim_{lc_idx:04d}'].values
                                 for lc_idx in lc_idxs],
                             out_peak_evts_path)
 
@@ -930,7 +929,17 @@ def plot_calib_valid_wvcb(
 
         lo_hi_lc_labs = best_prm_idxs_df.columns.tolist()
 
+        # The label valid may or may not exist.
         labs = ['calib', 'valid']
+
+        if not os.path.exists(
+            os.path.join(
+                qsims_dir,
+                'perf_cdfs',
+                f'perfs_wvcbs_cat_{cat}_valid_kf_01_{opt_iter}.csv')):
+
+            raise RuntimeError('No validation dataset to work with!')
+
         perf_labs = ['wvcb', 'ns', 'ln_ns', 'kge']
 
         for kf in range(1, kfolds + 1):
@@ -2022,7 +2031,7 @@ def get_obs_probs_in_ensemble(
     for i in range(n_vals):
         obs_val = obs_peaks_arr[i]
 
-        ens_vals = np.sort(ensemble_peaks_arr[i, :])
+        ens_vals = np.sort(ensemble_peaks_arr[i,:])
 
         obs_prob = interp_ftn(obs_val, ens_vals, probs, left=0.0, right=1.0)
 
