@@ -138,6 +138,9 @@ def solve_cats_sys(
     assert np.issubdtype(obj_ftn_wts.dtype, np.float64)
     assert obj_ftn_wts.size == n_obj_ftns
 
+    if obj_ftn_wts[3]:
+        raise NotImplementedError('FT obj ftn deactivated!')
+
     assert isinstance(min_q_thresh, (float, int))
     assert min_q_thresh >= 0
 

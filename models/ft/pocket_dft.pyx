@@ -11,9 +11,9 @@ import numpy as np
 cimport numpy as np
 
 
-cdef extern from "pocket_dft.h" nogil:
-    cdef:
-        void _pocket_real_dft(double *in_reals_arr, size_t n_pts)
+# cdef extern from "pocket_dft.h" nogil:
+#     cdef:
+#         void _pocket_real_dft(double *in_reals_arr, size_t n_pts)
 
 
 # To match the same signature as mkl_dft, n_pts_adj is computed inside.
@@ -44,7 +44,7 @@ cdef void pocket_real_dft(
     else:
         pass
 
-    _pocket_real_dft(<double*> &out_comps_arr[0].imag, n_pts)
+    #_pocket_real_dft(<double*> &out_comps_arr[0].imag, n_pts)
 
     out_comps_arr[0].real = out_comps_arr[0].imag
     out_comps_arr[0].imag = 0.0 

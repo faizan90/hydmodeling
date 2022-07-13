@@ -31,7 +31,8 @@ def plot_cat_qsims(cat_db):
     with h5py.File(cat_db, 'r') as db:
         # opt_iters = list(range(db['calib/kf_01/iter_prm_vecs'].shape[0]))
         # opt_iters = [11]
-        opt_iters = [db['calib/kf_01/iter_prm_vecs'].shape[0] - 1]
+        # opt_iters = [db['calib/kf_01/iter_prm_vecs'].shape[0] - 1]
+        opt_iters = [-1]
 
         long_short_break_freqs = ['A']
 
@@ -932,7 +933,7 @@ class PlotCatQSims:
             self.opt_iter_lab = 'final'
 
         else:
-            assert (self.opt_iter >= 0) and isinstance(self.opt_iter, int)
+            assert (self.opt_iter >= -1) and isinstance(self.opt_iter, int)
 
             n_max_opt_iters = self.calib_db['kf_01/iter_prm_vecs'].shape[0]
 
@@ -1225,6 +1226,7 @@ class PlotCatQSims:
 
             self._set_lo_hi_corr_idxs_flag = False
 
+        # This is for all kfs.
         out_df.to_csv(
             os.path.join(
                 self.qsims_dir,

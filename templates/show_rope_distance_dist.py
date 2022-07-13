@@ -63,7 +63,7 @@ def main():
 
     kf_str = f'kf_{kf:02d}'
 
-    iter_prm_vecs = in_h5_hdl[ f'calib/{kf_str}/iter_prm_vecs'][...]
+    iter_prm_vecs = in_h5_hdl[f'calib/{kf_str}/iter_prm_vecs'][...]
 
     n_iters, n_vecs, n_prms = iter_prm_vecs.shape
 

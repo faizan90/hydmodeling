@@ -27,6 +27,49 @@ from hydmodeling.models import (
     tfm_opt_to_hbv_prms_py)
 
 
+def main():
+
+    main_dir = Path(r'P:\Synchronize\IWS\Papers_Reviews\Papers\2022_neckartropikalisierung\data\neckar_ppt_tem\hydmod')
+    os.chdir(main_dir)
+
+    cats = [420, 3421, 3465, 3470]
+
+    data_ds = 'calib'  # read calibration/validation data
+
+    prms_dir = Path(r'neckar_10km_lumped\01_database')
+
+    data_dir = Path(r'neckar_10km_lump_disagg\01_database')
+
+    out_dir = Path(fr'neckar_10km_lump_disagg\discharges_ref_prms_{data_ds}')
+
+    out_dir.mkdir(exist_ok=True)
+
+    for cat in cats:
+        in_prms_h5 = prms_dir / f'cat_{cat}.hdf5'
+
+        in_data_h5 = data_dir / f'cat_{cat}.hdf5'
+
+        assert in_prms_h5.exists()
+
+        assert in_data_h5.exists()
+
+        prm_cat, data_cat, ress, off_idx = run_sim(
+            (in_prms_h5, in_data_h5, data_ds))
+
+        out_df = pd.DataFrame(data={'ref': ress[3], 'sim': ress[2]})
+
+        ns = get_ns_cy(out_df['ref'].values, out_df['sim'].values, off_idx)
+
+        print(f'Cat {cat}\'s NS: {ns:0.3f}')
+
+        out_df.to_csv(
+            out_dir / f'{prm_cat}p_{data_cat}d.csv',
+            sep=';',
+            float_format='%0.4f')
+
+    return
+
+
 def get_sim_ress(kf_dict, area_arr, conv_ratio):
 
     temp_dist_arr = kf_dict['tem_arr']
@@ -58,7 +101,7 @@ def get_sim_ress(kf_dict, area_arr, conv_ratio):
     wb_lhss = []
     wb_rhss = []
     for i in range(all_outputs_dict['outs_arr'].shape[0]):
-        outs_arr = all_outputs_dict['outs_arr'][i, :, :]
+        outs_arr = all_outputs_dict['outs_arr'][i,:,:]
 
         snow_arr = outs_arr[:, 0]
         sm_arr = outs_arr[:, 2]
@@ -133,7 +176,7 @@ def run_sim(args):
     # right now for one cat.
     # with slight changes can be use for various cats
     with h5py.File(prm_cat_db, 'r') as db:
-        kfolds = db['data'].attrs['kfolds']
+        kfolds = 1  # db['data'].attrs['kfolds']
         assert kfolds == 1
 
         prm_cat = db.attrs['cat']
@@ -167,7 +210,7 @@ def run_sim(args):
 
     with h5py.File(data_cat_db, 'r') as db:
 
-        kfolds = db['data'].attrs['kfolds']
+        kfolds = 1  # db['data'].attrs['kfolds']
 
         assert kfolds == 1
 
@@ -217,49 +260,6 @@ def run_sim(args):
         break
 
     return ress
-
-
-def main():
-
-    main_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\test_wat_bal_01')
-    os.chdir(main_dir)
-
-    cats = [420]
-
-    data_ds = 'valid'  # read calibration/validation data
-
-    prms_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\hist_1882_hist_calib\01_database')
-
-    data_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\hist_1882_calib_valid_prsnt_dist\01_database')
-
-    out_dir = Path(fr'P:\Synchronize\IWS\QGIS_Neckar\hist_1882__hist_prms__prsnt_data_{data_ds}')
-
-    out_dir.mkdir(exist_ok=True)
-
-    for cat in cats:
-        in_prms_h5 = prms_dir / f'cat_{cat}.hdf5'
-
-        in_data_h5 = data_dir / f'cat_{cat}.hdf5'
-
-        assert in_prms_h5.exists()
-
-        assert in_data_h5.exists()
-
-        prm_cat, data_cat, ress, off_idx = run_sim(
-            (in_prms_h5, in_data_h5, data_ds))
-
-        out_df = pd.DataFrame(data={'ref': ress[3], 'sim': ress[2]})
-
-        ns = get_ns_cy(out_df['ref'].values, out_df['sim'].values, off_idx)
-
-        print(f'Cat {cat}\'s NS: {ns:0.3f}')
-
-        out_df.to_csv(
-            out_dir / f'{prm_cat}p_{data_cat}d.csv',
-            sep=';',
-            float_format='%0.4f')
-
-    return
 
 
 if __name__ == '__main__':
