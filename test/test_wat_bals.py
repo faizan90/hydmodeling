@@ -1,24 +1,22 @@
 '''
 @author: Faizan-Uni-Stuttgart
 
-31 Jan 2020
+Jul 13, 2022
 
-13:37:29
+9:19:41 AM
 
 '''
 import os
+import sys
 import time
 import timeit
+import traceback as tb
 from pathlib import Path
 
 import h5py
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-plt.ioff()
-
-DEBUG_FLAG = False
+import matplotlib.pyplot as plt  ; plt.ion()
 
 from hydmodeling.models import (
     hbv_loop_py,
@@ -26,21 +24,25 @@ from hydmodeling.models import (
     get_ns_cy,
     tfm_opt_to_hbv_prms_py)
 
+DEBUG_FLAG = False
+
 
 def main():
 
-    main_dir = Path(r'P:\Synchronize\IWS\Papers_Reviews\Papers\2022_neckartropikalisierung\data\neckar_ppt_tem\hydmod')
+    main_dir = Path(r'P:\Synchronize\IWS\QGIS_Neckar\ref_DE_dist')
     os.chdir(main_dir)
 
-    cats = [420, 3421, 3465, 3470]
+    # cats = [3421, 3465, 3470]
+    cats = [3465]
 
     data_ds = 'calib'  # read calibration/validation data
 
-    prms_dir = Path(r'neckar_10km_lumped\01_database')
+    prms_dir = Path(r'01_database')
 
-    data_dir = Path(r'neckar_10km_lump_disagg\01_database')
+    data_dir = Path(r'01_database')
 
-    out_dir = Path(fr'neckar_10km_lump_disagg\discharges_ref_prms_{data_ds}')
+    out_dir = Path(fr'test_wat_bal')
+    #==========================================================================
 
     out_dir.mkdir(exist_ok=True)
 
@@ -72,10 +74,35 @@ def main():
 
 def get_sim_ress(kf_dict, area_arr, conv_ratio):
 
+    show_wat_bals_flag = True
+    plot_flag = True
+
+    # show_wat_bals_flag = False
+    # plot_flag = False
+
     temp_dist_arr = kf_dict['tem_arr']
     prec_dist_arr = kf_dict['ppt_arr']
     pet_dist_arr = kf_dict['pet_arr']
     prms_dist_arr = kf_dict['hbv_prms']
+
+    # No snow.
+    # prms_dist_arr[:, 0] = -1000
+    # prms_dist_arr[:, 1] = 0
+    # prms_dist_arr[:, 2] = 0
+
+    # No somo.
+    # prms_dist_arr[:, 4] = 0
+
+    # No upper reservoir upper outlet.
+    # prms_dist_arr[:, 6] = 1e9
+    # prms_dist_arr[:, 7] = 0
+
+    # No upper reservoir lower outlet.
+    # prms_dist_arr[:, 8] = 0
+
+    # No groundwater.
+    # prms_dist_arr[:, 9] = 0
+    # prms_dist_arr[:, 10] = 0
 
     all_outputs_dict = hbv_loop_py(
 #     all_outputs_dict = hbv_c_loop_py(
@@ -86,11 +113,104 @@ def get_sim_ress(kf_dict, area_arr, conv_ratio):
         np.array(kf_dict['ini_arr']),
         area_arr,
         conv_ratio,
-        1)
+        int(not show_wat_bals_flag))
 
     assert all_outputs_dict['loop_ret'] == 0.0
 
     q_sim_arr = all_outputs_dict['qsim_arr']
+
+    #==========================================================================s
+    if show_wat_bals_flag:
+        # For checking water balances.
+        # Change the opt_flag in hbv_loop_py to 0.
+
+        wb_lhss = []
+        wb_rhss = []
+
+        axes = plt.subplots(1, 2, squeeze=False)[1]
+        plt.show(block=False)
+
+        # Go through each cell for all time steps.
+        for i in range(all_outputs_dict['outs_arr'].shape[0]):
+            outs_arr = all_outputs_dict['outs_arr'][i,:,:]
+
+            snow_arr = outs_arr[:, 0]
+            sm_arr = outs_arr[:, 2]
+            evap_arr = outs_arr[:, 4]
+            ur_sto_arr = outs_arr[:, 5]
+            ur_run_uu = outs_arr[:, 6]
+            ur_run_ul = outs_arr[:, 7]
+            lr_sto_arr = outs_arr[:, 9]
+            lr_run_arr = lr_sto_arr * prms_dist_arr[i, 10]
+
+            storage = snow_arr + sm_arr + ur_sto_arr + lr_sto_arr
+
+            runoff = (ur_run_uu + ur_run_ul)[1:]
+            runoff += lr_run_arr[:-1]
+
+            curr_sto = storage[+1:]
+            prev_sto = storage[:-1]
+
+            wb_rhs = -prev_sto + curr_sto + evap_arr[1:] + runoff
+
+            wb_lhs = prec_dist_arr[i, 1:]
+
+            wb_lhss.append(wb_lhs)
+            wb_rhss.append(wb_rhs)
+
+            rel_abs_diff = np.abs(wb_rhs - wb_lhs).sum() / wb_rhs.sum()
+
+            # if rel_abs_diff >= 1e-5:
+            #     print(
+            #         f'Relative water balance difference not zero '
+            #         f'({rel_abs_diff:0.3f}) at cell: {i}!')
+
+            if plot_flag:
+
+                min_xy = min([wb_rhs.min(), wb_lhs.min()])
+                max_xy = max([wb_rhs.max(), wb_lhs.max()])
+
+                axes[0, 0].scatter(wb_rhs, wb_lhs, alpha=0.7)
+
+                axes[0, 0].plot(
+                    [min_xy, max_xy],
+                    [min_xy, max_xy],
+                    alpha=0.25,
+                    c='k',
+                    ls='--')
+
+                axes[0, 0].grid()
+
+                axes[0, 1].plot(wb_rhs - wb_lhs, alpha=0.7)
+
+                axes[0, 1].grid()
+
+                plt.title(f'{i}: {rel_abs_diff:0.3%}')
+
+                plt.draw()
+                plt.pause(0.01)  # This is important.
+
+                axes[0, 0].cla()
+                axes[0, 1].cla()
+
+        plt.close()
+
+        # wb_lhss = np.sort(np.array(wb_lhss).ravel())
+        # wb_rhss = np.sort(np.array(wb_rhss).ravel())
+
+        wb_lhss = np.array(wb_lhss)
+        wb_rhss = np.array(wb_rhss)
+
+        wb_lhss_sum, wb_rhss_sum = wb_lhss.sum(), wb_rhss.sum()
+
+        print('Input output sum:', wb_lhss_sum, wb_rhss_sum)
+
+        print(
+            f'Overall input by output ratio: {wb_lhss_sum / wb_rhss_sum:0.5f}')
+
+        # assert np.isclose(abs_diff, 0.0), (
+        #     f'Water balance difference too high ({abs_diff}) at cell: {i}!')
+    #==========================================================================
 
     if 'extra_us_inflow' in kf_dict:
         q_sim_arr = q_sim_arr + kf_dict['extra_us_inflow']
@@ -192,29 +312,15 @@ def run_sim(args):
 
 
 if __name__ == '__main__':
-
-    _save_log_ = False
-    if _save_log_:
-        from datetime import datetime
-        from std_logger import StdFileLoggerCtrl
-
-        # save all console activity to out_log_file
-        out_log_file = os.path.join(
-            r'P:\Synchronize\python_script_logs\\%s_log_%s.log' % (
-            os.path.basename(__file__),
-            datetime.now().strftime('%Y%m%d%H%M%S')))
-
-        log_link = StdFileLoggerCtrl(out_log_file)
-
     print('#### Started on %s ####\n' % time.asctime())
     START = timeit.default_timer()
 
     #==========================================================================
     # When in post_mortem:
-    # 1. "where" to show the stack
-    # 2. "up" move the stack up to an older frame
-    # 3. "down" move the stack down to a newer frame
-    # 4. "interact" start an interactive interpreter
+    # 1. "where" to show the stack,
+    # 2. "up" move the stack up to an older frame,
+    # 3. "down" move the stack down to a newer frame, and
+    # 4. "interact" start an interactive interpreter.
     #==========================================================================
 
     if DEBUG_FLAG:
@@ -222,16 +328,20 @@ if __name__ == '__main__':
             main()
 
         except:
+            pre_stack = tb.format_stack()[:-1]
+
+            err_tb = list(tb.TracebackException(*sys.exc_info()).format())
+
+            lines = [err_tb[0]] + pre_stack + err_tb[2:]
+
+            for line in lines:
+                print(line, file=sys.stderr, end='')
+
             import pdb
             pdb.post_mortem()
-
     else:
         main()
 
     STOP = timeit.default_timer()
     print(('\n#### Done with everything on %s.\nTotal run time was'
            ' about %0.4f seconds ####' % (time.asctime(), STOP - START)))
-
-    if _save_log_:
-        log_link.stop()
-
