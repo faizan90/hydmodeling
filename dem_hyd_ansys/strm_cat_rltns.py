@@ -374,9 +374,12 @@ def crt_strms_rltn_tree(
             cats_prcssed_df.loc[cat, 'optd'] = False
 
     for process_cat in cats_prcssed_df.index:
-        if ((process_cat in no_cats_us_list) and
-            (process_cat not in in_dem_net_df.loc[:, dem_net_header[-2]])):
 
+        # The second condition here seems to be wrong.
+        # if ((process_cat in no_cats_us_list) and
+        #     (process_cat not in in_dem_net_df.loc[:, dem_net_header[-2]])):
+
+        if (process_cat in no_cats_us_list):
             continue
 
         stms_prcssed_idxs = stms_prcssed_df.index

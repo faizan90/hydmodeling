@@ -20,48 +20,53 @@ DEBUG_FLAG = False
 
 def main():
 
-    main_dir = Path(
-        r'P:\Synchronize\IWS\QGIS_Neckar\hydmod\input_hyd_data')
-
+    main_dir = Path(r'P:\Synchronize\IWS\Testings\hydmod\iaaftsa_sims')
     os.chdir(main_dir)
 
-    in_files = [
-        r'neckar_tot_prec_1901_2010_daysum__TOT_PREC.csv',
-        r'neckar_full_neckar_ppt_interp__1961-01-01_to_2015-12-31_1km_all__EDK.csv',
-        r'neckar_full_neckar_pet_kriging_1961-01-01_to_2015-12-31_1km_all__EDK.csv',
-        r'neckar_full_neckar_avg_temp_kriging_1961-01-01_to_2015-12-31_1km_all__EDK.csv',
-        ]
+    iaaft_sim_dir = Path(r'P:\Synchronize\IWS\Testings\fourtrans_practice\iaaftsa\test_hbv_all_06__mult_prms_search\data_extracted')
 
-    out_files = ['neckar_ppt_cosmo.h5', 'neckar_ppt_obs.h5', 'neckar_pet_obs.h5', 'neckar_tem_obs.h5']
+    # Some hardcodded file_names.
+    in_files = iaaft_sim_dir.glob('*.csv')
 
-    labels = ['lump'] * len(in_files)
-
-    beg_date = '1961-01-01'
-    end_date = '2010-12-31'
+    beg_date = '1964-10-01'
+    end_date = '1974-11-29'
     time_fmt = '%Y-%m-%d'
 
     sep = ';'
 
-    assert in_files
-    assert len(in_files) == len(out_files) == len(labels)
+    out_file_name = f'{iaaft_sim_dir.parents[0].name}.h5'
+    out_dir = Path(r'hydmod_tss')
+    #==========================================================================
 
-    for in_file, out_file, label in zip(in_files, out_files, labels):
+    out_dir.mkdir(exist_ok=True)
+
+    first_sim_flag = True
+    for in_file in in_files:
 
         assert Path(in_file).exists(), f'{in_file} does not exist!'
 
-        print(in_file, out_file, label)
+        print('Going through:', in_file)
 
-        cnvt_text_to_h5(
-            in_file, out_file, beg_date, end_date, time_fmt, sep, label)
+        out_file = out_dir / out_file_name
+
+        cnvt_text_to_h5_iaaft(
+            in_file,
+            out_file,
+            beg_date,
+            end_date,
+            time_fmt,
+            sep,
+            first_sim_flag)
+
+        first_sim_flag = False
 
     return
 
 
-def cnvt_text_to_h5(
-        in_file, out_file, beg_date, end_date, time_fmt, sep, label):
+def cnvt_text_to_h5_iaaft(
+        in_file, out_file, beg_date, end_date, time_fmt, sep, first_sim_flag):
 
     in_file, out_file = Path(in_file), Path(out_file)
-    label = str(label)
 
     in_df = pd.read_csv(in_file, sep=sep, index_col=0)
     in_df.index = pd.to_datetime(in_df.index, format=time_fmt)
@@ -74,44 +79,52 @@ def cnvt_text_to_h5(
     out_area_ratios_dict = {}
 
     for i, stn in enumerate(in_df.columns):
-        out_data_dict[int(stn)] = pd.DataFrame(
+        out_data_dict[str(stn)] = pd.DataFrame(
             data=in_df[stn].values,
             index=in_df.index,
             columns=[0],
             dtype=np.float64)
 
-        out_rows_dict[int(stn)] = np.array([0], dtype=np.int64)
-        out_cols_dict[int(stn)] = np.array([i], dtype=np.int64)
-        out_area_ratios_dict[int(stn)] = np.array([1.0], dtype=np.float64)
+        out_rows_dict[str(stn)] = np.array([0], dtype=np.int64)
+        out_cols_dict[str(stn)] = np.array([i], dtype=np.int64)
+        out_area_ratios_dict[str(stn)] = np.array([1.0], dtype=np.float64)
 
-    h5_times = in_df.index.strftime('%Y%m%dT%H%M%S')
-    h5_str_dt = h5py.special_dtype(vlen=str)
+    if first_sim_flag:
+        write_mode = 'w'
 
-    out_hdl = h5py.File(str(out_file), mode='w', driver=None)
+    else:
+        write_mode = 'a'
 
-    time_grp = out_hdl.create_group('time')
-    time_strs_ds = time_grp.create_dataset(
-        'time_strs',
-        (h5_times.shape[0],),
-        dtype=h5_str_dt)
+    out_hdl = h5py.File(str(out_file), mode=write_mode, driver=None)
 
-    time_strs_ds[:] = h5_times
+    if first_sim_flag:
+        h5_times = in_df.index.strftime('%Y%m%dT%H%M%S')
+        h5_str_dt = h5py.special_dtype(vlen=str)
+
+        time_grp = out_hdl.create_group('time')
+        time_strs_ds = time_grp.create_dataset(
+            'time_strs',
+            (h5_times.shape[0],),
+            dtype=h5_str_dt)
+
+        time_strs_ds[:] = h5_times
 
     stem_grp = out_hdl.create_group(in_file.stem)
-    var_grp = stem_grp.create_group(label)
 
-    out_hdl.create_group('rows')
-    out_hdl.create_group('cols')
-    out_hdl.create_group('rel_itsctd_area')
+    if first_sim_flag:
+        out_hdl.create_group('rows')
+        out_hdl.create_group('cols')
+        out_hdl.create_group('rel_itsctd_area')
 
     for stn in in_df.columns:
-        var_grp[str(stn)] = out_data_dict[int(stn)].values
-        out_hdl[f'rows/{stn}'] = out_rows_dict[int(stn)]
-        out_hdl[f'cols/{stn}'] = out_cols_dict[int(stn)]
-        out_hdl[f'rel_itsctd_area/{stn}'] = out_area_ratios_dict[int(stn)]
+        stem_grp[str(stn)] = out_data_dict[str(stn)].values
+
+        if first_sim_flag:
+            out_hdl[f'rows/{stn}'] = out_rows_dict[str(stn)]
+            out_hdl[f'cols/{stn}'] = out_cols_dict[str(stn)]
+            out_hdl[f'rel_itsctd_area/{stn}'] = out_area_ratios_dict[str(stn)]
 
     out_hdl.flush()
-
     return
 
 

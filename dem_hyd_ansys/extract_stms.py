@@ -748,7 +748,12 @@ def get_stms(in_dem_net_shp_file,
         ndv = -2  # means no upstreams
         fin_stream_no = 0
         for geom_i in range(out_lyr.GetFeatureCount()):
-            out_feat = out_lyr.GetFeature(geom_i)
+            try:
+                out_feat = out_lyr.GetFeature(geom_i)
+
+            except:
+                continue
+
             if out_feat is None:
                 continue
 
@@ -760,7 +765,12 @@ def get_stms(in_dem_net_shp_file,
             out_lyr.SetFeature(out_feat)
 
         for geom_i in range(out_lyr.GetFeatureCount()):
-            curr_stream_feat = out_lyr.GetFeature(geom_i)
+            try:
+                curr_stream_feat = out_lyr.GetFeature(geom_i)
+
+            except:
+                continue
+
             no_more_us_streams = False
 
             if curr_stream_feat is None:
@@ -779,7 +789,12 @@ def get_stms(in_dem_net_shp_file,
                 if geom_i == geom_j:
                     continue
 
-                curr_us_stream_feat = out_lyr.GetFeature(geom_j)
+                try:
+                    curr_us_stream_feat = out_lyr.GetFeature(geom_j)
+
+                except:
+                    continue
+
                 if curr_us_stream_feat is None:
                     continue
 
@@ -838,7 +853,12 @@ def get_stms(in_dem_net_shp_file,
 
     if n_recs:
         for geom_i in range(out_lyr.GetFeatureCount()):
-            curr_stream_feat = out_lyr.GetFeature(geom_i)
+            try:
+                curr_stream_feat = out_lyr.GetFeature(geom_i)
+
+            except:
+                continue
+
             if curr_stream_feat is None:
                 continue
 
@@ -899,9 +919,15 @@ def get_stms(in_dem_net_shp_file,
                            for i in out_cols]
         geoms_count = 0
         for geom_i in range(out_lyr.GetFeatureCount()):
-            curr_stream_feat = out_lyr.GetFeature(geom_i)
+            try:
+                curr_stream_feat = out_lyr.GetFeature(geom_i)
+
+            except:
+                continue
+
             if curr_stream_feat is None:
                 continue
+
             out_df.loc[geoms_count] = [
                 curr_stream_feat.GetField(i) for i in curr_field_idxs]
 
@@ -909,6 +935,7 @@ def get_stms(in_dem_net_shp_file,
 
         if not out_df.shape[0]:
             assert not cats_us_cats_list
+
             out_df = pd.DataFrame(index=list(range(len(cats_not_us_cats_list))),
                                   columns=out_cols)
 

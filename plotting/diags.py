@@ -74,12 +74,24 @@ def plot_cat_diags(plot_args):
                 plot_cat_diags_1d_cls.plot_emp_cops()
                 plot_cat_diags_1d_cls.plot_fts()
                 plot_cat_diags_1d_cls.plot_lorenz_curves()
-                plot_cat_diags_1d_cls.plot_quantile_effs()
+
+                try:
+                    plot_cat_diags_1d_cls.plot_quantile_effs()
+
+                except:
+                    pass
+
                 plot_cat_diags_1d_cls.plot_sorted_sq_diffs()
                 plot_cat_diags_1d_cls.plot_peak_qevents()
                 plot_cat_diags_1d_cls.plot_mw_discharge_ratios()
                 plot_cat_diags_1d_cls.plot_hi_err_qevents()
-                plot_cat_diags_1d_cls.plot_quantile_stats()
+
+                try:
+                    plot_cat_diags_1d_cls.plot_quantile_stats()
+
+                except:
+                    pass
+
                 plot_cat_diags_1d_cls.plot_theoretical_error_reduction()
                 plot_cat_diags_1d_cls.plot_mw_discharge_stds()
     return
