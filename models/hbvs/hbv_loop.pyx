@@ -176,10 +176,17 @@ cdef DT_D hbv_loop(
             outs_j_arr[i, somo_i] = max(
                 0.0, avail_somo - outs_j_arr[i, evtn_i])
 
+            # total runoff
+            if outs_j_arr[i, somo_i] > fc:
+                outs_j_arr[i, rnof_i] = outs_j_arr[i, somo_i] - fc
+                outs_j_arr[i, somo_i] = fc
+
+            else:
+                outs_j_arr[i, rnof_i] = 0.0
+
             pre_somo = outs_j_arr[i, somo_i]
 
-            # total runoff
-            outs_j_arr[i, rnof_i] = lppt * rel_fc_beta
+            outs_j_arr[i, rnof_i] += lppt * rel_fc_beta
 
             # runonff, upper reservoir, upper outlet
             outs_j_arr[i, ur_uo_i] = (
