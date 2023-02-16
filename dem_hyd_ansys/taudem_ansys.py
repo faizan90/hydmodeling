@@ -98,6 +98,8 @@ class TauDEMAnalysis:
 		self.dem_coords = os_join(self.outputs_dir, 'dem_coords.dat')
 		self.dem_net = os_join(self.outputs_dir, 'dem_net.shp')
 
+		self.gord = os_join(self.outputs_dir, 'gord.tif')
+
 		self.watersheds_flag = True
 		self.area_flag = False
 		self.strm_dists_flag = False
@@ -131,6 +133,7 @@ class TauDEMAnalysis:
 		self.strm_net_exe = os_join(self.exes_dir, 'StreamNet')
 		self.gage_watershed_exe = os_join(self.exes_dir, 'GageWatershed')
 		self.strm_dist_exe = os_join(self.exes_dir, 'D8HDistToStrm')
+		self.grid_net_exe = os_join(self.exes_dir, 'GridNet')
 		return
 
 	def _prepare(self):
@@ -229,6 +232,10 @@ class TauDEMAnalysis:
 		  	 self.watersheds_all,
 		  	 self.gage_shp_moved))
 
+		gridnet_cmd = (
+			('"%s" -p "%s" -gord "%s"') % (
+				self.grid_net_exe, self.fdr, self.gord))
+
 		if self.n_cpus > 1:
 			fil_cmd = 'mpiexec -n %d %s' % (self.n_cpus, fil_cmd)
 			fdr_cmd = 'mpiexec -n %d %s' % (self.n_cpus, fdr_cmd)
@@ -236,6 +243,7 @@ class TauDEMAnalysis:
 			thresh_cmd = 'mpiexec -n %d %s' % (self.n_cpus, thresh_cmd)
 			snap_pp_cmd = 'mpiexec -n %d %s' % (self.n_cpus, snap_pp_cmd)
 			streamnet_cmd = 'mpiexec -n %d %s' % (self.n_cpus, streamnet_cmd)
+			# gridnet_cmd = 'mpiexec -n %d %s' % (self.n_cpus, gridnet_cmd)
 
 		out_shps = [self.gage_shp_moved, self.dem_net, self.watersheds_shp]
 
@@ -255,10 +263,12 @@ class TauDEMAnalysis:
 				fac_cmd,
 				thresh_cmd,
 				snap_pp_cmd,
-				streamnet_cmd]
+				streamnet_cmd,
+				gridnet_cmd]
 
 		elif self.run_type == 'after':
-			cmd_list = [fac_cmd, thresh_cmd, snap_pp_cmd, streamnet_cmd]
+			cmd_list = [
+				fac_cmd, thresh_cmd, snap_pp_cmd, streamnet_cmd, gridnet_cmd]
 
 			assert os_exists(self.fil), '%s does not exist!' % self.fil
 			assert os_exists(self.fdr), '%s does not exist!' % self.fdr

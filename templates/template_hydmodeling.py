@@ -62,7 +62,7 @@ def main():
     plot_qsims_flag = False
     plot_cats_discharge_errs_flag = False
 
-    # hyd_analysis_flag = True
+    hyd_analysis_flag = True
     # get_stms_flag = True
     # create_cumm_cats_flag = True
     # create_stms_rels_flag = True
@@ -76,7 +76,7 @@ def main():
     # plot_opt_evo_flag = True
     # plot_hbv_vars_flag = True
     # plot_diags_flag = True
-    plot_qsims_flag = True  # for ROPE only.
+    # plot_qsims_flag = True  # for ROPE only.
     # plot_cats_discharge_errs_flag = True  # For ROPE only.
     #==========================================================================
 
