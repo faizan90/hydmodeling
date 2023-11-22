@@ -315,6 +315,14 @@ class TauDEMAnalysis:
 
 			log_file_cur.close()
 
+		try:
+			os.remove(
+				os_join(abspath(
+					os_join(self.outputs_dir, os.pardir)), '.tif'))
+
+		except:
+			pass
+
 		if self.watersheds_flag:
 			assert os_exists(self.watersheds), (
 				'watersheds file does not exist!')

@@ -615,9 +615,20 @@ cpdef DT_D get_hargreaves_pet(
     """
 
     cdef:
-        int tot_days
+        int tot_days, c1, c2, c3, c4
 
         DT_D ndec, nws, dfr, ra, pet, two_pi = 2 * M_PI
+
+    c1 = t_min < t_avg < t_max
+
+    c2 = (t_max - t_min) < 0.22
+
+    c3 = (t_max - t_min) > 26.0
+
+    c4 = t_max <= 0.0
+
+    if (not c1) or c2 or c3 or c4:
+        return 0.0
 
     if leap == 0:
         tot_days = 366
@@ -631,20 +642,16 @@ cpdef DT_D get_hargreaves_pet(
  
     dfr = 1 + (0.033 * cos((two_pi * d_o_y) / tot_days))
 
-    #fac_1 = 15.342618001389575 # ((1440 * 0.082 * 0.4082)/pi)
+    # fac_1 = 15.342618001389575 # ((1440 * 0.082 * 0.4082)/pi)
 
     ra = (
         15.342618 * 
         dfr * 
         ((nws * sin(lat) * sin(ndec)) + (cos(lat) * cos(ndec) * sin(nws))))
 
-    #fac_2 = 0.002295 # (0.0135 * 0.17)
+    # fac_2 = 0.002295 # (0.0135 * 0.17)
 
-    if t_max < t_min:
-        pet = 0.0
-
-    else:
-        pet = 0.002295 * ra * ((t_max - t_min)**0.5) * (t_avg + 17.8)
+    pet = 0.002295 * ra * ((t_max - t_min) ** 0.5) * (t_avg + 17.8)
 
     if pet < 0:
         pet = 0.0

@@ -25,6 +25,8 @@ from .miscs.misc_ftns import (
 
 from ..misc import mkdir_hm
 
+PPT_SCL = None
+
 plt.ioff()
 
 fc_i, pwp_i = get_fc_pwp_is()
@@ -716,7 +718,12 @@ def solve_cat(
 
         q_arr = in_q_df[cat].values.copy(order='C')
         tem_arr = in_tem_dfs_dict[cat].values.T.copy(order='C')
+
         ppt_arr = in_ppt_dfs_dict[cat].values.T.copy(order='C')
+
+        if PPT_SCL is not None:
+            ppt_arr *= PPT_SCL
+
         pet_arr = in_pet_dfs_dict[cat].values.T.copy(order='C')
         ini_arr = ini_arrs_dict[cat].copy(order='C')
         cat_shape = in_aux_vars_dict['shape']

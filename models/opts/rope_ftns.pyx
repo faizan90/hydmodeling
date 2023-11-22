@@ -249,7 +249,7 @@ cdef void gen_vecs_in_chull(
         DT_UL n_temp_rope_prm_vecs = temp_rope_prm_vecs.shape[0]
         DT_UL n_uvecs = uvecs.shape[0]
         DT_UL temp_rope_prms_strt_idx = chull_vecs_ctr
-        DT_D sq_diff
+        DT_D sq_diff, rand_t
         DT_UL bds_adj_atpts
 
     if depth_ftn_type == 2:
@@ -278,9 +278,24 @@ cdef void gen_vecs_in_chull(
                     temp_rope_prm_vecs[i, j] = chull_vecs[i, j]
 
         for i in range(temp_rope_prms_strt_idx, n_temp_rope_prm_vecs):
+
+            k = <Py_ssize_t> (rand_c() * <DT_D> chull_vecs_ctr)
+
+            m = <Py_ssize_t> (rand_c() * <DT_D> chull_vecs_ctr)
+
+            while k == m:
+                m = <Py_ssize_t> (rand_c() * <DT_D> chull_vecs_ctr)
+
+            rand_t = 0.01 + (0.97 * rand_c())
+
             for j in range(n_prms):
                 temp_rope_prm_vecs[i, j] = (
-                    rope_bds_dfs[j, 0] + (rand_c() * rope_bds_dfs[j, 1]))
+                    (chull_vecs[k, j] * rand_t) +
+                    (chull_vecs[m, j] * (1.0 - rand_t)))
+
+            # for j in range(n_prms):
+            #     temp_rope_prm_vecs[i, j] = (
+            #         rope_bds_dfs[j, 0] + (rand_c() * rope_bds_dfs[j, 1]))
 
             # check constraints
             for j in range(

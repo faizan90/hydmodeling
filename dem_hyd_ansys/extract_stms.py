@@ -959,7 +959,9 @@ def get_stms(in_dem_net_shp_file,
     cat_vec.Destroy()
     out_ds.Destroy()
     coords_vec.Destroy()
-    temps_streams_vec.Destroy()
+
+    if n_recs:
+        temps_streams_vec.Destroy()
 
     try:
         driver.DeleteDataSource(temp_dem_net_1_path)

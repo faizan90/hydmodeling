@@ -71,7 +71,7 @@ def main():
 
     plt.figure(figsize=(20, 20))
 
-    for i in range(n_iters):
+    for i in range(3, n_iters):
         dists = cmpt_dist(iter_prm_vecs[i])
 
         dists = np.sort(dists)
@@ -80,6 +80,8 @@ def main():
         probs /= dists.shape[0] + 1
 
         plt.plot(dists, probs, alpha=0.7, label=i)
+
+        break
 
     plt.grid()
     plt.legend()
